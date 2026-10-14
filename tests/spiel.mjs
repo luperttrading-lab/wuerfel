@@ -137,7 +137,7 @@ console.log('Startseite');
   ok(staubMax >= 150, `Beim Wirbeln fliegt viel Staub (bis ${staubMax} Körner gleichzeitig)`);
   ok(lagenRollen.size >= 20 && wechsel >= 6, `Beim Rollen überschlägt er sich (${lagenRollen.size} Lagen) und die Zahlen wechseln (${wechsel}×)`);
   ok(dauer >= 1900 && dauer <= 2600, `Rollen dauert ${dauer} ms (Soll 2 s)`);
-  const k = await page.evaluate(() => window.wuerfelSpiel.zahl);
+  let k = await page.evaluate(() => window.wuerfelSpiel.zahl);
   ok(await page.textContent('#augenzahl') === String(k), `Würfel zeigt die gezogene Zahl ${k}`);
   ok(await lage(page) === RUHELAGE, 'Würfel liegt danach wieder in Ruhelage');
   await page.waitForTimeout(400);
@@ -161,6 +161,21 @@ console.log('Startseite');
     return verh(rgb(z.color), rgb(z.backgroundColor));
   });
   ok(kontrast >= 4.5, `Antworttasten gut lesbar (Kontrast ${kontrast.toFixed(1)} : 1, Mindestmaß 4,5)`);
+  // Lupe: Finger aufsetzen, seitlich rutschen – die Lupe folgt; es zählt die Taste beim Loslassen
+  const mitte = async z => page.evaluate(z => { const r = document.querySelector(`.zahl[data-zahl="${z}"]`).getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }, z);
+  const [x0, y0] = await mitte(0), [x1] = await mitte(1);
+  await page.mouse.move(x0, y0); await page.mouse.down();
+  const lupe1 = await page.evaluate(() => !document.querySelector('#lupe').hidden && document.querySelector('#lupe').textContent);
+  await page.mouse.move(x1, y0, { steps: 3 });
+  const lupe2 = await page.evaluate(() => document.querySelector('#lupe').textContent);
+  ok(lupe1 === '0' && lupe2 === '1', `Lupe zeigt die getroffene Zahl und folgt dem Finger (${lupe1} → ${lupe2})`);
+  await page.mouse.move(x1, y0 - 400); await page.mouse.move(x0, y0 - 400);   // ganz woanders hin …
+  await page.mouse.move(x0, y0);                                               // … und zurück auf die 0
+  await page.mouse.up();
+  const nachLupe = await page.evaluate(() => [window.wuerfelSpiel.phase, document.body.className, document.querySelector('#lupe').hidden]);
+  ok(nachLupe[2] && (nachLupe[0] === 'geloest' ? 8 - k === 0 : nachLupe[1].includes('falsch') || 8 - k === 0),
+    'Beim Loslassen zählt die Taste unter dem Finger, die Lupe verschwindet');
+  if (nachLupe[0] === 'geloest') { await page.waitForFunction(() => window.wuerfelSpiel.phase === 'bereit', null, { timeout: 4000 }); k = await wuerfle(page); }
   const falsch = k === 4 ? 3 : k;                     // k selbst ist falsch, außer bei 4
   await page.click(`.zahl[data-zahl="${falsch}"]`);
   ok(await page.evaluate(() => document.body.classList.contains('falsch')), 'Falsche Zahl: roter Hintergrund');
@@ -268,14 +283,21 @@ for (const n of [4, 7, 10]) {
   const { page, ctx } = await seite(375, 667);
   await page.click(`#zahlwahl button[data-n="${n}"]`);
   await wuerfle(page);
-  const m = await page.evaluate(() => ({
-    breit: document.documentElement.scrollWidth,
-    letzte: document.querySelector('.zahl:last-child').getBoundingClientRect().bottom,
-    knopf: document.querySelector('.zahl').getBoundingClientRect().width,
-  }));
+  const m = await page.evaluate(() => {
+    const r = [...document.querySelectorAll('.zahl')].map(z => z.getBoundingClientRect());
+    return {
+      breit: document.documentElement.scrollWidth, letzte: r.at(-1).bottom,
+      knopf: Math.min(...r.map(q => q.width)), hoch: Math.min(...r.map(q => q.height)),
+      eineReihe: r.every(q => Math.abs(q.top - r[0].top) < 1),
+      aufsteigend: r.every((q, i) => !i || q.left > r[i - 1].left),
+      rand: Math.min(r[0].left, innerWidth - r.at(-1).right),
+    };
+  });
+  ok(m.eineReihe && m.aufsteigend, `${n}: alle Zahlen in einer Reihe, klein links, groß rechts`);
+  ok(m.rand >= 4, `${n}: Leiste bleibt im Bildschirm (Rand ${m.rand.toFixed(0)} px)`);
   ok(m.breit <= 375, `${n}: kein seitliches Scrollen (${m.breit} px)`);
   ok(m.letzte <= 667, `${n}: alle Zahlen ohne Scrollen sichtbar (unterste Kante ${Math.round(m.letzte)} px)`);
-  ok(m.knopf >= 44, `${n}: Zahlknöpfe breit genug für Kinderfinger (${Math.round(m.knopf)} px)`);
+  ok(m.knopf >= 28 && m.hoch >= 60, `${n}: Tasten ${Math.round(m.knopf)} × ${Math.round(m.hoch)} px (schmal, dafür hoch und mit Lupe)`);
   if (bilder) await page.screenshot({ path: `${bilder}/se-${n}.png` });
   await ctx.close();
 }

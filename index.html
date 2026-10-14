@@ -63,11 +63,11 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 /* Startseite */
 .start { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; padding-bottom: 8vh; }
 .start h2 { margin: 0; text-align: center; text-wrap: balance; font-size: clamp(26px, 7.5vw, 38px); font-weight: 900; }
-.zahlwahl { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; max-width: 460px; }
+.zahlwahl { display: flex; gap: 6px; width: 100%; max-width: 560px; }   /* eine Reihe: klein links, groß rechts */
 .zahlwahl button {
-  width: clamp(66px, 19vw, 96px); aspect-ratio: 1; border-radius: 24px;
-  background: var(--karte); color: var(--ganz); border: 4px solid var(--ganz);
-  font-size: clamp(34px, 10vw, 48px); font-weight: 900; box-shadow: 0 5px 0 var(--sockel);
+  flex: 1 1 0; min-width: 0; height: clamp(64px, 18vw, 96px); border-radius: 16px; padding: 0;
+  background: var(--karte); color: var(--ganz); border: 3px solid var(--ganz);
+  font-size: clamp(26px, 8vw, 44px); font-weight: 900; letter-spacing: -.03em; box-shadow: 0 5px 0 var(--sockel);
 }
 .zahlwahl button:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--sockel); }
 .zahlwahl button.zuletzt { background: var(--ganz); color: #fff; }
@@ -139,17 +139,26 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 .gleichung.weg { visibility: hidden; }          /* Platz bleibt, nichts springt */
 .hinweis { margin: 0; min-height: 1.3em; text-align: center; font-size: clamp(18px, 5vw, 24px); font-weight: 800; }
 
-.zahlen { display: grid; grid-template-columns: repeat(var(--spalten, 6), 1fr); gap: 8px; }
+.zahlen {                /* eine Leiste wie ein Zahlenstrahl: klein links, groß rechts, kein Zeilensprung */
+  display: flex; gap: 3px; touch-action: none; margin: 0 calc(8px - var(--rand));
+}
 /* Antworttasten: kräftiges Bernstein mit dunkler Schrift (Kontrast ≈ 8 : 1), Farbfamilie der orangen Lücke.
    Gesperrt (vor dem Würfeln) beige mit grauer Schrift – sichtbar „noch nicht“, aber lesbar, nicht durchsichtig. */
 .zahl {
-  height: clamp(54px, 14vw, 78px); border-radius: 16px; color: var(--ink);
+  flex: 1 1 0; min-width: 0; padding: 0;
+  height: clamp(64px, 18vw, 88px); border-radius: 12px; color: var(--ink);
   background-color: #ffb547; background-image: linear-gradient(#ffcb6e, #ffb03b);
-  font-size: clamp(28px, 8vw, 42px); font-weight: 900;
+  font-size: clamp(18px, calc(min(100vw, 640px) / var(--anzahl, 11) * .62), 42px); font-weight: 900; letter-spacing: -.05em;
   box-shadow: 0 5px 0 #d98a12, 0 8px 14px rgba(160, 90, 0, .18);
   transition: transform .08s ease, background-color .2s ease, color .2s ease;
 }
-.zahl:active { transform: translateY(3px); box-shadow: 0 2px 0 #d98a12; }
+.zahl.gedrueckt { transform: translateY(3px); box-shadow: 0 2px 0 #d98a12; }
+.lupe {                   /* wie bei der iPhone-Tastatur: die getroffene Zahl groß über dem Finger */
+  position: fixed; z-index: 26; pointer-events: none; width: 68px; height: 76px; margin-left: -34px;
+  display: grid; place-items: center; border-radius: 18px;
+  background: linear-gradient(#ffd27a, #ffb547); color: var(--ink); font-size: 48px; font-weight: 900;
+  box-shadow: 0 8px 22px rgba(43, 33, 64, .28);
+}
 .zahlen.ruht .zahl:not(.richtig) {
   color: #8f8372; background-color: #f1e7d6; background-image: none; box-shadow: 0 4px 0 #ddd0ba;
 }
@@ -229,10 +238,11 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
     <p class="hinweis" id="hinweis"></p>
   </section>
   <section class="zahlen ruht" id="zahlen" aria-label="Antwort antippen"></section>
+  <div class="lupe" id="lupe" hidden aria-hidden="true"></div>
 </main>
 
 <script>
-const APP_VERSION = '0.15';          // bei JEDER Änderung hochzählen
+const APP_VERSION = '0.16';          // bei JEDER Änderung hochzählen
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
@@ -692,8 +702,7 @@ function faerbe(klasse, ms) {
 
 function baueZahlen() {
   zahlenEl.textContent = '';
-  const anzahl = stand.n + 1;
-  zahlenEl.style.setProperty('--spalten', anzahl <= 6 ? anzahl : Math.ceil(anzahl / 2));
+  zahlenEl.style.setProperty('--anzahl', stand.n + 1);
   for (let k = 0; k <= stand.n; k++) {
     const b = document.createElement('button');
     b.className = 'zahl';
@@ -786,7 +795,38 @@ for (const n of ZAHLEN) {
   $('#zahlwahl').append(b);
 }
 wuerfelEl.addEventListener('click', tippeWuerfel);
-zahlenEl.addEventListener('click', e => { const b = e.target.closest('.zahl'); if (b) antwort(+b.dataset.zahl, b); });
+// Zahlenleiste: Finger aufsetzen, notfalls seitlich rutschen – es zählt die Taste beim Loslassen.
+const lupeEl = $('#lupe');
+let gedrueckt = null;
+function tasteBei(x) {                                                       // nächste Taste zur Fingerposition
+  let beste = null, abstand = Infinity;
+  for (const t of zahlenEl.children) {
+    const r = t.getBoundingClientRect(), d = Math.abs(x - (r.left + r.width / 2));
+    if (d < abstand) { abstand = d; beste = t; }
+  }
+  return beste;
+}
+function druecke(t) {
+  if (gedrueckt === t) return;
+  gedrueckt?.classList.remove('gedrueckt');
+  gedrueckt = t;
+  if (!t) { lupeEl.hidden = true; return; }
+  t.classList.add('gedrueckt');
+  if (phase !== 'frage') return;
+  const r = t.getBoundingClientRect();
+  lupeEl.textContent = t.dataset.zahl;
+  lupeEl.style.left = Math.min(innerWidth - 38, Math.max(38, r.left + r.width / 2)) + 'px';
+  lupeEl.style.top = (r.top - 86) + 'px';
+  lupeEl.hidden = false;
+}
+zahlenEl.addEventListener('pointerdown', e => { zahlenEl.setPointerCapture(e.pointerId); druecke(tasteBei(e.clientX)); });
+zahlenEl.addEventListener('pointermove', e => { if (zahlenEl.hasPointerCapture(e.pointerId)) druecke(tasteBei(e.clientX)); });
+zahlenEl.addEventListener('pointerup', () => { const t = gedrueckt; druecke(null); if (t) antwort(+t.dataset.zahl, t); });
+zahlenEl.addEventListener('pointercancel', () => druecke(null));
+zahlenEl.addEventListener('click', e => {                                    // nur Tastatur (Enter/Leertaste)
+  const b = e.target.closest('.zahl');
+  if (b && e.detail === 0) antwort(+b.dataset.zahl, b);
+});
 $('#zurueck').addEventListener('click', zeigeStart);
 $$('.ton').forEach(b => b.addEventListener('click', () => {
   stand.ton = !stand.ton; speichereAlles(); zeigeTon();

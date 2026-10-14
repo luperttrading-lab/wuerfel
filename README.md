@@ -6,15 +6,15 @@ Lernspiel fürs Handy, damit sich die Zerlegungen der Zahlen 4 bis 10 als **Ziff
 **Spielen:** https://luperttrading-lab.github.io/wuerfel/ (auf dem iPhone über *Teilen → Zum Home-Bildschirm*)
 
 1. **Startseite:** „Welche Zahl zerlegen wir?“ – 4, 5, 6, 7, 8, 9 oder 10.
-2. **Würfel dreht sich**, jede Vierteldrehung zeigt eine neue Ziffer. Antippen hält ihn an.
-3. Er bleibt auf einer Zahl stehen, darunter steht `3 + ? = 10`.
+2. **Würfel zeigt in Ruhe die gewählte Zahl** (lila) und steht still.
+3. **Antippen:** Er dreht sich 2 Sekunden lang immer langsamer, die Ziffern wechseln mit Klicken,
+   dann bleibt eine Zahl stehen (blau). Darunter steht `3 + ? = 8`.
 4. Unten die fehlende Zahl antippen (Knöpfe 0 bis zur gewählten Zahl).
-   Richtig → grün, Fanfare, `3 + 7 = 10`, dann dreht er von selbst weiter.
-   Falsch → rot, tiefer Ton, nochmal versuchen.
+   Richtig → grün, Fanfare, `3 + 5 = 8`. Falsch → rot, tiefer Ton, nochmal versuchen.
+5. Danach zeigt der Würfel wieder die 8; die gelöste Gleichung bleibt zum Einprägen stehen,
+   bis zum nächsten Antippen. Vor der ersten Aufgabe steht nur „Tippe auf den Würfel!“.
 
-**Zufall:** Die Zahl wird im Moment des Antippens ausgelost; der Würfel läuft dann darauf aus.
-Der Zeitpunkt des Tippens entscheidet also nichts – sonst würde ein Kind lernen, „seine“ Zahl
-abzupassen. Gezogen wird **ohne Zurücklegen**: Jede Zerlegung 0 + n … n + 0 kommt pro Runde
+**Zufall:** Gezogen wird **ohne Zurücklegen**: Jede Zerlegung 0 + n … n + 0 kommt pro Runde
 genau einmal (bei 10: 11 Würfe statt im Mittel 11 · H₁₁ ≈ 33,2 mit einem echten Würfel), danach
 „Alle Zerlegungen geschafft!“ und eine neue Runde. Die erste Zahl einer Runde ist nie die letzte
 der vorigen.

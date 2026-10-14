@@ -88,6 +88,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   font-size: clamp(76px, 24vw, 128px); font-weight: 900; line-height: 1;
   color: var(--teil); font-variant-numeric: tabular-nums;
 }
+.wuerfel.ganz .augenzahl { color: var(--ganz); }
 .wuerfel.landet { animation: landen .35s ease; }
 .wuerfel.stups { animation: wackeln .4s ease; }
 
@@ -98,11 +99,12 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 .gleichung .teil { color: var(--teil); }
 .gleichung .rest { color: var(--rest); animation: pop .35s ease both; }
 .gleichung .ganz { color: var(--ganz); }
-.gleichung .offen { color: #b9aed0; }
-.gleichung .luecke {
+.gleichung .luecke, .gleichung .rest {          /* gleiche Box: Lösung ersetzt die Lücke ohne Versatz */
   min-width: 1.35em; padding: 0 .12em; text-align: center; border-radius: .22em;
   border: .07em dashed var(--rest); color: var(--rest);
 }
+.gleichung .rest { border-color: transparent; }
+.gleichung.weg { visibility: hidden; }          /* Platz bleibt, nichts springt */
 .hinweis { margin: 0; min-height: 1.3em; text-align: center; font-size: clamp(18px, 5vw, 24px); font-weight: 800; }
 
 .zahlen { display: grid; grid-template-columns: repeat(var(--spalten, 6), 1fr); gap: 8px; }
@@ -170,7 +172,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   </header>
   <section class="buehne">
     <div class="sockel">
-      <button class="wuerfel" id="wuerfel" aria-label="Würfel anhalten"><span class="augenzahl" id="augenzahl"></span></button>
+      <button class="wuerfel" id="wuerfel" aria-label="Würfeln"><span class="augenzahl" id="augenzahl"></span></button>
     </div>
     <p class="gleichung" id="gleichung" aria-live="polite"></p>
     <p class="hinweis" id="hinweis"></p>
@@ -179,7 +181,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 </main>
 
 <script>
-const APP_VERSION = '0.2';          // bei JEDER Änderung hochzählen
+const APP_VERSION = '0.3';          // bei JEDER Änderung hochzählen
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
@@ -202,7 +204,7 @@ const hinweisEl = $('#hinweis'), zahlenEl = $('#zahlen');
 const ruhig = matchMedia('(prefers-reduced-motion: reduce)');
 const LOB = ['Richtig!', 'Super!', 'Toll!', 'Prima!', 'Klasse!'];
 
-let phase = 'start';                // 'start' | 'dreht' | 'bremst' | 'frage' | 'geloest'
+let phase = 'start';                // 'start' | 'bereit' | 'rollt' | 'frage' | 'geloest'
 let zahl = null;                    // gewürfelte Zahl
 let beutel = [], geschafft = 0, weiterTimer = null;
 
@@ -250,7 +252,7 @@ function ton(freq, start, dauer, art = 'triangle', laut = 0.2) {
   o.start(t); o.stop(t + dauer + 0.05);
 }
 const klang = {
-  tick() { ton(1250, 0, 0.035, 'triangle', 0.09); },                       // beim Auslaufen
+  tick() { ton(1250, 0, 0.035, 'triangle', 0.12); },                       // jeder Ziffernwechsel
   landen() { ton(330, 0, 0.12, 'sine', 0.25); },
   richtig() {                                                              // C-Dur aufwärts, dann Glitzern
     [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => ton(f, i * 0.09, 0.3));
@@ -266,12 +268,13 @@ const klang = {
   },
 };
 
-/* ---------- Würfel: dreht, bremst, landet ---------- */
-// Im Leerlauf dreht er sich gleichmäßig; jede Vierteldrehung zeigt eine neue Zahl.
-// Beim Antippen wird die Zahl sofort ausgelost (der Zeitpunkt entscheidet nichts),
-// dann läuft er auf die nächste volle Umdrehung aus und zeigt dabei zuletzt diese Zahl.
-const DREH = 720;                   // Grad pro Sekunde
-let winkel = 0, flaeche = 0, zuletzt = 0, lauf = null, rafId = 0;
+/* ---------- Würfel: steht, rollt 2 Sekunden, landet ---------- */
+// In Ruhe zeigt er die Zahl, die zerlegt wird. Beim Antippen wird die Zahl sofort ausgelost,
+// dann dreht er sich 2 Sekunden lang immer langsamer; jede Vierteldrehung zeigt eine neue
+// Ziffer und klickt. Die letzte Vierteldrehung zeigt die ausgeloste Zahl.
+const ROLLZEIT = 2000;              // ms
+const DREHUNG = 1080;               // Grad: drei Umdrehungen, also zwölf Ziffernwechsel
+let lauf = null, flaeche = 0, rafId = 0;
 
 function zeigeZiffer(z) { augenEl.textContent = z; }
 function andereZiffer() {
@@ -280,55 +283,50 @@ function andereZiffer() {
   return z;
 }
 function schritt(t) {
-  const dt = zuletzt ? Math.min(0.05, (t - zuletzt) / 1000) : 0;
-  zuletzt = t;
-  let w, fertig = false;
-  if (lauf.art === 'dreht') w = winkel + DREH * dt;
-  else {
-    const p = Math.min(1, (t - lauf.t0) / lauf.dauer);
-    w = lauf.von + (lauf.bis - lauf.von) * (1 - (1 - p) ** 2);   // Bremsen mit Anfangstempo DREH
-    fertig = p >= 1;
-  }
+  const p = Math.min(1, (t - lauf.t0) / ROLLZEIT);
+  const w = DREHUNG * (1 - (1 - p) ** 2);                          // gleichmäßig abbremsen
   const f = Math.floor((w + 45) / 90);
   if (f !== flaeche) {
     flaeche = f;
-    if (lauf.art === 'bremst' && f >= lauf.bis / 90) zeigeZiffer(lauf.ziel);
-    else { zeigeZiffer(andereZiffer()); if (lauf.art === 'bremst') klang.tick(); }
+    zeigeZiffer(f >= DREHUNG / 90 ? lauf.ziel : andereZiffer());
+    klang.tick();
   }
-  winkel = w;
   if (!ruhig.matches) wuerfelEl.style.transform = `rotate(${w}deg)`;
-  if (fertig) { landen(); return; }
+  if (p >= 1) { landen(); return; }
   rafId = requestAnimationFrame(schritt);
 }
-function drehen() {
+function bereit(text = 'Tippe auf den Würfel!') {                 // zeigt die ganze Zahl und wartet
   clearTimeout(weiterTimer);
-  cancelAnimationFrame(rafId);
-  phase = 'dreht';
+  phase = 'bereit';
   zahl = null;
   delete wuerfelEl.dataset.zahl;
-  wuerfelEl.classList.remove('landet');
-  wuerfelEl.setAttribute('aria-label', 'Würfel anhalten');
+  zeigeZiffer(stand.n);
+  wuerfelEl.classList.add('ganz');
+  wuerfelEl.setAttribute('aria-label', 'Würfeln');
+  zahlenEl.classList.add('ruht');
+  zahlenEl.querySelectorAll('.richtig').forEach(b => b.classList.remove('richtig'));
+  hinweisEl.textContent = text;
+}
+function wuerfeln() {
+  clearTimeout(weiterTimer);
+  if (!beutel.length) beutel = neuerBeutel(stand.n, null);
+  lauf = { ziel: beutel.pop(), t0: performance.now() };
+  flaeche = 0;
+  phase = 'rollt';
+  zahl = null;
+  audio();
+  wuerfelEl.classList.remove('ganz', 'landet');
+  wuerfelEl.setAttribute('aria-label', 'Würfelt …');
   document.body.classList.remove('gut', 'falsch');
   zahlenEl.classList.add('ruht');
   zahlenEl.querySelectorAll('.richtig').forEach(b => b.classList.remove('richtig'));
-  zeigeGleichung(null, null);
-  hinweisEl.textContent = 'Tippe auf den Würfel!';
-  lauf = { art: 'dreht' };
-  zuletzt = 0;
-  rafId = requestAnimationFrame(schritt);
-}
-function bremsen() {
-  if (!beutel.length) beutel = neuerBeutel(stand.n, null);
-  const ziel = beutel.pop();
-  const bis = Math.ceil((winkel + 180) / 360) * 360;               // mindestens eine halbe Drehung Auslauf
-  const dauer = ruhig.matches ? 250 : 2 * (bis - winkel) / DREH * 1000;
-  lauf = { art: 'bremst', von: winkel, bis, t0: performance.now(), dauer, ziel };
-  phase = 'bremst';
+  gleichungEl.classList.add('weg');
   hinweisEl.textContent = '';
+  zeigeStand();
+  rafId = requestAnimationFrame(schritt);
 }
 function landen() {
   cancelAnimationFrame(rafId);
-  winkel = 0; flaeche = 0;
   wuerfelEl.style.transform = '';
   zahl = lauf.ziel;
   zeigeZiffer(zahl);
@@ -339,13 +337,14 @@ function landen() {
   phase = 'frage';
   zahlenEl.classList.remove('ruht');
   zeigeGleichung(zahl, null);
+  gleichungEl.classList.remove('weg');
   hinweisEl.textContent = 'Welche Zahl fehlt?';
 }
-function stoppeDrehen() { cancelAnimationFrame(rafId); clearTimeout(weiterTimer); wuerfelEl.style.transform = ''; winkel = 0; flaeche = 0; }
+function stoppeWuerfel() { cancelAnimationFrame(rafId); clearTimeout(weiterTimer); wuerfelEl.style.transform = ''; }
 
 /* ---------- Anzeige ---------- */
 function zeigeGleichung(k, rest) {
-  const a = k == null ? '<span class="offen">?</span>' : `<span class="teil">${k}</span>`;
+  const a = `<span class="teil">${k}</span>`;
   const b = rest == null ? '<span class="luecke">?</span>' : `<span class="rest">${rest}</span>`;
   gleichungEl.innerHTML = `${a}<span>+</span>${b}<span>=</span><span class="ganz">${stand.n}</span>`;
 }
@@ -377,7 +376,7 @@ function baueZahlen() {
 
 /* ---------- Ablauf ---------- */
 function zeigeStart() {
-  stoppeDrehen();
+  stoppeWuerfel();
   phase = 'start';
   document.body.classList.remove('gut', 'falsch');
   $$('#zahlwahl button').forEach(b => b.classList.toggle('zuletzt', +b.dataset.n === stand.n));
@@ -395,18 +394,18 @@ function starteSpiel(n) {
   zeigeStand();
   startEl.hidden = true;
   spielEl.hidden = false;
-  zeigeZiffer(n);
-  drehen();
+  zeigeGleichung(0, null);                        // unsichtbar, hält aber ihren Platz – nichts springt
+  gleichungEl.classList.add('weg');               // vor der ersten Aufgabe keine Gleichung
+  bereit();
 }
 
 function tippeWuerfel() {
-  if (phase === 'dreht') bremsen();
-  else if (phase === 'geloest') drehen();
+  if (phase === 'bereit' || phase === 'geloest') wuerfeln();
   else if (phase === 'frage') { nochmal(wuerfelEl, 'stups'); hinweisEl.textContent = 'Tippe unten die Zahl an!'; }
 }
 
 function antwort(k, btn) {
-  if (phase !== 'frage') { if (phase === 'dreht') nochmal(wuerfelEl, 'stups'); return; }
+  if (phase !== 'frage') { if (phase === 'bereit') nochmal(wuerfelEl, 'stups'); return; }
   if (k !== stand.n - zahl) {
     faerbe('falsch', 900);
     klang.falsch();
@@ -435,7 +434,10 @@ function antwort(k, btn) {
     klang.richtig();
     hinweisEl.textContent = LOB[zufall(LOB.length)];
   }
-  weiterTimer = setTimeout(() => { if (phase === 'geloest') { zeigeStand(); drehen(); } }, rundeFertig ? 3000 : 1800);
+  // Danach zeigt der Würfel wieder die ganze Zahl; die gelöste Gleichung bleibt zum Einprägen stehen.
+  weiterTimer = setTimeout(() => {
+    if (phase === 'geloest') bereit(rundeFertig ? 'Neue Runde: Tippe auf den Würfel!' : undefined);
+  }, rundeFertig ? 3000 : 1800);
 }
 
 /* ---------- Verdrahtung ---------- */

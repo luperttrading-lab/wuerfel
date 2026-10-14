@@ -151,6 +151,16 @@ console.log('Startseite');
   ok(gleichmaessig(abFrage), `Gleiche Abstände auch mit Lückenkasten (${abFrage.join(' / ')} px)`);
   if (bilder) await page.screenshot({ path: `${bilder}/3-frage.png` });
 
+  // Lesbarkeit der Antworttasten: Kontrast Schrift/Taste nach WCAG
+  const kontrast = await page.evaluate(() => {
+    const rgb = c => c.match(/\d+(\.\d+)?/g).slice(0, 3).map(Number);
+    const hell = ([r, g, b]) => [r, g, b].map(x => { x /= 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; })
+      .reduce((s, x, i) => s + x * [0.2126, 0.7152, 0.0722][i], 0);
+    const verh = (a, b) => { const [h, d] = [hell(a), hell(b)].sort((x, y) => y - x); return (h + 0.05) / (d + 0.05); };
+    const z = getComputedStyle(document.querySelector('.zahl'));
+    return verh(rgb(z.color), rgb(z.backgroundColor));
+  });
+  ok(kontrast >= 4.5, `Antworttasten gut lesbar (Kontrast ${kontrast.toFixed(1)} : 1, Mindestmaß 4,5)`);
   const falsch = k === 4 ? 3 : k;                     // k selbst ist falsch, außer bei 4
   await page.click(`.zahl[data-zahl="${falsch}"]`);
   ok(await page.evaluate(() => document.body.classList.contains('falsch')), 'Falsche Zahl: roter Hintergrund');

@@ -21,7 +21,8 @@ Lernspiel fürs Handy, damit sich die Zerlegungen der Zahlen 4 bis 10 als **Ziff
    gewürfelte Zahl oder die Lösung.
    Der Würfel dreht sich auch, wenn am iPhone „Bewegung reduzieren“ eingeschaltet ist – das
    Drehen ist hier der Kern des Spiels.
-4. Unten die fehlende Zahl antippen (Knöpfe 0 bis zur gewählten Zahl).
+4. Unten die fehlende Zahl antippen (Knöpfe 0 bis zur gewählten Zahl, Bernstein mit dunkler
+   Schrift, Kontrast ≈ 8,6 : 1; vor dem Würfeln beige gesperrt, aber lesbar).
    Richtig → grün, Fanfare, `3 + 5 = 8`, aus der eingesetzten Zahl steigt eine Fontäne goldener
    Sterne (60, nach einer ganzen Runde 132). Falsch → rot, tiefer Ton, nochmal versuchen.
 5. Danach zeigt der Würfel wieder die 8; die gelöste Gleichung bleibt zum Einprägen stehen,

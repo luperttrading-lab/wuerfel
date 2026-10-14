@@ -77,15 +77,16 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 .sockel::after {          /* Schatten bleibt liegen, während der Würfel sich überschlägt */
   content: ""; position: absolute; left: 22%; right: 22%; bottom: 2%; height: 16px;
   border-radius: 50%; background: rgba(43, 33, 64, .18); filter: blur(5px);
+  transform: scale(calc(1 - var(--sprung, 0) * .45)); opacity: calc(1 - var(--sprung, 0) * .6);   /* in der Luft kleiner */
 }
 .wuerfel {                /* echter Würfel in 3D: --s ist die Kantenlänge */
-  --s: clamp(124px, 34vw, 190px);
+  --s: clamp(130px, 38vw, 210px);
   position: relative; z-index: 1; width: calc(var(--s) * 1.5); height: calc(var(--s) * 1.45);
   display: grid; place-items: center; perspective: calc(var(--s) * 6);
 }
 .koerper {
   position: relative; width: var(--s); height: var(--s);
-  transform-style: preserve-3d; transform: rotateX(-20deg) rotateY(-25deg); will-change: transform;
+  transform-style: preserve-3d; transform: rotateX(-10deg) rotateY(-12deg); will-change: transform;
 }
 .flaeche, .kern { position: absolute; inset: 0; }
 .flaeche {
@@ -115,7 +116,6 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 .wuerfel.rollt .flaeche span { color: var(--ink); }
 .wuerfel.ganz .vorne span { color: var(--ganz); }
 .wuerfel.gelandet .vorne span { color: var(--teil); }
-.wuerfel.landet { animation: landen .35s ease; }
 .wuerfel.stups { animation: wackeln .4s ease; }
 
 .gleichung {
@@ -144,7 +144,6 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 .zahl.richtig { background: var(--richtig); color: #fff; box-shadow: 0 4px 0 #1f8a3c; }
 .zahl.wackelt { animation: wackeln .4s ease; }
 
-@keyframes landen { 0% { transform: scale(1); } 45% { transform: scale(1.1); } 100% { transform: scale(1); } }
 @keyframes wackeln {
   0%, 100% { transform: translateX(0); } 20% { transform: translateX(-8px); } 40% { transform: translateX(8px); }
   60% { transform: translateX(-6px); } 80% { transform: translateX(6px); }
@@ -217,7 +216,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 </main>
 
 <script>
-const APP_VERSION = '0.4';          // bei JEDER Änderung hochzählen
+const APP_VERSION = '0.5';          // bei JEDER Änderung hochzählen
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
@@ -287,9 +286,30 @@ function ton(freq, start, dauer, art = 'triangle', laut = 0.2) {
   o.connect(g); g.connect(a.destination);
   o.start(t); o.stop(t + dauer + 0.05);
 }
+let rauschen = null;
+function wusch() {                                                         // Luftzug: Rauschen, Filter steigt und fällt
+  const a = audio(); if (!a) return;
+  if (!rauschen) {
+    rauschen = a.createBuffer(1, Math.floor(a.sampleRate * 0.7), a.sampleRate);
+    const d = rauschen.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  }
+  const t = a.currentTime, q = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
+  q.buffer = rauschen;
+  f.type = 'bandpass'; f.Q.value = 1.2;
+  f.frequency.setValueAtTime(300, t);
+  f.frequency.exponentialRampToValueAtTime(1800, t + 0.25);
+  f.frequency.exponentialRampToValueAtTime(400, t + 0.65);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.35, t + 0.08);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.65);
+  q.connect(f); f.connect(g); g.connect(a.destination);
+  q.start(t); q.stop(t + 0.7);
+}
 const klang = {
-  tick() { ton(1250, 0, 0.035, 'triangle', 0.12); },                       // jeder Ziffernwechsel
-  landen() { ton(330, 0, 0.12, 'sine', 0.25); },
+  wusch,
+  tick() { ton(1250, 0, 0.03, 'triangle', 0.1); },                         // jeder Überschlag
+  landen() { ton(150, 0, 0.16, 'sine', 0.45); ton(320, 0, 0.08, 'triangle', 0.15); },   // Aufprall
   richtig() {                                                              // C-Dur aufwärts, dann Glitzern
     [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => ton(f, i * 0.09, 0.3));
     ton(1318.5, 0.36, 0.7, 'sine', 0.12);
@@ -305,29 +325,34 @@ const klang = {
 };
 
 /* ---------- Würfel: echter Würfel in 3D ---------- */
-// In Ruhe liegt er leicht schräg (drei Seiten sichtbar), vorne die Zahl, die zerlegt wird.
-// Beim Antippen wird die Zahl sofort ausgelost; dann überschlägt er sich 2 Sekunden lang immer
-// langsamer. Jede Seite bekommt eine neue Zahl, während sie nach hinten zeigt – die Zahlen
-// wechseln, ohne dass man das Umschreiben sieht. Die Vorderseite bekommt die ausgeloste Zahl bei
-// ihrem letzten Verdecktsein (bis 73 % der Zeit) und rollt als Letzte nach vorn.
+// In Ruhe fast von vorn (oben und rechts nur schmale Kanten), vorne die Zahl, die zerlegt wird.
+// Beim Antippen wird die Zahl sofort ausgelost. Dann wirbelt er 2 Sekunden: fünf Überschläge,
+// zwei Drehungen seitwärts, eine um die eigene Mitte, dazu ein Sprung auf den Betrachter zu,
+// Aufprall bei 1,6 s, kurzes Nachfedern. Seiten, die nach hinten zeigen, bekommen neue Zahlen;
+// die Vorderseite bekommt die ausgeloste Zahl, solange sie verdeckt ist (bis 1,56 s), und liegt
+// ab 1,72 s vorn. Zeiten gerechnet für Bremsen mit 1 − (1 − p)².
 const ROLLZEIT = 2000;                                  // ms
-const RUHE = { x: -20, y: -25 };                        // Grad
-const DREH = { x: 1080, y: -360 };                      // drei Überschläge, eine Drehung seitwärts
+const RUHE = { x: -10, y: -12 };                        // Grad
+const DREH = { x: 1800, y: -720, z: 360 };              // nur Vielfache von 360°: endet wieder in Ruhelage
+const AUFPRALL = 0.8;                                   // Anteil der Rollzeit bis zum Aufschlag
 const LICHT = [-0.25, -0.6, 0.76];                      // von links oben vorn
 const NORMALE = { vorne: [0, 0, 1], hinten: [0, 0, -1], rechts: [1, 0, 0], links: [-1, 0, 0], oben: [0, -1, 0], unten: [0, 1, 0] };
 const seiten = {};
 for (const k in NORMALE) seiten[k] = { el: $('.flaeche.' + k), weg: false };
+const sockelEl = wuerfelEl.parentElement;
 let lauf = null, rafId = 0;
 
-function drehe([x, y, z], ax, ay) {                     // Normale nach rotateX(ax) rotateY(ay), wie im CSS
-  const a = ax * Math.PI / 180, b = ay * Math.PI / 180;
+function drehe([x, y, z], ax, ay, az = 0) {             // Normale nach rotateZ(az) rotateX(ax) rotateY(ay), wie im CSS
+  const a = ax * Math.PI / 180, b = ay * Math.PI / 180, c = az * Math.PI / 180;
   const x1 = x * Math.cos(b) + z * Math.sin(b), z1 = -x * Math.sin(b) + z * Math.cos(b);
-  return [x1, y * Math.cos(a) - z1 * Math.sin(a), y * Math.sin(a) + z1 * Math.cos(a)];
+  const y2 = y * Math.cos(a) - z1 * Math.sin(a), z2 = y * Math.sin(a) + z1 * Math.cos(a);
+  return [x1 * Math.cos(c) - y2 * Math.sin(c), x1 * Math.sin(c) + y2 * Math.cos(c), z2];
 }
-function stelle(ax, ay) {
-  koerperEl.style.transform = `rotateX(${ax}deg) rotateY(${ay}deg)`;
+function stelle(ax, ay, az = 0, hoch = 0, nah = 0) {
+  koerperEl.style.transform =
+    `translate3d(0px, ${(-hoch).toFixed(1)}px, ${nah.toFixed(1)}px) rotateZ(${az}deg) rotateX(${ax}deg) rotateY(${ay}deg)`;
   for (const k in seiten) {
-    const n = drehe(NORMALE[k], ax, ay);
+    const n = drehe(NORMALE[k], ax, ay, az);
     const hell = Math.max(0, n[0] * LICHT[0] + n[1] * LICHT[1] + n[2] * LICHT[2]);
     seiten[k].el.style.setProperty('--schatten', (0.2 * (1 - hell)).toFixed(3));
   }
@@ -348,7 +373,7 @@ function zufallsZahl(k, seite) {
 function schritt(t) {
   const p = Math.min(1, (t - lauf.t0) / ROLLZEIT);
   const f = 1 - (1 - p) ** 2;                                       // gleichmäßig abbremsen
-  const ax = RUHE.x + DREH.x * f, ay = RUHE.y + DREH.y * f;
+  const ax = RUHE.x + DREH.x * f, ay = RUHE.y + DREH.y * f, az = DREH.z * f;
   let vorn = null, best = -2;
   for (const k in seiten) {
     const s = seiten[k], z = drehe(NORMALE[k], ax, ay)[2];
@@ -360,7 +385,14 @@ function schritt(t) {
     } else if (z > 0) s.weg = false;
   }
   if (vorn !== lauf.vorn) { lauf.vorn = vorn; klang.tick(); }       // klickt bei jedem Überschlag
-  if (!ruhig.matches) stelle(ax, ay);
+  // Sprung: hoch und auf den Betrachter zu, Aufprall, dann ein kleines Nachfedern
+  const kante = koerperEl.offsetWidth;
+  const luft = p < AUFPRALL ? Math.sin(Math.PI * p / AUFPRALL) : 0.15 * Math.sin(Math.PI * (p - AUFPRALL) / (1 - AUFPRALL));
+  if (p >= AUFPRALL && !lauf.aufgeschlagen) { lauf.aufgeschlagen = true; klang.landen(); }
+  if (!ruhig.matches) {
+    stelle(ax, ay, az, luft * kante * 0.4, (p < AUFPRALL ? luft : 0) * kante * 0.35);
+    sockelEl.style.setProperty('--sprung', luft.toFixed(3));
+  }
   if (p >= 1) { landen(); return; }
   rafId = requestAnimationFrame(schritt);
 }
@@ -380,12 +412,12 @@ function bereit(text = 'Tippe auf den Würfel!') {                 // zeigt die 
 function wuerfeln() {
   clearTimeout(weiterTimer);
   if (!beutel.length) beutel = neuerBeutel(stand.n, null);
-  lauf = { ziel: beutel.pop(), t0: performance.now(), gesetzt: false, vorn: 'vorne' };
+  lauf = { ziel: beutel.pop(), t0: performance.now(), gesetzt: false, vorn: 'vorne', aufgeschlagen: false };
   for (const k in seiten) seiten[k].weg = false;
   phase = 'rollt';
   zahl = null;
   audio();
-  wuerfelEl.classList.remove('ganz', 'gelandet', 'landet');
+  wuerfelEl.classList.remove('ganz', 'gelandet');
   wuerfelEl.classList.add('rollt');
   wuerfelEl.setAttribute('aria-label', 'Würfelt …');
   document.body.classList.remove('gut', 'falsch');
@@ -394,6 +426,7 @@ function wuerfeln() {
   gleichungEl.classList.add('weg');
   hinweisEl.textContent = '';
   zeigeStand();
+  klang.wusch();
   rafId = requestAnimationFrame(schritt);
 }
 function landen() {
@@ -401,12 +434,11 @@ function landen() {
   zahl = lauf.ziel;
   zeigeZiffer(zahl);                                                // war schon da – nur zur Sicherheit
   stelle(RUHE.x, RUHE.y);
+  sockelEl.style.setProperty('--sprung', 0);
   wuerfelEl.classList.remove('rollt');
   wuerfelEl.classList.add('gelandet');
   wuerfelEl.dataset.zahl = zahl;
   wuerfelEl.setAttribute('aria-label', 'Gewürfelt: ' + zahl);
-  nochmal(wuerfelEl, 'landet');
-  klang.landen();
   phase = 'frage';
   zahlenEl.classList.remove('ruht');
   zeigeGleichung(zahl, null);
@@ -417,6 +449,7 @@ function stoppeWuerfel() {
   cancelAnimationFrame(rafId); clearTimeout(weiterTimer);
   wuerfelEl.classList.remove('rollt');
   stelle(RUHE.x, RUHE.y);
+  sockelEl.style.setProperty('--sprung', 0);
 }
 
 /* ---------- Anzeige ---------- */

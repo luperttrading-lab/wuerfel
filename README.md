@@ -6,13 +6,15 @@ Lernspiel fürs Handy, damit sich die Zerlegungen der Zahlen 4 bis 10 als **Ziff
 **Spielen:** https://luperttrading-lab.github.io/wuerfel/ (auf dem iPhone über *Teilen → Zum Home-Bildschirm*)
 
 1. **Startseite:** „Welche Zahl zerlegen wir?“ – 4, 5, 6, 7, 8, 9 oder 10.
-2. **Echter 3D-Würfel**, leicht schräg von oben (drei Seiten sichtbar). In Ruhe steht vorne die
-   gewählte Zahl (lila), die Nebenseiten sind grau.
-3. **Antippen:** Er überschlägt sich 2 Sekunden lang immer langsamer (drei Überschläge, eine
-   Drehung seitwärts), bei jedem Überschlag klickt es. Seiten, die gerade nach hinten zeigen,
-   bekommen neue Zahlen. Die Vorderseite bekommt die ausgeloste Zahl, solange sie verdeckt ist
-   (bis 73 % der Zeit), und rollt als Letzte nach vorn (blau). Darunter steht `3 + ? = 8`.
-   Die sichtbaren Nebenseiten zeigen nie die gewürfelte Zahl oder die Lösung.
+2. **Echter 3D-Würfel**, fast von vorn (10° / 12° geneigt, oben und rechts nur schmale Kanten).
+   In Ruhe steht vorne die gewählte Zahl (lila), die Nebenseiten sind grau.
+3. **Antippen:** Luftzug-Geräusch, dann wirbelt er 2 Sekunden lang und wird langsamer: fünf
+   Überschläge, zwei Drehungen seitwärts, eine um die eigene Mitte, dazu ein Sprung auf den
+   Betrachter zu (der Schatten wird kleiner), Aufprall bei 1,6 s mit Nachfedern. Bei jedem
+   Überschlag klickt es (25-mal). Seiten, die gerade nach hinten zeigen, bekommen neue Zahlen;
+   die Vorderseite bekommt die ausgeloste Zahl, solange sie verdeckt ist (bis 1,56 s), und liegt
+   ab 1,72 s vorn (blau). Darunter steht `3 + ? = 8`. Die sichtbaren Nebenseiten zeigen nie die
+   gewürfelte Zahl oder die Lösung.
 4. Unten die fehlende Zahl antippen (Knöpfe 0 bis zur gewählten Zahl).
    Richtig → grün, Fanfare, `3 + 5 = 8`. Falsch → rot, tiefer Ton, nochmal versuchen.
 5. Danach zeigt der Würfel wieder die 8; die gelöste Gleichung bleibt zum Einprägen stehen,

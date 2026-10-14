@@ -34,7 +34,7 @@ async function seite(breite, hoehe) {
 }
 const phase = page => page.evaluate(() => window.wuerfelSpiel.phase);
 const gleichung = async page => (await page.textContent('#gleichung')).replace(/\s/g, '');
-const RUHELAGE = 'rotateX(-20deg) rotateY(-25deg)';
+let RUHELAGE = null;                                   // wird nach dem Start gelesen
 const lage = page => page.evaluate(() => document.querySelector('#koerper').style.transform);
 // Abstände zwischen den Zeichen der Gleichung (Textkanten, nicht Boxen)
 const abstaende = page => page.evaluate(() => {
@@ -70,6 +70,8 @@ console.log('Startseite');
   ok(await page.locator('.zahl').count() === 9, 'Zerlegen der 8: Knöpfe 0–8');
   ok(await phase(page) === 'bereit', 'Würfel wartet');
   ok(await page.locator('#koerper .flaeche').count() === 6, 'Würfel hat sechs Seiten');
+  RUHELAGE = await lage(page);
+  ok(RUHELAGE.includes('rotateX(-10deg) rotateY(-12deg)'), 'Ruhelage fast von vorn (10° / 12°)');
   const ruhe = new Set(), lagen = new Set();
   for (let i = 0; i < 8; i++) { ruhe.add(await page.textContent('#augenzahl')); lagen.add(await lage(page)); await page.waitForTimeout(80); }
   ok(ruhe.size === 1 && ruhe.has('8') && lagen.size === 1 && lagen.has(RUHELAGE), 'In Ruhe liegt er still und schräg, vorne die 8');
@@ -85,16 +87,21 @@ console.log('Startseite');
   await page.click('#wuerfel', { force: true });
   ok(await phase(page) === 'rollt', 'Antippen: Würfel rollt');
   const lagenRollen = new Set();
-  let schnappschuss = false, wechsel = 0, vorher = null;
+  let schnappschuss = false, wechsel = 0, vorher = null, hoechster = 0;
   while (await phase(page) === 'rollt') {
     const jetzt = JSON.stringify(await page.evaluate(() => window.wuerfelSpiel.seiten));
     if (vorher && jetzt !== vorher) wechsel++;
     vorher = jetzt;
-    lagenRollen.add(await lage(page));
+    const l = await lage(page);
+    lagenRollen.add(l);
+    const m = l.match(/translate3d\(0px, (-?[\d.]+)px/);
+    if (m) hoechster = Math.max(hoechster, -parseFloat(m[1]));
     if (!schnappschuss && Date.now() - t0 > 500) { schnappschuss = true; if (bilder) await page.screenshot({ path: `${bilder}/2-rollt.png` }); }
     await page.waitForTimeout(40);
   }
   const dauer = Date.now() - t0;
+  const kante = await page.evaluate(() => document.querySelector('#koerper').offsetWidth);
+  ok(hoechster > kante * 0.25, `Er springt hoch (${hoechster.toFixed(0)} px bei ${kante} px Kante)`);
   ok(lagenRollen.size >= 10 && wechsel >= 4, `Beim Rollen überschlägt er sich (${lagenRollen.size} Lagen gesehen) und die Zahlen wechseln (${wechsel}×)`);
   ok(dauer >= 1900 && dauer <= 2600, `Rollen dauert ${dauer} ms (Soll 2 s)`);
   const k = await page.evaluate(() => window.wuerfelSpiel.zahl);

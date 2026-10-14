@@ -1,1 +1,511 @@
-wuerfwl
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Würfel-Zahlen</title>
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#fff8ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Würfel">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<style>
+:root {
+  --bg: #fff8ec; --ink: #2b2140; --leise: #7a6f8f; --karte: #fff; --sockel: #eadfce;
+  --a: #ff8a3d; --b: #3d8bff; --leer: #e4dcef; --dazu: #2fbf55;
+  --gut: #9be7a8; --falsch: #ff9d9d;
+  --wahl: #efe7ff; --wahl-an: #6c4bd8;
+  --rand: 16px;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; min-height: 100vh; min-height: 100dvh; background: var(--bg); color: var(--ink);
+  font-family: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color .25s ease;
+}
+body.gut { background: var(--gut); }
+body.falsch { background: var(--falsch); }
+button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; touch-action: manipulation; }
+
+.app {
+  max-width: 640px; margin: 0 auto; min-height: 100vh; min-height: 100dvh;
+  display: flex; flex-direction: column; gap: 14px;
+  padding: max(env(safe-area-inset-top), 12px) max(env(safe-area-inset-right), var(--rand))
+           max(env(safe-area-inset-bottom), 16px) max(env(safe-area-inset-left), var(--rand));
+}
+
+/* Kopf */
+.kopf { display: flex; align-items: center; gap: 10px; }
+.kopf h1 { margin: 0; flex: 1; font-size: 22px; font-weight: 800; display: flex; align-items: baseline; gap: 8px; }
+.version {
+  font-size: 13px; font-weight: 600; color: var(--leise); padding: 6px 2px;
+  text-decoration: underline dotted; text-underline-offset: 3px;
+}
+.sterne { font-size: 20px; font-weight: 800; white-space: nowrap; }
+.sterne.hops { animation: hops .5s ease; }
+.ton { width: 44px; height: 44px; border-radius: 12px; background: var(--wahl); font-size: 22px; }
+
+/* Auswahl */
+.wahl { display: flex; flex-direction: column; gap: 8px; }
+.reihe { display: flex; gap: 8px; }
+.chip {
+  flex: 1; min-height: 44px; padding: 8px 6px; border-radius: 14px;
+  background: var(--wahl); font-size: 16px; font-weight: 700;
+}
+.chip[aria-pressed="true"] { background: var(--wahl-an); color: #fff; }
+
+/* Würfel */
+.buehne { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; }
+.wuerfel {
+  position: relative; padding: 18px; border-radius: 26px; background: var(--karte);
+  box-shadow: 0 6px 0 var(--sockel), 0 14px 30px rgba(43, 33, 64, .14);
+}
+.wuerfel[data-max="20"] { padding: 12px; border-radius: 20px; }
+.wuerfel.rollt { animation: rollen .7s ease; }
+.wuerfel.stups { animation: wackeln .4s ease; }
+.wuerfel.einladen { animation: einladen 1.6s ease-in-out infinite; }
+
+.feld.w6 {
+  display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); gap: 8%;
+  width: clamp(130px, 40vw, 220px); aspect-ratio: 1; padding: 4%;
+}
+.feld.w6 i { border-radius: 50%; }
+.feld.w6 i.auge { background: var(--ink); }
+
+.feld.w10, .feld.w20 { display: flex; flex-direction: column; gap: var(--spalt); }
+.feld.w10 { --p: clamp(36px, 12vw, 64px); --spalt: 8px; --gruppe: 0px; }
+.feld.w20 {
+  --spalt: 4px; --gruppe: 14px;
+  --p: min(54px, calc((min(100vw, 640px) - 2 * var(--rand) - 24px - 8 * var(--spalt) - var(--gruppe)) / 10));
+}
+.zeile { display: flex; gap: var(--gruppe); }
+.fuenf { display: flex; gap: var(--spalt); }
+.punkt { width: var(--p); height: var(--p); border-radius: 50%; }
+.punkt.a { background: var(--a); }
+.punkt.b { background: var(--b); }
+.punkt.leer { box-shadow: inset 0 0 0 3px var(--leer); }
+.punkt.dazu { background: var(--dazu); animation: pop .35s ease both; }
+
+.fragezeichen {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  font-size: clamp(56px, 18vw, 96px); font-weight: 900; color: var(--wahl-an);
+}
+.wuerfel[data-max="20"] .fragezeichen { font-size: 56px; }
+.ergebnis {
+  position: absolute; top: -16px; right: -16px; min-width: 56px; height: 56px; padding: 0 12px;
+  display: grid; place-items: center; border-radius: 28px; background: var(--dazu); color: #fff;
+  font-size: 32px; font-weight: 900; box-shadow: 0 4px 12px rgba(0, 0, 0, .2); animation: pop .35s ease both;
+}
+.frage { margin: 0; min-height: 1.3em; text-align: center; font-size: clamp(20px, 5.5vw, 28px); font-weight: 800; }
+
+/* Zahlenfeld */
+.zahlen { display: grid; grid-template-columns: repeat(var(--spalten, 4), 1fr); gap: 8px; }
+.zahl {
+  height: clamp(52px, 13vw, 76px); border-radius: 16px; background: var(--karte);
+  font-size: clamp(24px, 7vw, 38px); font-weight: 800; box-shadow: 0 4px 0 var(--sockel);
+  transition: transform .08s ease, opacity .2s ease;
+}
+.zahl:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--sockel); }
+.zahlen.ruht .zahl:not(.richtig) { opacity: .5; }
+.zahl.richtig { background: var(--dazu); color: #fff; box-shadow: 0 4px 0 #1f8a3c; }
+.zahl.wackelt { animation: wackeln .4s ease; }
+
+@keyframes rollen {
+  0% { transform: rotate(0) scale(1); } 25% { transform: rotate(-12deg) scale(1.06); }
+  50% { transform: rotate(9deg) scale(.96); } 75% { transform: rotate(-5deg) scale(1.03); }
+  100% { transform: rotate(0) scale(1); }
+}
+@keyframes wackeln {
+  0%, 100% { transform: translateX(0); } 20% { transform: translateX(-8px); } 40% { transform: translateX(8px); }
+  60% { transform: translateX(-6px); } 80% { transform: translateX(6px); }
+}
+@keyframes pop { 0% { transform: scale(.3); opacity: 0; } 70% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1); } }
+@keyframes hops { 0%, 100% { transform: none; } 40% { transform: scale(1.35); } }
+@keyframes einladen { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition: none !important; }
+}
+
+/* Update-Banner (Mechanik siehe Skill app-update-iphone) */
+.update {
+  position: fixed; left: 12px; right: 12px; top: max(env(safe-area-inset-top), 12px); z-index: 30;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: #34c759; color: #06240e;
+  padding: 12px 14px; border-radius: 14px; font-weight: 600; box-shadow: 0 8px 24px rgba(0, 0, 0, .25);
+  opacity: 0; transition: opacity .35s ease; pointer-events: none;
+}
+.update.an { opacity: 1; pointer-events: auto; }
+.update[hidden] { display: none; }
+.update.info { background: #2d2d33; color: #f2f2f7; font-weight: 500; }
+.update.unten { top: auto; bottom: max(env(safe-area-inset-bottom), 12px); }
+.update .btn { padding: 8px 14px; border-radius: 10px; font-size: 15px; font-weight: 700; background: #06240e; color: #fff; }
+</style>
+</head>
+<body>
+<div class="update" id="update" hidden>
+  <span id="update-text"></span>
+  <button class="btn" id="update-go">Jetzt laden</button>
+</div>
+
+<main class="app">
+  <header class="kopf">
+    <h1>Würfel <span class="version" id="version"></span></h1>
+    <div class="sterne" id="sterne" aria-label="Richtige Antworten"></div>
+    <button class="ton" id="ton" aria-label="Ton an oder aus"></button>
+  </header>
+
+  <section class="wahl">
+    <div class="reihe" role="group" aria-label="Welcher Würfel?">
+      <button class="chip" data-max="6">bis 6</button>
+      <button class="chip" data-max="10">bis 10</button>
+      <button class="chip" data-max="20">bis 20</button>
+    </div>
+    <div class="reihe" role="group" aria-label="Welche Aufgabe?">
+      <button class="chip" data-modus="zaehlen">Wie viele?</button>
+      <button class="chip" data-modus="ergaenzen">Was fehlt bis <span class="maxzahl"></span>?</button>
+    </div>
+  </section>
+
+  <section class="buehne">
+    <button class="wuerfel" id="wuerfel" aria-label="Würfeln">
+      <div class="feld" id="feld"></div>
+      <span class="fragezeichen" id="fragezeichen">?</span>
+      <span class="ergebnis" id="ergebnis" hidden></span>
+    </button>
+    <p class="frage" id="frage" aria-live="polite"></p>
+  </section>
+
+  <section class="zahlen ruht" id="zahlen" aria-label="Antwort antippen"></section>
+</main>
+
+<script>
+const APP_VERSION = '0.1';          // bei JEDER Änderung hochzählen
+
+const $ = s => document.querySelector(s);
+
+/* ---------- Zustand ---------- */
+const SPEICHER = 'wuerfel.stand';
+const stand = { max: 6, modus: 'zaehlen', ton: true, sterne: 0 };
+try { Object.assign(stand, JSON.parse(localStorage.getItem(SPEICHER)) || {}); } catch (_) {}
+if (![6, 10, 20].includes(stand.max)) stand.max = 6;
+if (!['zaehlen', 'ergaenzen'].includes(stand.modus)) stand.modus = 'zaehlen';
+if (!Number.isInteger(stand.sterne) || stand.sterne < 0) stand.sterne = 0;
+stand.ton = stand.ton !== false;
+function speichereAlles() { try { localStorage.setItem(SPEICHER, JSON.stringify(stand)); } catch (_) {} }
+
+const wuerfelEl = $('#wuerfel'), feldEl = $('#feld'), frageEl = $('#frage'), zahlenEl = $('#zahlen');
+const fzEl = $('#fragezeichen'), ergEl = $('#ergebnis'), sterneEl = $('#sterne'), tonEl = $('#ton');
+let phase = 'bereit';               // 'bereit' | 'rollt' | 'frage'
+let zahl = null, rollTimer = null, farbTimer = null, einladTimer = null;
+
+// Gleichverteilt 1..max – Verwerfungsmethode, damit kein Modulo-Überhang bleibt
+function wurf(max) {
+  const u = new Uint32Array(1), grenze = Math.floor(2 ** 32 / max) * max;
+  do crypto.getRandomValues(u); while (u[0] >= grenze);
+  return 1 + (u[0] % max);
+}
+function loesung() { return stand.modus === 'zaehlen' ? zahl : stand.max - zahl; }
+function frageText() { return stand.modus === 'zaehlen' ? 'Wie viele Punkte?' : 'Wie viele fehlen bis ' + stand.max + '?'; }
+
+/* ---------- Würfelbild ---------- */
+// 6er: klassische Augen im 3×3-Raster. 10er: Zehnerfeld 2×5. 20er: Zwanzigerfeld 2×10.
+// Farbe wechselt nach jedem Fünfer (Kraft der Fünf); leere Felder bleiben sichtbar.
+const AUGEN = { 1: [4], 2: [2, 6], 3: [2, 4, 6], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
+function zeichne(n, dazu = false) {
+  wuerfelEl.dataset.max = stand.max;
+  feldEl.className = 'feld w' + stand.max;
+  feldEl.textContent = '';
+  if (stand.max === 6) {
+    const augen = AUGEN[n] || [];
+    for (let i = 0; i < 9; i++) {
+      const d = document.createElement('i');
+      if (augen.includes(i)) d.className = 'auge';
+      feldEl.append(d);
+    }
+  } else {
+    const proZeile = stand.max / 2;
+    for (let z = 0; z < 2; z++) {
+      const zeile = document.createElement('div');
+      zeile.className = 'zeile';
+      for (let g = 0; g < proZeile / 5; g++) {
+        const fuenf = document.createElement('div');
+        fuenf.className = 'fuenf';
+        for (let i = 0; i < 5; i++) {
+          const k = z * proZeile + g * 5 + i;
+          const d = document.createElement('i');
+          d.className = 'punkt ' + (k < n ? (Math.floor(k / 5) % 2 ? 'b' : 'a') : dazu ? 'dazu' : 'leer');
+          fuenf.append(d);
+        }
+        zeile.append(fuenf);
+      }
+      feldEl.append(zeile);
+    }
+  }
+  fzEl.hidden = n != null;
+}
+
+function baueZahlen() {
+  zahlenEl.textContent = '';
+  zahlenEl.style.setProperty('--spalten', { 6: 4, 10: 6, 20: 7 }[stand.max]);
+  for (let k = 0; k <= stand.max; k++) {
+    const b = document.createElement('button');
+    b.className = 'zahl';
+    b.dataset.zahl = k;
+    b.textContent = k;
+    zahlenEl.append(b);
+  }
+}
+
+/* ---------- Ton ---------- */
+// iOS spielt Web Audio sonst als „ambient“ – dann schluckt der Stummschalter alles.
+try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (_) {}
+let ctx = null, rauschen = null;
+function audio() {
+  if (!stand.ton) return null;
+  try {
+    if (!ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      ctx = new AC();
+    }
+    if (ctx.state !== 'running') ctx.resume();
+  } catch (_) { return null; }
+  return ctx;
+}
+function ton(freq, start, dauer, art = 'triangle', laut = 0.2) {
+  const a = audio(); if (!a) return;
+  const t = a.currentTime + start, o = a.createOscillator(), g = a.createGain();
+  o.type = art;
+  o.frequency.setValueAtTime(freq, t);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(laut, t + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dauer);
+  o.connect(g); g.connect(a.destination);
+  o.start(t); o.stop(t + dauer + 0.05);
+}
+function klangRichtig() {                                   // C-Dur aufwärts, dann ein Glitzern
+  [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => ton(f, i * 0.09, 0.3));
+  ton(1318.5, 0.36, 0.7, 'sine', 0.12);
+  ton(1568, 0.36, 0.7, 'sine', 0.1);
+}
+function klangFalsch() {                                    // „dö-döm“, tief und kurz
+  ton(233.08, 0, 0.18, 'square', 0.07);
+  ton(174.61, 0.17, 0.35, 'square', 0.07);
+}
+function klangWuerfeln(dauer) {                             // Klackern aus kurzen Rauschstößen
+  const a = audio(); if (!a) return;
+  if (!rauschen) {
+    rauschen = a.createBuffer(1, Math.floor(a.sampleRate * 0.04), a.sampleRate);
+    const d = rauschen.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length) ** 3;
+  }
+  for (let t = 0; t < dauer; t += 0.05 + Math.random() * 0.07) {
+    const s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
+    s.buffer = rauschen;
+    f.type = 'bandpass'; f.frequency.value = 1800 + Math.random() * 1800; f.Q.value = 2;
+    g.gain.value = 0.6;
+    s.connect(f); f.connect(g); g.connect(a.destination);
+    s.start(a.currentTime + t);
+  }
+}
+
+/* ---------- Ablauf ---------- */
+function faerbe(klasse, ms) {
+  clearTimeout(farbTimer);
+  document.body.classList.remove('gut', 'falsch');
+  void document.body.offsetWidth;
+  document.body.classList.add(klasse);
+  farbTimer = setTimeout(() => document.body.classList.remove(klasse), ms);
+}
+function nochmal(el, klasse) { el.classList.remove(klasse); void el.offsetWidth; el.classList.add(klasse); }
+function zeigeSterne() { sterneEl.textContent = '⭐ ' + stand.sterne; }
+
+function neu() {
+  clearInterval(rollTimer); clearTimeout(einladTimer);
+  phase = 'bereit'; zahl = null;
+  delete wuerfelEl.dataset.zahl;
+  wuerfelEl.classList.remove('rollt', 'einladen');
+  ergEl.hidden = true;
+  zeichne(null);
+  zahlenEl.classList.add('ruht');
+  frageEl.textContent = 'Tippe auf den Würfel!';
+}
+
+function wuerfeln() {
+  if (phase === 'rollt') return;
+  phase = 'rollt';
+  clearTimeout(farbTimer); clearTimeout(einladTimer);
+  document.body.classList.remove('gut', 'falsch');
+  wuerfelEl.classList.remove('einladen');
+  ergEl.hidden = true;
+  zahlenEl.classList.add('ruht');
+  zahlenEl.querySelectorAll('.richtig').forEach(b => b.classList.remove('richtig'));
+  frageEl.textContent = '…';
+
+  const ziel = wurf(stand.max);
+  const dauer = matchMedia('(prefers-reduced-motion: reduce)').matches ? 150 : 700;
+  klangWuerfeln(dauer / 1000);
+  nochmal(wuerfelEl, 'rollt');
+  const start = performance.now();
+  clearInterval(rollTimer);
+  rollTimer = setInterval(() => {
+    if (performance.now() - start < dauer) { zeichne(1 + Math.floor(Math.random() * stand.max)); return; }
+    clearInterval(rollTimer);
+    zahl = ziel;
+    wuerfelEl.dataset.zahl = ziel;
+    zeichne(ziel);
+    wuerfelEl.classList.remove('rollt');
+    phase = 'frage';
+    zahlenEl.classList.remove('ruht');
+    frageEl.textContent = frageText();
+  }, 80);
+}
+
+function antwort(k, btn) {
+  if (phase !== 'frage') {
+    if (phase === 'bereit') { nochmal(wuerfelEl, 'stups'); if (zahl == null) frageEl.textContent = 'Erst würfeln!'; }
+    return;
+  }
+  if (k !== loesung()) {
+    faerbe('falsch', 900);
+    klangFalsch();
+    nochmal(btn, 'wackelt');
+    return;
+  }
+  phase = 'bereit';
+  stand.sterne++;
+  speichereAlles();
+  zeigeSterne();
+  nochmal(sterneEl, 'hops');
+  btn.classList.add('richtig');
+  zahlenEl.classList.add('ruht');
+  faerbe('gut', 1800);
+  klangRichtig();
+  if (stand.modus === 'zaehlen') {
+    ergEl.textContent = zahl;
+    ergEl.hidden = false;
+    frageEl.textContent = 'Richtig! Das sind ' + zahl + '.';
+  } else {
+    zeichne(zahl, true);
+    frageEl.textContent = 'Richtig! ' + zahl + ' + ' + k + ' = ' + stand.max;
+  }
+  einladTimer = setTimeout(() => { if (phase === 'bereit') wuerfelEl.classList.add('einladen'); }, 1500);
+}
+
+function stelleEin() {
+  document.querySelectorAll('.chip[data-max]').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.max === stand.max)));
+  document.querySelectorAll('.chip[data-modus]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.modus === stand.modus)));
+  document.querySelectorAll('.maxzahl').forEach(s => { s.textContent = stand.max; });
+  tonEl.textContent = stand.ton ? '🔊' : '🔇';
+  baueZahlen();
+  neu();
+}
+
+wuerfelEl.addEventListener('click', wuerfeln);
+zahlenEl.addEventListener('click', e => { const b = e.target.closest('.zahl'); if (b) antwort(+b.dataset.zahl, b); });
+document.querySelectorAll('.chip[data-max]').forEach(b => b.addEventListener('click', () => {
+  stand.max = +b.dataset.max; speichereAlles(); stelleEin();
+}));
+document.querySelectorAll('.chip[data-modus]').forEach(b => b.addEventListener('click', () => {
+  stand.modus = b.dataset.modus; speichereAlles(); stelleEin();
+}));
+tonEl.addEventListener('click', () => {
+  stand.ton = !stand.ton; speichereAlles();
+  tonEl.textContent = stand.ton ? '🔊' : '🔇';
+  if (stand.ton) ton(783.99, 0, 0.15);
+});
+
+$('#version').textContent = 'v' + APP_VERSION;
+zeigeSterne();
+stelleEin();
+
+/* ---------- Updates (Bausteine 0–4, Skill app-update-iphone) ---------- */
+const updateEl = $('#update');
+let infoTimer = null, ausTimer = null;
+function einblenden() {
+  clearTimeout(ausTimer);
+  updateEl.hidden = false; void updateEl.offsetWidth;
+  updateEl.classList.add('an');
+}
+function ausblenden() {
+  updateEl.classList.remove('an'); clearTimeout(ausTimer);
+  ausTimer = setTimeout(() => { if (!updateEl.classList.contains('an')) updateEl.hidden = true; }, 380);
+}
+function bannerAnKante(ausloeser) {
+  if (!ausloeser) { updateEl.classList.remove('unten'); return; }
+  const r = ausloeser.getBoundingClientRect();
+  updateEl.classList.toggle('unten', r.top + r.height / 2 > window.innerHeight / 2);
+}
+function showInfo(text, sekunden = 2, ausloeser = null) {
+  bannerAnKante(ausloeser);
+  updateEl.className = 'update info';
+  $('#update-text').textContent = text;
+  $('#update-go').hidden = true;
+  einblenden();
+  clearTimeout(infoTimer);
+  if (sekunden) infoTimer = setTimeout(() => { if (updateEl.classList.contains('info')) ausblenden(); }, sekunden * 1000);
+}
+function zeigeBanner(text) {
+  bannerAnKante(null);
+  updateEl.className = 'update';
+  $('#update-text').textContent = text;
+  $('#update-go').hidden = false;
+  einblenden();
+}
+updateEl.addEventListener('click', () => { if (updateEl.classList.contains('info')) ausblenden(); });
+$('#update-go').addEventListener('click', () => { speichereAlles(); location.reload(); });
+
+let checking = false, announced = null;
+async function checkForUpdate(manual = false) {
+  if (checking) return;
+  if (!manual && document.visibilityState !== 'visible') return;
+  const ausloeser = manual ? $('#version') : null;
+  if (!navigator.onLine) { if (manual) showInfo('Offline – Prüfung nicht möglich', 2, ausloeser); return; }
+  checking = true;
+  try {
+    const res = await fetch('index.html', { cache: 'no-store' });
+    if (!res.ok) return;
+    const m = (await res.text()).match(/APP_VERSION = '([^']+)'/);
+    if (m && m[1] !== APP_VERSION) announceUpdate(m[1], manual);
+    else if (manual) showInfo('Version ' + APP_VERSION + ' ist aktuell', 4, ausloeser);
+  } catch (_) { if (manual) showInfo('Prüfung fehlgeschlagen', 2, ausloeser); }
+  finally { checking = false; }
+}
+function announceUpdate(v, manual) {
+  if (announced === v && !manual) return;
+  announced = v;
+  speichereAlles();
+  zeigeBanner('Neue Version ' + v + ' ist da');
+  setTimeout(() => location.reload(), manual ? 1500 : 3000);   // kein Textfeld – Neuladen stört nichts
+}
+window.addEventListener('pageshow', () => setTimeout(checkForUpdate, 800));
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkForUpdate(); });
+$('#version').addEventListener('click', () => checkForUpdate(true));
+
+{
+  const GESEHEN = 'wuerfel.gesehen';
+  let vorher = null;
+  try { vorher = localStorage.getItem(GESEHEN); } catch (_) {}
+  if (vorher !== APP_VERSION) {
+    try { localStorage.setItem(GESEHEN, APP_VERSION); } catch (_) {}
+    if (vorher) setTimeout(() => showInfo('Version ' + APP_VERSION + ' ist geladen', 4), 400);
+  }
+}
+
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+// Für die Tests in tests/spiel.mjs
+window.wuerfelSpiel = { wurf, stand, get zahl() { return zahl; }, get phase() { return phase; }, loesung };
+</script>
+</body>
+</html>

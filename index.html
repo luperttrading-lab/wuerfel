@@ -142,8 +142,8 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 .zahlen {                /* eine Leiste wie ein Zahlenstrahl: klein links, groß rechts, kein Zeilensprung */
   display: flex; gap: 3px; touch-action: none; margin: 0 calc(8px - var(--rand));
 }
-/* Antworttasten: kräftiges Bernstein mit dunkler Schrift (Kontrast ≈ 8 : 1), Farbfamilie der orangen Lücke.
-   Gesperrt (vor dem Würfeln) beige mit grauer Schrift – sichtbar „noch nicht“, aber lesbar, nicht durchsichtig. */
+/* Antworttasten: immer kräftiges Bernstein mit dunkler Schrift (Kontrast ≈ 8,6 : 1), Farbfamilie der orangen
+   Lücke – in jedem Zustand gleich, damit man immer sieht, wo das Arbeitsmaterial ist. */
 .zahl {
   flex: 1 1 0; min-width: 0; padding: 0;
   height: clamp(64px, 18vw, 88px); border-radius: 12px; color: var(--ink);
@@ -158,9 +158,6 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   display: grid; place-items: center; border-radius: 18px;
   background: linear-gradient(#ffd27a, #ffb547); color: var(--ink); font-size: 48px; font-weight: 900;
   box-shadow: 0 8px 22px rgba(43, 33, 64, .28);
-}
-.zahlen.ruht .zahl:not(.richtig) {
-  color: #8f8372; background-color: #f1e7d6; background-image: none; box-shadow: 0 4px 0 #ddd0ba;
 }
 .zahl.richtig { color: #fff; background-color: var(--richtig); background-image: none; box-shadow: 0 5px 0 #1f8a3c; }
 .zahl.wackelt { animation: wackeln .4s ease; }
@@ -242,7 +239,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 </main>
 
 <script>
-const APP_VERSION = '0.16';          // bei JEDER Änderung hochzählen
+const APP_VERSION = '0.17';          // bei JEDER Änderung hochzählen
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
@@ -747,7 +744,10 @@ function tippeWuerfel() {
 }
 
 function antwort(k, btn) {
-  if (phase !== 'frage') { if (phase === 'bereit') nochmal(wuerfelEl, 'stups'); return; }
+  if (phase !== 'frage') {                                                  // vor dem Würfeln: Hinweis statt Wertung
+    if (phase === 'bereit') { nochmal(wuerfelEl, 'stups'); hinweisEl.textContent = 'Erst würfeln! Tippe auf den Würfel.'; }
+    return;
+  }
   if (k !== stand.n - zahl) {
     faerbe('falsch', 900);
     klang.falsch();

@@ -86,8 +86,10 @@ console.log('Startseite');
   if (bilder) await page.screenshot({ path: `${bilder}/1-bereit.png` });
   const wuerfelOben = await page.evaluate(() => document.querySelector('#wuerfel').getBoundingClientRect().top);
 
+  const farbeVorher = await page.evaluate(() => getComputedStyle(document.querySelector('.zahl')).backgroundColor);
   await page.click('.zahl[data-zahl="4"]');
   ok(await phase(page) === 'bereit', 'Zahl antippen vor dem Würfeln zählt nicht');
+  ok((await page.textContent('#hinweis')).includes('Erst würfeln'), 'Stattdessen der Hinweis „Erst würfeln!“');
 
   const t0 = Date.now();
   await page.click('#wuerfel', { force: true });
@@ -161,6 +163,8 @@ console.log('Startseite');
     return verh(rgb(z.color), rgb(z.backgroundColor));
   });
   ok(kontrast >= 4.5, `Antworttasten gut lesbar (Kontrast ${kontrast.toFixed(1)} : 1, Mindestmaß 4,5)`);
+  const farbeFrage = await page.evaluate(() => getComputedStyle(document.querySelector('.zahl')).backgroundColor);
+  ok(farbeVorher === farbeFrage, `Tasten sehen vor dem Würfeln genauso kräftig aus wie bei der Frage (${farbeFrage})`);
   // Lupe: Finger aufsetzen, seitlich rutschen – die Lupe folgt; es zählt die Taste beim Loslassen
   const mitte = async z => page.evaluate(z => { const r = document.querySelector(`.zahl[data-zahl="${z}"]`).getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }, z);
   const [x0, y0] = await mitte(0), [x1] = await mitte(1);

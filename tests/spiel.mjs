@@ -191,6 +191,49 @@ console.log('Startseite');
   await ctx.close();
 }
 
+console.log('Regler für Staub und Sterne');
+{
+  const { page, konsole, ctx } = await seite(390, 844);
+  await page.click('#zahlwahl button[data-n="6"]');
+  const wert = sel => page.textContent(sel + ' .regler-wert');
+  ok(await wert('#regler-staub') === '2×' && await wert('#regler-sterne') === '18', 'Startwerte: Staub 2×, Sterne 18');
+  const ueberlappt = await page.evaluate(() => {
+    const w = document.querySelector('#wuerfel').getBoundingClientRect();
+    return [...document.querySelectorAll('.regler')].some(el => {
+      const r = el.getBoundingClientRect();
+      return r.left < w.right && r.right > w.left && r.top < w.bottom && r.bottom > w.top;
+    });
+  });
+  ok(!ueberlappt, 'Regler liegen neben dem Würfel, nicht darauf');
+  // Ziehen: ganz nach unten = aus / 0
+  async function ziehe(sel, nachUnten) {
+    const r = await page.evaluate(sel => { const b = document.querySelector(sel + ' .regler-bahn').getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2, unten: b.bottom, oben: b.top }; }, sel);
+    await page.mouse.move(r.x, r.y); await page.mouse.down();
+    await page.mouse.move(r.x, nachUnten ? r.unten + 30 : r.oben - 30, { steps: 5 }); await page.mouse.up();
+  }
+  await ziehe('#regler-staub', true);
+  await ziehe('#regler-sterne', true);
+  ok(await wert('#regler-staub') === 'aus' && await wert('#regler-sterne') === '0', 'Nach unten gezogen: Staub aus, Sterne 0');
+  await page.waitForTimeout(1600);                    // Probe-Sterne/-Staub verfliegen lassen
+  await page.click('#wuerfel', { force: true });
+  let staubMax = 0;
+  while (await phase(page) === 'rollt') { staubMax = Math.max(staubMax, await page.evaluate(() => window.wuerfelSpiel.staub)); await page.waitForTimeout(50); }
+  ok(staubMax === 0, 'Staub aus: beim Würfeln fliegt keiner');
+  const k = await page.evaluate(() => window.wuerfelSpiel.zahl);
+  await page.click(`.zahl[data-zahl="${6 - k}"]`);
+  ok(await page.evaluate(() => window.wuerfelSpiel.sterne) === 0, 'Sterne 0: bei richtiger Antwort fliegen keine');
+  await ziehe('#regler-staub', false);
+  await ziehe('#regler-sterne', false);
+  ok(await wert('#regler-staub') === '4×' && await wert('#regler-sterne') === '60', 'Nach oben gezogen: Staub 4×, Sterne 60');
+  ok(await page.evaluate(() => window.wuerfelSpiel.sterne) >= 50, 'Beim Loslassen fliegen zur Probe so viele Sterne');
+  await page.reload();
+  await page.click('#zahlwahl button[data-n="6"]');
+  ok(await wert('#regler-staub') === '4×' && await wert('#regler-sterne') === '60', 'Einstellungen bleiben nach dem Neuladen');
+  await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('wuerfel.stand')); s.staub = 2; s.sternFlug = 18; localStorage.setItem('wuerfel.stand', JSON.stringify(s)); });
+  ok(konsole.length === 0, 'Keine Fehler in der Konsole' + (konsole.length ? ': ' + konsole.join(' | ') : ''));
+  await ctx.close();
+}
+
 console.log('Ganze Runden (jede Zerlegung genau einmal)');
 {
   const { page, konsole, ctx } = await seite(390, 844);

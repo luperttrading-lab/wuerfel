@@ -27,6 +27,10 @@ Lernspiel fürs Handy, damit sich die Zerlegungen der Zahlen 4 bis 10 als **Ziff
 5. Danach zeigt der Würfel wieder die 8; die gelöste Gleichung bleibt zum Einprägen stehen,
    bis zum nächsten Antippen. Vor der ersten Aufgabe steht nur „Tippe auf den Würfel!“.
 
+**Regler** (Spielseite, senkrecht): links 💨 Staub von aus bis 4× (Start 2×), rechts ⭐ Sterne von 0
+bis 60 (Start 18; nach einer ganzen Runde 2,2-mal so viele). Beim Loslassen zeigt eine Probe die
+Menge; die Werte bleiben gespeichert.
+
 **Zufall:** Gezogen wird **ohne Zurücklegen**: Jede Zerlegung 0 + n … n + 0 kommt pro Runde
 genau einmal (bei 10: 11 Würfe statt im Mittel 11 · H₁₁ ≈ 33,2 mit einem echten Würfel), danach
 „Alle Zerlegungen geschafft!“ und eine neue Runde. Die erste Zahl einer Runde ist nie die letzte

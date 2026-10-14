@@ -213,7 +213,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 </main>
 
 <script>
-const APP_VERSION = '0.8';          // bei JEDER Änderung hochzählen
+const APP_VERSION = '0.9';          // bei JEDER Änderung hochzählen
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
@@ -323,14 +323,16 @@ const klang = {
 /* ---------- Würfel: echter Würfel in 3D ---------- */
 // In Ruhe fast von vorn (oben und rechts nur schmale Kanten), vorne die Zahl, die zerlegt wird.
 // Beim Antippen wird die Zahl sofort ausgelost. Dann wirbelt er 2 Sekunden: fünf Überschläge,
-// zwei Drehungen seitwärts, eine um die eigene Mitte, dazu ein Sprung auf den Betrachter zu,
-// Aufprall bei 1,6 s, kurzes Nachfedern. Seiten, die nach hinten zeigen, bekommen neue Zahlen;
+// zwei Drehungen seitwärts, eine um die eigene Mitte – auf der Stelle. Dabei wird er kleiner
+// (bis 70 %) und wieder groß; bei 1,6 s ist er zurück, federt kurz über (106 %) und es macht
+// „Bumm“. Seiten, die nach hinten zeigen, bekommen neue Zahlen;
 // die Vorderseite bekommt die ausgeloste Zahl, solange sie verdeckt ist (bis 1,56 s), und liegt
 // ab 1,72 s vorn. Zeiten gerechnet für Bremsen mit 1 − (1 − p)².
 const ROLLZEIT = 2000;                                  // ms
 const RUHE = { x: -10, y: -12 };                        // Grad
 const DREH = { x: 1800, y: -720, z: 360 };              // nur Vielfache von 360°: endet wieder in Ruhelage
-const AUFPRALL = 0.8;                                   // Anteil der Rollzeit bis zum Aufschlag
+const AUFPRALL = 0.8;                                   // Anteil der Rollzeit bis „Bumm“ (wieder volle Größe)
+const KLEINSTE = 0.7;                                   // kleinste Größe beim Wirbeln
 const LICHT = [-0.25, -0.6, 0.76];                      // von links oben vorn
 const NORMALE = { vorne: [0, 0, 1], hinten: [0, 0, -1], rechts: [1, 0, 0], links: [-1, 0, 0], oben: [0, -1, 0], unten: [0, 1, 0] };
 const seiten = {};
@@ -414,9 +416,8 @@ function drehe([x, y, z], ax, ay, az = 0) {             // Normale nach rotateZ(
   const y2 = y * Math.cos(a) - z1 * Math.sin(a), z2 = y * Math.sin(a) + z1 * Math.cos(a);
   return [x1 * Math.cos(c) - y2 * Math.sin(c), x1 * Math.sin(c) + y2 * Math.cos(c), z2];
 }
-function stelle(ax, ay, az = 0, hoch = 0, nah = 0) {
-  koerperEl.style.transform =
-    `translate3d(0px, ${(-hoch).toFixed(1)}px, ${nah.toFixed(1)}px) rotateZ(${az}deg) rotateX(${ax}deg) rotateY(${ay}deg)`;
+function stelle(ax, ay, az = 0, groesse = 1) {
+  koerperEl.style.transform = `scale(${groesse.toFixed(3)}) rotateZ(${az}deg) rotateX(${ax}deg) rotateY(${ay}deg)`;
   const schatten = n => (0.2 * (1 - Math.max(0, punkt(drehe(n, ax, ay, az), LICHT)))).toFixed(3);
   const flaechen = {};
   for (const k in seiten) { flaechen[k] = schatten(NORMALE[k]); seiten[k].el.style.setProperty('--m', flaechen[k]); }
@@ -455,13 +456,13 @@ function schritt(t) {
     } else if (z > 0) s.weg = false;
   }
   if (vorn !== lauf.vorn) { lauf.vorn = vorn; klang.tick(); }       // klickt bei jedem Überschlag
-  // Sprung: hoch und auf den Betrachter zu, Aufprall, dann ein kleines Nachfedern
-  const kante = koerperEl.offsetWidth;
-  const luft = p < AUFPRALL ? Math.sin(Math.PI * p / AUFPRALL) : 0.15 * Math.sin(Math.PI * (p - AUFPRALL) / (1 - AUFPRALL));
+  // Auf der Stelle: kleiner und wieder groß, dann kurz überfedern – dazu „Bumm“
+  const weg = p < AUFPRALL ? Math.sin(Math.PI * p / AUFPRALL) : 0;            // 0 … 1 … 0
+  const groesse = p < AUFPRALL ? 1 - (1 - KLEINSTE) * weg : 1 + 0.06 * Math.sin(Math.PI * (p - AUFPRALL) / (1 - AUFPRALL));
   if (p >= AUFPRALL && !lauf.aufgeschlagen) { lauf.aufgeschlagen = true; klang.landen(); }
   // Bewusst auch bei „Bewegung reduzieren“: Das Drehen ist hier der Kern des Spiels (Wunsch des Auftraggebers).
-  stelle(ax, ay, az, luft * kante * 0.4, (p < AUFPRALL ? luft : 0) * kante * 0.35);
-  sockelEl.style.setProperty('--sprung', luft.toFixed(3));
+  stelle(ax, ay, az, groesse);
+  sockelEl.style.setProperty('--sprung', weg.toFixed(3));                     // Schatten schrumpft mit
   if (p >= 1) { landen(); return; }
   rafId = requestAnimationFrame(schritt);
 }

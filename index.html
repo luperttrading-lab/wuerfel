@@ -90,7 +90,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 }
 .flaeche, .kern { position: absolute; inset: 0; }
 .flaeche {
-  display: grid; place-items: center; border-radius: 17%;
+  display: grid; place-items: center; border-radius: 6%;   /* mehr Rundung wirkt wie Deckel und lose Platten */
   background: radial-gradient(circle at 35% 30%, #fff 0%, #fcfaff 55%, #f0e9fa 100%);
   box-shadow: inset 0 0 0 1px rgba(108, 75, 216, .10), inset 0 0 calc(var(--s) * .09) rgba(108, 75, 216, .14);
   -webkit-backface-visibility: hidden; backface-visibility: hidden;
@@ -119,17 +119,21 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 .wuerfel.stups { animation: wackeln .4s ease; }
 
 .gleichung {
-  margin: 8px 0 0; display: flex; align-items: center; gap: .2em;
+  --rahmen: .14em;        /* so weit steht der Lückenkasten über die Ziffer hinaus */
+  margin: 8px 0 0; display: flex; align-items: center; gap: .34em; line-height: 1.15;
   font-size: clamp(38px, 11vw, 58px); font-weight: 900; font-variant-numeric: tabular-nums;
 }
-.gleichung .teil, .gleichung .luecke, .gleichung .rest, .gleichung .ganz {
-  /* jede Zahl in derselben Box (eine Ziffer breit plus Rand): überall gleiche Abstände, nichts springt */
-  min-width: calc(1ch + .34em); padding: 0 .1em; border: .07em solid transparent; border-radius: .2em; text-align: center;
-}
+.gleichung .teil, .gleichung .luecke, .gleichung .rest, .gleichung .ganz { min-width: 1ch; text-align: center; }
 .gleichung .teil { color: var(--teil); }
 .gleichung .rest { color: var(--rest); animation: pop .35s ease both; }
 .gleichung .ganz { color: var(--ganz); }
-.gleichung .luecke { border-style: dashed; border-color: var(--rest); color: var(--rest); }
+/* Der Kasten ist nur gezeichnet und nimmt keinen Platz; der Außenabstand gleicht seinen Überstand aus.
+   So ist der Abstand zum Kasten gleich dem Abstand zwischen den Ziffern – in Frage und Lösung. */
+.gleichung .luecke { position: relative; margin: 0 var(--rahmen); color: var(--rest); }
+.gleichung .luecke::before {
+  content: ""; position: absolute; inset: -.04em calc(-1 * var(--rahmen));
+  border: .06em dashed var(--rest); border-radius: .18em;
+}
 .gleichung.weg { visibility: hidden; }          /* Platz bleibt, nichts springt */
 .hinweis { margin: 0; min-height: 1.3em; text-align: center; font-size: clamp(18px, 5vw, 24px); font-weight: 800; }
 
@@ -216,7 +220,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 </main>
 
 <script>
-const APP_VERSION = '0.5';          // bei JEDER Änderung hochzählen
+const APP_VERSION = '0.6';          // bei JEDER Änderung hochzählen
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);

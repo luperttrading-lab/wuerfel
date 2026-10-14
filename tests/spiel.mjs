@@ -36,9 +36,12 @@ const phase = page => page.evaluate(() => window.wuerfelSpiel.phase);
 const gleichung = async page => (await page.textContent('#gleichung')).replace(/\s/g, '');
 let RUHELAGE = null;                                   // wird nach dem Start gelesen
 const lage = page => page.evaluate(() => document.querySelector('#koerper').style.transform);
-// Abstände zwischen den Zeichen der Gleichung (Textkanten, nicht Boxen)
+// Sichtbare Abstände in der Gleichung: zwischen Textkanten, beim Lückenkasten bis zu seinem Rahmen
 const abstaende = page => page.evaluate(() => {
-  const r = [...document.querySelectorAll('#gleichung > span')].map(el => {
+  const gl = document.querySelector('#gleichung');
+  const rahmen = parseFloat(getComputedStyle(gl).getPropertyValue('--rahmen')) * parseFloat(getComputedStyle(gl).fontSize);
+  const r = [...gl.children].map(el => {
+    if (el.classList.contains('luecke')) { const b = el.getBoundingClientRect(); return { left: b.left - rahmen, right: b.right + rahmen }; }
     const g = document.createRange(); g.selectNodeContents(el); return g.getBoundingClientRect();
   });
   return r.slice(1).map((b, i) => +(b.left - r[i].right).toFixed(1));
@@ -112,6 +115,8 @@ console.log('Startseite');
   ok(!verboten.includes(seitenNach.oben) && !verboten.includes(seitenNach.rechts),
     `Nebenseiten zeigen weder ${k} noch die Lösung ${8 - k} (oben ${seitenNach.oben}, rechts ${seitenNach.rechts})`);
   ok(await gleichung(page) === `${k}+?=8` && await sichtbar(page, '#gleichung'), `Gleichung „${k} + ? = 8“`);
+  const abFrage = await abstaende(page);
+  ok(gleichmaessig(abFrage), `Gleiche Abstände auch mit Lückenkasten (${abFrage.join(' / ')} px)`);
   if (bilder) await page.screenshot({ path: `${bilder}/3-frage.png` });
 
   const falsch = k === 4 ? 3 : k;                     // k selbst ist falsch, außer bei 4

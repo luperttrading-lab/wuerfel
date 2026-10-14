@@ -12,8 +12,9 @@ Lernspiel fürs Handy, damit sich die Zerlegungen der Zahlen 4 bis 10 als **Ziff
    In Ruhe steht vorne die gewählte Zahl (lila), die Nebenseiten sind grau.
 3. **Antippen:** Luftzug-Geräusch, dann wirbelt er 2 Sekunden auf der Stelle und wird langsamer:
    fünf Überschläge, zwei Drehungen seitwärts, eine um die eigene Mitte. Dabei wird er kleiner
-   (bis 70 %) und wieder groß, der Schatten schrumpft mit; bei 1,6 s federt er kurz über (106 %)
-   und es macht „Bumm“. Bei jedem
+   (bis 70 %) und wieder groß, der Schatten schrumpft mit; Staub stiebt hinter ihm hervor und
+   verweht bis etwa 1,3 s. Bei 1,76 s schlägt er auf: „Bumm“, er staucht sich kurz (91 % hoch),
+   ein Staubwölkchen am Boden. Die Ziffern wirken eingeprägt. Bei jedem
    Überschlag klickt es (25-mal). Seiten, die gerade nach hinten zeigen, bekommen neue Zahlen;
    die Vorderseite bekommt die ausgeloste Zahl, solange sie verdeckt ist (bis 1,56 s), und liegt
    ab 1,72 s vorn (blau). Darunter steht `3 + ? = 8`. Die sichtbaren Nebenseiten zeigen nie die

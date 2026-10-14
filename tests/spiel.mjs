@@ -93,7 +93,7 @@ console.log('Startseite');
   await page.click('#wuerfel', { force: true });
   ok(await phase(page) === 'rollt', 'Antippen: Würfel rollt');
   const lagenRollen = new Set();
-  let schnappschuss = false, wechsel = 0, vorher = null, kleinste = 1, verschoben = false;
+  let schnappschuss = false, wechsel = 0, vorher = null, kleinste = 1, verschoben = 0, staubMax = 0, gestaucht = 1;
   while (await phase(page) === 'rollt') {
     const jetzt = JSON.stringify(await page.evaluate(() => window.wuerfelSpiel.seiten));
     if (vorher && jetzt !== vorher) wechsel++;
@@ -102,18 +102,25 @@ console.log('Startseite');
     lagenRollen.add(l);
     const m = l.match(/scale\(([\d.]+)\)/);
     if (m) kleinste = Math.min(kleinste, parseFloat(m[1]));
-    if (/translate/.test(l)) verschoben = true;
+    const v = l.match(/translateY\((-?[\d.]+)px\)/); if (v) verschoben = Math.max(verschoben, Math.abs(parseFloat(v[1])));
+    const q = l.match(/scale3d\([\d.]+, ([\d.]+), 1\)/); if (q) gestaucht = Math.min(gestaucht, parseFloat(q[1]));
+    staubMax = Math.max(staubMax, await page.evaluate(() => window.wuerfelSpiel.staub));
     if (!schnappschuss && Date.now() - t0 > 500) { schnappschuss = true; if (bilder) await page.screenshot({ path: `${bilder}/2-rollt.png` }); }
     await page.waitForTimeout(40);
   }
   const dauer = Date.now() - t0;
   ok(kleinste < 0.8 && kleinste > 0.6, `Er wird beim Wirbeln kleiner und wieder groß (kleinste Größe ${Math.round(kleinste * 100)} %)`);
-  ok(!verschoben, 'Er bleibt dabei auf der Stelle (keine Verschiebung)');
+  const kante = await page.evaluate(() => document.querySelector('#koerper').offsetWidth);
+  ok(verschoben < kante * 0.06, `Er bleibt dabei auf der Stelle (höchstens ${verschoben.toFixed(1)} px beim Stauchen)`);
+  ok(gestaucht < 0.97, `Beim Aufprall staucht er sich (flach auf ${Math.round(gestaucht * 100)} %)`);
+  ok(staubMax >= 10, `Beim Wirbeln fliegt Staub (bis ${staubMax} Körner gleichzeitig)`);
   ok(lagenRollen.size >= 10 && wechsel >= 4, `Beim Rollen überschlägt er sich (${lagenRollen.size} Lagen gesehen) und die Zahlen wechseln (${wechsel}×)`);
   ok(dauer >= 1900 && dauer <= 2600, `Rollen dauert ${dauer} ms (Soll 2 s)`);
   const k = await page.evaluate(() => window.wuerfelSpiel.zahl);
   ok(await page.textContent('#augenzahl') === String(k), `Würfel zeigt die gezogene Zahl ${k}`);
   ok(await lage(page) === RUHELAGE, 'Würfel liegt danach wieder in Ruhelage');
+  await page.waitForTimeout(400);
+  ok(await page.evaluate(() => window.wuerfelSpiel.staub) === 0, 'Der Staub ist verweht, kurz nachdem die Zahl dasteht');
   const seitenNach = await page.evaluate(() => window.wuerfelSpiel.seiten);
   const verboten = [String(k), String(8 - k)];
   ok(!verboten.includes(seitenNach.oben) && !verboten.includes(seitenNach.rechts),

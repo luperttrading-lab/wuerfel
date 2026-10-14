@@ -12,8 +12,8 @@ Lernspiel fürs Handy, damit sich die Zerlegungen der Zahlen 4 bis 10 als **Ziff
    In Ruhe steht vorne die gewählte Zahl (lila), die Nebenseiten sind grau.
 3. **Antippen:** Luftzug-Geräusch, dann wirbelt er 2 Sekunden auf der Stelle und wird langsamer:
    fünf Überschläge, zwei Drehungen seitwärts, eine um die eigene Mitte. Dabei wird er kleiner
-   (bis 70 %) und wieder groß, der Schatten schrumpft mit; Staub stiebt hinter ihm hervor und
-   verweht bis etwa 1,3 s. Bei 1,76 s schlägt er auf: „Bumm“, er staucht sich kurz (91 % hoch),
+   (bis 70 %) und wieder groß, der Schatten schrumpft mit; Staub stiebt kräftig hinter ihm hervor
+   und verweht bis etwa 1,9 s. Bei 1,76 s schlägt er auf: „Bumm“, er staucht sich kurz (91 % hoch),
    ein Staubwölkchen am Boden. Die Ziffern wirken eingeprägt. Bei jedem
    Überschlag klickt es (25-mal). Seiten, die gerade nach hinten zeigen, bekommen neue Zahlen;
    die Vorderseite bekommt die ausgeloste Zahl, solange sie verdeckt ist (bis 1,56 s), und liegt
@@ -22,7 +22,8 @@ Lernspiel fürs Handy, damit sich die Zerlegungen der Zahlen 4 bis 10 als **Ziff
    Der Würfel dreht sich auch, wenn am iPhone „Bewegung reduzieren“ eingeschaltet ist – das
    Drehen ist hier der Kern des Spiels.
 4. Unten die fehlende Zahl antippen (Knöpfe 0 bis zur gewählten Zahl).
-   Richtig → grün, Fanfare, `3 + 5 = 8`. Falsch → rot, tiefer Ton, nochmal versuchen.
+   Richtig → grün, Fanfare, `3 + 5 = 8`, aus der eingesetzten Zahl steigt eine Fontäne goldener
+   Sterne (18, nach einer ganzen Runde 40). Falsch → rot, tiefer Ton, nochmal versuchen.
 5. Danach zeigt der Würfel wieder die 8; die gelöste Gleichung bleibt zum Einprägen stehen,
    bis zum nächsten Antippen. Vor der ersten Aufgabe steht nur „Tippe auf den Würfel!“.
 

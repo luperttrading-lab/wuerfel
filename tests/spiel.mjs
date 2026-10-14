@@ -92,29 +92,50 @@ console.log('Startseite');
   const t0 = Date.now();
   await page.click('#wuerfel', { force: true });
   ok(await phase(page) === 'rollt', 'Antippen: Würfel rollt');
-  const lagenRollen = new Set();
-  let schnappschuss = false, wechsel = 0, vorher = null, kleinste = 1, verschoben = 0, staubMax = 0, gestaucht = 1;
+  // Im Browser Bild für Bild mitschreiben – kurze Momente wie das Stauchen (≈ 0,1 s) entgehen sonst der Abtastung
+  await page.evaluate(() => {
+    const w = window.__messung = { lagen: [], staub: 0, seiten: [] };
+    const f = () => {
+      w.lagen.push(document.querySelector('#koerper').style.transform);
+      w.staub = Math.max(w.staub, window.wuerfelSpiel.staub);
+      w.seiten.push(JSON.stringify(window.wuerfelSpiel.seiten));
+      if (window.wuerfelSpiel.phase === 'rollt') requestAnimationFrame(f);
+    };
+    requestAnimationFrame(f);
+  });
+  let schnappschuss = false;
   while (await phase(page) === 'rollt') {
-    const jetzt = JSON.stringify(await page.evaluate(() => window.wuerfelSpiel.seiten));
-    if (vorher && jetzt !== vorher) wechsel++;
-    vorher = jetzt;
-    const l = await lage(page);
-    lagenRollen.add(l);
-    const m = l.match(/scale\(([\d.]+)\)/);
-    if (m) kleinste = Math.min(kleinste, parseFloat(m[1]));
-    const v = l.match(/translateY\((-?[\d.]+)px\)/); if (v) verschoben = Math.max(verschoben, Math.abs(parseFloat(v[1])));
-    const q = l.match(/scale3d\([\d.]+, ([\d.]+), 1\)/); if (q) gestaucht = Math.min(gestaucht, parseFloat(q[1]));
-    staubMax = Math.max(staubMax, await page.evaluate(() => window.wuerfelSpiel.staub));
     if (!schnappschuss && Date.now() - t0 > 500) { schnappschuss = true; if (bilder) await page.screenshot({ path: `${bilder}/2-rollt.png` }); }
     await page.waitForTimeout(40);
   }
+  const messung = await page.evaluate(() => window.__messung);
+  const lagenRollen = new Set(messung.lagen), staubMax = messung.staub;
+  const wechsel = messung.seiten.filter((x, i) => i && x !== messung.seiten[i - 1]).length;
+  let verschoben = 0;
+  for (const l of messung.lagen) {
+    const v = l.match(/translateY\((-?[\d.]+)px\)/); if (v) verschoben = Math.max(verschoben, Math.abs(parseFloat(v[1])));
+  }
+  // Bewegungskurve exakt durchrechnen (in 1-ms-Schritten)
+  const kurve = await page.evaluate(() => {
+    const { bewegung, ROLLZEIT } = window.wuerfelSpiel;
+    let kleinste = 1, flachste = 1, ersteStauchung = null;
+    for (let ms = 0; ms <= ROLLZEIT; ms++) {
+      const b = bewegung(ms / ROLLZEIT);
+      kleinste = Math.min(kleinste, b.groesse);
+      flachste = Math.min(flachste, b.flach);
+      if (b.flach < 1 && ersteStauchung === null) ersteStauchung = ms;
+    }
+    return { kleinste, flachste, ersteStauchung };
+  });
+  const kleinste = kurve.kleinste, gestaucht = kurve.flachste;
+  ok(kurve.ersteStauchung >= 1750 && kurve.ersteStauchung <= 1770, `„Bumm“ und Stauchen bei ${kurve.ersteStauchung} ms`);
   const dauer = Date.now() - t0;
   ok(kleinste < 0.8 && kleinste > 0.6, `Er wird beim Wirbeln kleiner und wieder groß (kleinste Größe ${Math.round(kleinste * 100)} %)`);
   const kante = await page.evaluate(() => document.querySelector('#koerper').offsetWidth);
   ok(verschoben < kante * 0.06, `Er bleibt dabei auf der Stelle (höchstens ${verschoben.toFixed(1)} px beim Stauchen)`);
-  ok(gestaucht < 0.97, `Beim Aufprall staucht er sich (flach auf ${Math.round(gestaucht * 100)} %)`);
+  ok(gestaucht < 0.94, `Beim Aufprall staucht er sich (flach auf ${Math.round(gestaucht * 100)} %)`);
   ok(staubMax >= 10, `Beim Wirbeln fliegt Staub (bis ${staubMax} Körner gleichzeitig)`);
-  ok(lagenRollen.size >= 10 && wechsel >= 4, `Beim Rollen überschlägt er sich (${lagenRollen.size} Lagen gesehen) und die Zahlen wechseln (${wechsel}×)`);
+  ok(lagenRollen.size >= 20 && wechsel >= 6, `Beim Rollen überschlägt er sich (${lagenRollen.size} Lagen) und die Zahlen wechseln (${wechsel}×)`);
   ok(dauer >= 1900 && dauer <= 2600, `Rollen dauert ${dauer} ms (Soll 2 s)`);
   const k = await page.evaluate(() => window.wuerfelSpiel.zahl);
   ok(await page.textContent('#augenzahl') === String(k), `Würfel zeigt die gezogene Zahl ${k}`);
@@ -139,6 +160,7 @@ console.log('Startseite');
   await page.click(`.zahl[data-zahl="${8 - k}"]`);
   ok(await page.evaluate(() => document.body.classList.contains('gut')), 'Richtige Zahl: grüner Hintergrund');
   ok(await page.evaluate(() => window.wuerfelSpiel.stand.sterne) === sterne + 1, 'Richtige Zahl: ein Stern mehr');
+  ok(await page.evaluate(() => window.wuerfelSpiel.sterne) >= 10, 'Richtige Zahl: Sterne fliegen');
   ok(await gleichung(page) === `${k}+${8 - k}=8`, `Lösung steht da: ${k} + ${8 - k} = 8`);
   await page.waitForTimeout(450);                    // Lösung ploppt 0,35 s lang auf
   const ab = await abstaende(page);
@@ -147,6 +169,7 @@ console.log('Startseite');
   if (bilder) await page.screenshot({ path: `${bilder}/4-richtig.png` });
 
   await page.waitForFunction(() => window.wuerfelSpiel.phase === 'bereit', null, { timeout: 4000 });
+  ok(await page.evaluate(() => window.wuerfelSpiel.sterne) === 0, 'Die Sterne sind verflogen, bevor es weitergeht');
   ok(await page.textContent('#augenzahl') === '8', 'Danach zeigt der Würfel wieder die 8');
   const wuerfelSpaeter = await page.evaluate(() => document.querySelector('#wuerfel').getBoundingClientRect().top);
   ok(Math.abs(wuerfelSpaeter - wuerfelOben) < 1, `Würfel bleibt an seinem Platz (${wuerfelOben.toFixed(1)} → ${wuerfelSpaeter.toFixed(1)} px)`);

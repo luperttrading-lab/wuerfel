@@ -157,6 +157,8 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition: none !important; }
 }
 
+.funken { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 25; }   /* Sterne */
+
 /* Update-Banner (Mechanik siehe Skill app-update-iphone) */
 .update {
   position: fixed; left: 12px; right: 12px; top: max(env(safe-area-inset-top), 12px); z-index: 30;
@@ -177,6 +179,8 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   <span id="update-text"></span>
   <button class="btn" id="update-go">Jetzt laden</button>
 </div>
+
+<canvas class="funken" id="funken" aria-hidden="true"></canvas>
 
 <main class="seite" id="startseite">
   <header class="kopf">
@@ -219,7 +223,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 </main>
 
 <script>
-const APP_VERSION = '0.10';          // bei JEDER Änderung hochzählen
+const APP_VERSION = '0.11';          // bei JEDER Änderung hochzählen
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
@@ -328,7 +332,7 @@ const klang = {
 
 /* ---------- Staub ---------- */
 // Weiche Körner fliegen von den Kanten weg (mit dem Drehsinn), bremsen in der Luft, steigen leicht,
-// dehnen sich und verblassen. Ausgestoßen wird nur in den ersten 0,9 s – nach spätestens 1,9 s ist
+// dehnen sich und verblassen. Ausgestoßen wird nur in der ersten Sekunde – nach spätestens 1,9 s ist
 // alles verweht. Beim Aufprall ein kurzes Wölkchen unten.
 const staubEl = $('#staub'), staubCtx = staubEl.getContext('2d');
 let koerner = [], staubRaf = 0, staubZuletzt = 0;
@@ -338,7 +342,7 @@ function staubLeinwand() {
   staubCtx.setTransform(d, 0, 0, d, 0, 0);
 }
 function korn(x, y, vx, vy, groesse, dauer) {
-  koerner.push({ x, y, vx, vy, r: groesse, leben: 0, dauer, alpha: 0.3 + Math.random() * 0.25 });
+  koerner.push({ x, y, vx, vy, r: groesse, leben: 0, dauer, alpha: 0.32 + Math.random() * 0.28 });
   if (!staubRaf) { staubZuletzt = 0; staubRaf = requestAnimationFrame(staubSchritt); }
 }
 function streue(anzahl, kraft) {                                               // von den Kanten, mit dem Drehsinn
@@ -347,15 +351,15 @@ function streue(anzahl, kraft) {                                               /
     const w = Math.random() * 2 * Math.PI, v = s * (0.6 + Math.random() * 1.1) * (0.4 + 0.6 * kraft);
     korn(r.width / 2 + Math.cos(w) * s * 0.42, r.height / 2 + Math.sin(w) * s * 0.42,
       Math.cos(w) * v - Math.sin(w) * v * 0.7, Math.sin(w) * v + Math.cos(w) * v * 0.7,
-      3 + Math.random() * 5, 0.45 + Math.random() * 0.5);
+      3.5 + Math.random() * 6.5, 0.45 + Math.random() * 0.45);
   }
 }
 function staubWolke() {                                                        // Aufprall: seitlich am Boden
   const r = staubEl.getBoundingClientRect(), s = koerperEl.offsetWidth;
-  for (let i = 0; i < 16; i++) {
+  for (let i = 0; i < 24; i++) {
     const seite = i % 2 ? 1 : -1, v = s * (0.5 + Math.random() * 0.9);
     korn(r.width / 2 + seite * s * (0.2 + Math.random() * 0.3), r.height / 2 + s * 0.48,
-      seite * v, -v * (0.1 + Math.random() * 0.25), 3.5 + Math.random() * 5, 0.22 + Math.random() * 0.14);
+      seite * v, -v * (0.1 + Math.random() * 0.25), 4 + Math.random() * 6, 0.22 + Math.random() * 0.14);
   }
 }
 function staubSchritt(t) {
@@ -376,6 +380,56 @@ function staubSchritt(t) {
   }
   staubRaf = koerner.length ? requestAnimationFrame(staubSchritt) : 0;
 }
+
+/* ---------- Sterne bei richtiger Antwort ---------- */
+// Goldene Sterne springen aus der eingesetzten Zahl, drehen sich, fallen im Bogen und verblassen.
+const funkenEl = $('#funken'), funkenCtx = funkenEl.getContext('2d');
+const STERNFARBEN = ['#ffc93c', '#ffb703', '#ffd166', '#ffe08a', '#ff9f43'];
+let funken = [], funkenRaf = 0, funkenZuletzt = 0;
+function funkenLeinwand() {
+  const d = window.devicePixelRatio || 1;
+  funkenEl.width = Math.round(innerWidth * d); funkenEl.height = Math.round(innerHeight * d);
+  funkenCtx.setTransform(d, 0, 0, d, 0, 0);
+}
+function sterneAus(el, anzahl) {
+  const r = el.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+  for (let i = 0; i < anzahl; i++) {
+    const w = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 0.8;          // Fontäne: ±72° um senkrecht
+    const v = 380 + Math.random() * 420;
+    funken.push({ x, y, vx: Math.cos(w) * v, vy: Math.sin(w) * v, r: 8 + Math.random() * 10,
+      dreh: Math.random() * Math.PI, dd: (Math.random() - 0.5) * 12, leben: 0, dauer: 1.0 + Math.random() * 0.5,
+      farbe: STERNFARBEN[zufall(STERNFARBEN.length)] });
+  }
+  if (!funkenRaf) { funkenZuletzt = 0; funkenRaf = requestAnimationFrame(funkenSchritt); }
+}
+function sternPfad(r) {
+  funkenCtx.beginPath();
+  for (let i = 0; i < 10; i++) {
+    const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.46 : r;
+    funkenCtx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
+  }
+  funkenCtx.closePath();
+}
+function funkenSchritt(t) {
+  const dt = funkenZuletzt ? Math.min(0.05, (t - funkenZuletzt) / 1000) : 0;
+  funkenZuletzt = t;
+  funkenCtx.clearRect(0, 0, innerWidth, innerHeight);
+  funken = funken.filter(f => (f.leben += dt) < f.dauer);
+  for (const f of funken) {
+    f.vy += 800 * dt; f.vx *= 1 - 0.8 * dt;                                   // Schwerkraft, etwas Luft
+    f.x += f.vx * dt; f.y += f.vy * dt; f.dreh += f.dd * dt;
+    const q = f.leben / f.dauer;
+    funkenCtx.save();
+    funkenCtx.translate(f.x, f.y); funkenCtx.rotate(f.dreh);
+    funkenCtx.globalAlpha = q < 0.6 ? 1 : 1 - (q - 0.6) / 0.4;                // erst voll, dann verblassen
+    sternPfad(f.r * Math.min(1, q / 0.12));                                    // ploppt kurz auf
+    funkenCtx.fillStyle = f.farbe; funkenCtx.fill();
+    funkenCtx.lineWidth = 1.2; funkenCtx.strokeStyle = 'rgba(170, 105, 0, .55)'; funkenCtx.stroke();
+    funkenCtx.restore();
+  }
+  funkenRaf = funken.length ? requestAnimationFrame(funkenSchritt) : 0;
+}
+funkenLeinwand();
 
 /* ---------- Würfel: echter Würfel in 3D ---------- */
 // In Ruhe fast von vorn (oben und rechts nur schmale Kanten), vorne die Zahl, die zerlegt wird.
@@ -465,7 +519,7 @@ function baueKoerper() {
     }).join(', ') + ', #f5f0fc';
   }
 }
-window.addEventListener('resize', () => { baueKoerper(); staubLeinwand(); });
+window.addEventListener('resize', () => { baueKoerper(); staubLeinwand(); funkenLeinwand(); });
 let lauf = null, rafId = 0;
 
 function drehe([x, y, z], ax, ay, az = 0) {             // Normale nach rotateZ(az) rotateX(ax) rotateY(ay), wie im CSS
@@ -502,6 +556,17 @@ function zufallsZahl(k, seite) {
   const auswahl = besser.length ? besser : frei;
   return auswahl[zufall(auswahl.length)];
 }
+// Auf der Stelle: kleiner und wieder groß, dann Aufprall mit kurzem Stauchen (breiter und flacher)
+function bewegung(p) {
+  const weg = p < AUFPRALL ? Math.sin(Math.PI * p / AUFPRALL) : 0;            // 0 … 1 … 0
+  let breit = 1, flach = 1;
+  if (p >= AUFPRALL) {
+    const q = (p - AUFPRALL) / (1 - AUFPRALL);                                // 0 … 1 nach dem Aufprall
+    flach = q < 0.45 ? 1 - 0.09 * Math.sin(Math.PI * q / 0.45) : 1 + 0.025 * Math.sin(Math.PI * (q - 0.45) / 0.55);
+    breit = 1 + (1 - flach) * 0.6;
+  }
+  return { weg, groesse: 1 - (1 - KLEINSTE) * weg, breit, flach };
+}
 function schritt(t) {
   const p = Math.min(1, (t - lauf.t0) / ROLLZEIT);
   const f = 1 - (1 - p) ** 2;                                       // gleichmäßig abbremsen
@@ -517,19 +582,11 @@ function schritt(t) {
     } else if (z > 0) s.weg = false;
   }
   if (vorn !== lauf.vorn) { lauf.vorn = vorn; klang.tick(); }       // klickt bei jedem Überschlag
-  // Auf der Stelle: kleiner und wieder groß, dann Aufprall mit kurzem Stauchen – dazu „Bumm“ und Staub
-  const weg = p < AUFPRALL ? Math.sin(Math.PI * p / AUFPRALL) : 0;            // 0 … 1 … 0
-  const groesse = 1 - (1 - KLEINSTE) * weg;
-  let breit = 1, flach = 1;
-  if (p >= AUFPRALL) {
-    const q = (p - AUFPRALL) / (1 - AUFPRALL);                                // 0 … 1 nach dem Aufprall
-    flach = q < 0.4 ? 1 - 0.09 * Math.sin(Math.PI * q / 0.4) : 1 + 0.025 * Math.sin(Math.PI * (q - 0.4) / 0.6);
-    breit = 1 + (1 - flach) * 0.6;
-    if (!lauf.aufgeschlagen) { lauf.aufgeschlagen = true; klang.landen(); staubWolke(); }
-  }
-  if (p < 0.45) {                                                             // Staub, solange er schnell dreht
-    lauf.staub += 90 * (1 - p / 0.45) * Math.max(0, (t - (lauf.tz || t)) / 1000);
-    while (lauf.staub >= 1) { lauf.staub--; streue(1, 1 - p / 0.45); }
+  const { weg, groesse, breit, flach } = bewegung(p);
+  if (p >= AUFPRALL && !lauf.aufgeschlagen) { lauf.aufgeschlagen = true; klang.landen(); staubWolke(); }
+  if (p < 0.5) {                                                              // Staub, solange er schnell dreht
+    lauf.staub += 160 * (1 - p / 0.5) * Math.max(0, (t - (lauf.tz || t)) / 1000);
+    while (lauf.staub >= 1) { lauf.staub--; streue(1, 1 - p / 0.5); }
   }
   lauf.tz = t;
   // Bewusst auch bei „Bewegung reduzieren“: Das Drehen ist hier der Kern des Spiels (Wunsch des Auftraggebers).
@@ -569,7 +626,7 @@ function wuerfeln() {
   hinweisEl.textContent = '';
   zeigeStand();
   klang.wusch();
-  for (let i = 0; i < 12; i++) streue(1, 1);                                  // erster Schwung beim Abwurf
+  for (let i = 0; i < 20; i++) streue(1, 1);                                  // erster Schwung beim Abwurf
   rafId = requestAnimationFrame(schritt);
 }
 function landen() {
@@ -682,6 +739,7 @@ function antwort(k, btn) {
   zeigeGleichung(zahl, k);
   const rundeFertig = !beutel.length;
   faerbe('gut', rundeFertig ? 2600 : 1600);
+  sterneAus(gleichungEl.querySelector('.rest'), rundeFertig ? 40 : 18);
   if (rundeFertig) {
     klang.runde();
     hinweisEl.textContent = 'Alle Zerlegungen der ' + stand.n + ' geschafft!';
@@ -800,7 +858,8 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
 window.wuerfelSpiel = {
   zufall, neuerBeutel, stand, starteSpiel,
   get zahl() { return zahl; }, get phase() { return phase; }, get beutel() { return beutel.slice(); },
-  get staub() { return koerner.length; },
+  get staub() { return koerner.length; }, bewegung, ROLLZEIT, AUFPRALL,
+  get sterne() { return funken.length; },
   get seiten() { return Object.fromEntries(Object.keys(seiten).map(k => [k, seiten[k].el.textContent])); },
 };
 </script>

@@ -275,6 +275,27 @@ console.log('Auch mit „Bewegung reduzieren“ (iPhone: Bedienungshilfen → Be
   await ctx.close();
 }
 
+console.log('Nichts lässt sich schieben');
+for (const [breite, hoehe] of [[390, 844], [375, 667]]) {
+  const { page, ctx } = await seite(breite, hoehe);
+  for (const ziel of ['start', 'spiel']) {
+    if (ziel === 'spiel') await page.click('#zahlwahl button[data-n="10"]');
+    const m = await page.evaluate(() => {
+      window.scrollTo(0, 500); document.documentElement.scrollTop = 500; document.body.scrollTop = 500;
+      const s = getComputedStyle(document.body);
+      return { y: window.scrollY + document.documentElement.scrollTop + document.body.scrollTop, fest: s.position === 'fixed' && s.overflow === 'hidden' };
+    });
+    await page.mouse.move(breite / 2, hoehe / 2); await page.mouse.wheel(0, 600); await page.waitForTimeout(150);
+    const y = await page.evaluate(() => window.scrollY + document.documentElement.scrollTop + document.body.scrollTop);
+    ok(m.fest && m.y === 0 && y === 0, `${breite}×${hoehe} ${ziel === 'start' ? 'Startseite' : 'Spielseite'}: steht fest, scrollt nicht`);
+  }
+  // Inhalt der Spielseite passt komplett: unterster Knopf und Regler innerhalb des Bildschirms
+  const passt = await page.evaluate(() => [...document.querySelectorAll('#spielseite .zahl, #spielseite .regler')]
+    .every(el => el.getBoundingClientRect().bottom <= innerHeight && el.getBoundingClientRect().top >= 0));
+  ok(passt, `${breite}×${hoehe}: alles Nötige ist sichtbar, ohne zu scrollen`);
+  await ctx.close();
+}
+
 console.log('Passt aufs kleine iPhone (375 × 667)');
 for (const n of [4, 7, 10]) {
   const { page, ctx } = await seite(375, 667);

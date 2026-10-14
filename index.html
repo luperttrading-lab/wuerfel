@@ -26,8 +26,11 @@
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
+/* Eine feste Bildschirmseite: nichts lässt sich schieben, nichts federt (iPhone-„Gummiband“) */
+html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
 body {
-  margin: 0; min-height: 100vh; min-height: 100dvh; background: var(--bg); color: var(--ink);
+  position: fixed; inset: 0;
+  margin: 0; background: var(--bg); color: var(--ink);
   font-family: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
   -webkit-tap-highlight-color: transparent;
@@ -38,7 +41,7 @@ body.falsch { background: var(--falsch); }
 button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; touch-action: manipulation; }
 
 .seite {
-  max-width: 640px; margin: 0 auto; min-height: 100vh; min-height: 100dvh;
+  max-width: 640px; margin: 0 auto; height: 100%; overflow: hidden;
   display: flex; flex-direction: column; gap: 14px;
   padding: max(env(safe-area-inset-top), 12px) max(env(safe-area-inset-right), var(--rand))
            max(env(safe-area-inset-bottom), 16px) max(env(safe-area-inset-left), var(--rand));
@@ -248,7 +251,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 </main>
 
 <script>
-const APP_VERSION = '0.12';          // bei JEDER Änderung hochzählen
+const APP_VERSION = '0.13';          // bei JEDER Änderung hochzählen
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
@@ -821,6 +824,9 @@ regler($('#regler-sterne'), 0, 60, 1, stand.sternFlug, v => String(v),
   v => { stand.sternFlug = v; }, v => sterneAus($('#regler-sterne .regler-knopf'), v));
 
 /* ---------- Verdrahtung ---------- */
+// Ältere iPhones und eingebettete Browser federn trotz CSS: dort jedes Wischen abfangen.
+// Regler und Knöpfe arbeiten mit Pointer-Ereignissen und bleiben davon unberührt.
+document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
 for (const n of ZAHLEN) {
   const b = document.createElement('button');
   b.dataset.n = n;

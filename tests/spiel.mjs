@@ -34,6 +34,16 @@ async function seite(breite, hoehe) {
 }
 const phase = page => page.evaluate(() => window.wuerfelSpiel.phase);
 const gleichung = async page => (await page.textContent('#gleichung')).replace(/\s/g, '');
+const RUHELAGE = 'rotateX(-20deg) rotateY(-25deg)';
+const lage = page => page.evaluate(() => document.querySelector('#koerper').style.transform);
+// Abstände zwischen den Zeichen der Gleichung (Textkanten, nicht Boxen)
+const abstaende = page => page.evaluate(() => {
+  const r = [...document.querySelectorAll('#gleichung > span')].map(el => {
+    const g = document.createRange(); g.selectNodeContents(el); return g.getBoundingClientRect();
+  });
+  return r.slice(1).map((b, i) => +(b.left - r[i].right).toFixed(1));
+});
+const gleichmaessig = a => Math.max(...a) - Math.min(...a) <= 1.5;
 const sichtbar = (page, sel) => page.evaluate(sel => getComputedStyle(document.querySelector(sel)).visibility === 'visible', sel);
 // Würfel antippen und warten, bis er liegt (rollt 2 s); force, weil Playwright sonst auf Stillstand wartet
 async function wuerfle(page) {
@@ -59,10 +69,10 @@ console.log('Startseite');
   ok(await page.isVisible('#spielseite') && await page.isHidden('#startseite'), 'Nach der Wahl: Spielseite');
   ok(await page.locator('.zahl').count() === 9, 'Zerlegen der 8: Knöpfe 0–8');
   ok(await phase(page) === 'bereit', 'Würfel wartet');
-  const ruhe = new Set();
-  for (let i = 0; i < 8; i++) { ruhe.add(await page.textContent('#augenzahl')); await page.waitForTimeout(80); }
-  const dreh = await page.evaluate(() => document.querySelector('#wuerfel').style.transform);
-  ok(ruhe.size === 1 && ruhe.has('8') && dreh === '', 'In Ruhe steht die 8 still auf dem Würfel');
+  ok(await page.locator('#koerper .flaeche').count() === 6, 'Würfel hat sechs Seiten');
+  const ruhe = new Set(), lagen = new Set();
+  for (let i = 0; i < 8; i++) { ruhe.add(await page.textContent('#augenzahl')); lagen.add(await lage(page)); await page.waitForTimeout(80); }
+  ok(ruhe.size === 1 && ruhe.has('8') && lagen.size === 1 && lagen.has(RUHELAGE), 'In Ruhe liegt er still und schräg, vorne die 8');
   ok(!(await sichtbar(page, '#gleichung')) && (await page.textContent('#hinweis')).includes('Tippe auf den Würfel'),
     'Vor der ersten Aufgabe: keine Gleichung, nur „Tippe auf den Würfel!“');
   if (bilder) await page.screenshot({ path: `${bilder}/1-bereit.png` });
@@ -74,19 +84,26 @@ console.log('Startseite');
   const t0 = Date.now();
   await page.click('#wuerfel', { force: true });
   ok(await phase(page) === 'rollt', 'Antippen: Würfel rollt');
-  const beimRollen = new Set();
-  let schnappschuss = false;
+  const lagenRollen = new Set();
+  let schnappschuss = false, wechsel = 0, vorher = null;
   while (await phase(page) === 'rollt') {
-    beimRollen.add(await page.textContent('#augenzahl'));
+    const jetzt = JSON.stringify(await page.evaluate(() => window.wuerfelSpiel.seiten));
+    if (vorher && jetzt !== vorher) wechsel++;
+    vorher = jetzt;
+    lagenRollen.add(await lage(page));
     if (!schnappschuss && Date.now() - t0 > 500) { schnappschuss = true; if (bilder) await page.screenshot({ path: `${bilder}/2-rollt.png` }); }
     await page.waitForTimeout(40);
   }
   const dauer = Date.now() - t0;
-  ok(beimRollen.size >= 4, `Beim Rollen wechseln die Ziffern (${beimRollen.size} verschiedene gesehen)`);
+  ok(lagenRollen.size >= 10 && wechsel >= 4, `Beim Rollen überschlägt er sich (${lagenRollen.size} Lagen gesehen) und die Zahlen wechseln (${wechsel}×)`);
   ok(dauer >= 1900 && dauer <= 2600, `Rollen dauert ${dauer} ms (Soll 2 s)`);
   const k = await page.evaluate(() => window.wuerfelSpiel.zahl);
   ok(await page.textContent('#augenzahl') === String(k), `Würfel zeigt die gezogene Zahl ${k}`);
-  ok(await page.evaluate(() => document.querySelector('#wuerfel').style.transform) === '', 'Würfel steht danach gerade');
+  ok(await lage(page) === RUHELAGE, 'Würfel liegt danach wieder in Ruhelage');
+  const seitenNach = await page.evaluate(() => window.wuerfelSpiel.seiten);
+  const verboten = [String(k), String(8 - k)];
+  ok(!verboten.includes(seitenNach.oben) && !verboten.includes(seitenNach.rechts),
+    `Nebenseiten zeigen weder ${k} noch die Lösung ${8 - k} (oben ${seitenNach.oben}, rechts ${seitenNach.rechts})`);
   ok(await gleichung(page) === `${k}+?=8` && await sichtbar(page, '#gleichung'), `Gleichung „${k} + ? = 8“`);
   if (bilder) await page.screenshot({ path: `${bilder}/3-frage.png` });
 
@@ -100,6 +117,9 @@ console.log('Startseite');
   ok(await page.evaluate(() => document.body.classList.contains('gut')), 'Richtige Zahl: grüner Hintergrund');
   ok(await page.evaluate(() => window.wuerfelSpiel.stand.sterne) === sterne + 1, 'Richtige Zahl: ein Stern mehr');
   ok(await gleichung(page) === `${k}+${8 - k}=8`, `Lösung steht da: ${k} + ${8 - k} = 8`);
+  await page.waitForTimeout(450);                    // Lösung ploppt 0,35 s lang auf
+  const ab = await abstaende(page);
+  ok(gleichmaessig(ab), `Gleiche Abstände in der Gleichung (${ab.join(' / ')} px)`);
   await page.waitForTimeout(500);
   if (bilder) await page.screenshot({ path: `${bilder}/4-richtig.png` });
 
@@ -131,17 +151,23 @@ console.log('Ganze Runden (jede Zerlegung genau einmal)');
   for (const n of [4, 10]) {
     await page.evaluate(n => window.wuerfelSpiel.starteSpiel(n), n);
     const gezogen = [];
-    let alleRichtig = true;
+    let alleRichtig = true, verraten = 0;
     for (let i = 0; i <= n; i++) {
       const k = await wuerfle(page);                  // in „geloest“ startet ein Tipp sofort den nächsten Wurf
       gezogen.push(k);
+      const sn = await page.evaluate(() => window.wuerfelSpiel.seiten);
+      if ([sn.oben, sn.rechts].some(x => x === String(k) || x === String(n - k))) verraten++;
       await page.click(`.zahl[data-zahl="${n - k}"]`);
       if (await phase(page) !== 'geloest') alleRichtig = false;
     }
     const sortiert = [...gezogen].sort((a, b) => a - b).join(',');
     ok(alleRichtig && sortiert === Array.from({ length: n + 1 }, (_, i) => i).join(','),
       `${n}: ${n + 1} Würfe zeigen jede Zahl 0–${n} genau einmal (${gezogen.join(' ')})`);
+    ok(verraten === 0, `${n}: in keinem Wurf zeigt eine sichtbare Nebenseite Wurf oder Lösung`);
     ok((await page.textContent('#hinweis')).includes('Alle Zerlegungen'), `${n}: nach der Runde „Alle Zerlegungen geschafft“`);
+    await page.waitForTimeout(450);
+    const ab = await abstaende(page);
+    ok(gleichmaessig(ab), `${n}: gleiche Abstände in „${await gleichung(page)}“ (${ab.join(' / ')} px)`);
     const naechste = await page.evaluate(() => window.wuerfelSpiel.beutel);
     ok(naechste.length === n + 1 && naechste[naechste.length - 1] !== gezogen[n], `${n}: neue Runde beginnt nicht mit derselben Zahl`);
   }

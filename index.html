@@ -162,21 +162,6 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 
 .funken { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 25; }   /* Sterne */
 
-/* Regler für Staub (links) und Sterne (rechts), senkrecht */
-.regler {
-  position: absolute; top: 50%; transform: translateY(-50%); z-index: 3; width: 44px; padding: 6px 0;
-  display: flex; flex-direction: column; align-items: center; gap: 8px; touch-action: none; cursor: pointer;
-}
-.regler.links { left: -6px; } .regler.rechts { right: -6px; }
-.regler-zeichen { font-size: 20px; line-height: 1; }
-.regler-bahn { position: relative; width: 8px; height: clamp(110px, 26vh, 210px); border-radius: 4px; background: var(--wahl); }
-.regler-fuellung { position: absolute; left: 0; right: 0; bottom: 0; height: var(--anteil, 50%); border-radius: 4px; background: #c6b6ef; }
-.regler-knopf {
-  position: absolute; left: 50%; bottom: var(--anteil, 50%); width: 24px; height: 24px; border-radius: 50%;
-  background: #fff; border: 3px solid var(--ganz); transform: translate(-50%, 50%); box-shadow: 0 2px 6px rgba(43, 33, 64, .2);
-}
-.regler-wert { font-size: 12px; font-weight: 800; color: var(--leise); min-height: 1.2em; }
-
 /* Update-Banner (Mechanik siehe Skill app-update-iphone) */
 .update {
   position: fixed; left: 12px; right: 12px; top: max(env(safe-area-inset-top), 12px); z-index: 30;
@@ -221,16 +206,6 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
     <button class="ton" aria-label="Ton an oder aus"></button>
   </header>
   <section class="buehne">
-    <div class="regler links" id="regler-staub" role="slider" tabindex="0" aria-label="Wie viel Staub" aria-valuemin="0" aria-valuemax="4">
-      <span class="regler-zeichen" aria-hidden="true">💨</span>
-      <div class="regler-bahn"><div class="regler-fuellung"></div><div class="regler-knopf"></div></div>
-      <span class="regler-wert"></span>
-    </div>
-    <div class="regler rechts" id="regler-sterne" role="slider" tabindex="0" aria-label="Wie viele Sterne" aria-valuemin="0" aria-valuemax="60">
-      <span class="regler-zeichen" aria-hidden="true">⭐</span>
-      <div class="regler-bahn"><div class="regler-fuellung"></div><div class="regler-knopf"></div></div>
-      <span class="regler-wert"></span>
-    </div>
     <div class="sockel">
       <canvas class="staub" id="staub" aria-hidden="true"></canvas>
       <button class="wuerfel" id="wuerfel" aria-label="Würfeln">
@@ -251,7 +226,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 </main>
 
 <script>
-const APP_VERSION = '0.13';          // bei JEDER Änderung hochzählen
+const APP_VERSION = '0.14';          // bei JEDER Änderung hochzählen
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
@@ -259,14 +234,14 @@ const $$ = s => document.querySelectorAll(s);
 /* ---------- Zustand ---------- */
 const ZAHLEN = [4, 5, 6, 7, 8, 9, 10];
 const SPEICHER = 'wuerfel.stand';
-const stand = { n: 10, ton: true, sterne: 0, staub: 2, sternFlug: 18 };   // staub: Faktor, sternFlug: Anzahl
+const stand = { n: 10, ton: true, sterne: 0 };
+const STAUB = 4;                    // Staubmenge (Faktor), am Gerät ausprobiert: Maximum
+const STERNE = 60;                  // Sterne bei richtiger Antwort (nach einer ganzen Runde 2,2-mal so viele)
 try {
   const s = JSON.parse(localStorage.getItem(SPEICHER)) || {};
   if (ZAHLEN.includes(s.n)) stand.n = s.n;
   if (s.ton === false) stand.ton = false;
   if (Number.isInteger(s.sterne) && s.sterne >= 0) stand.sterne = s.sterne;
-  if (typeof s.staub === 'number' && s.staub >= 0 && s.staub <= 4) stand.staub = s.staub;
-  if (Number.isInteger(s.sternFlug) && s.sternFlug >= 0 && s.sternFlug <= 60) stand.sternFlug = s.sternFlug;
 } catch (_) {}
 function speichereAlles() { try { localStorage.setItem(SPEICHER, JSON.stringify(stand)); } catch (_) {} }
 
@@ -379,9 +354,9 @@ kornBild.width = kornBild.height = 64;
   g.addColorStop(0, 'rgba(150, 128, 100, 1)'); g.addColorStop(1, 'rgba(150, 128, 100, 0)');
   c.fillStyle = g; c.fillRect(0, 0, 64, 64);
 }
-const staubMenge = n => Math.round(n * stand.staub);                        // Regler: aus … 4×
+const staubMenge = n => Math.round(n * STAUB);
 function korn(x, y, vx, vy, groesse, dauer) {
-  groesse *= 1 + 0.12 * (stand.staub - 1);                                   // viel Staub: auch etwas dicker
+  groesse *= 1 + 0.12 * (STAUB - 1);                                         // viel Staub: auch etwas dicker
   koerner.push({ x, y, vx, vy, r: groesse, leben: 0, dauer, alpha: 0.32 + Math.random() * 0.28 });
   if (!staubRaf) { staubZuletzt = 0; staubRaf = requestAnimationFrame(staubSchritt); }
 }
@@ -623,7 +598,7 @@ function schritt(t) {
   const { weg, groesse, breit, flach } = bewegung(p);
   if (p >= AUFPRALL && !lauf.aufgeschlagen) { lauf.aufgeschlagen = true; klang.landen(); staubWolke(); }
   if (p < 0.5) {                                                              // Staub, solange er schnell dreht
-    lauf.staub += 160 * stand.staub * (1 - p / 0.5) * Math.max(0, (t - (lauf.tz || t)) / 1000);
+    lauf.staub += 160 * STAUB * (1 - p / 0.5) * Math.max(0, (t - (lauf.tz || t)) / 1000);
     while (lauf.staub >= 1) { lauf.staub--; streue(1, 1 - p / 0.5); }
   }
   lauf.tz = t;
@@ -777,7 +752,7 @@ function antwort(k, btn) {
   zeigeGleichung(zahl, k);
   const rundeFertig = !beutel.length;
   faerbe('gut', rundeFertig ? 2600 : 1600);
-  sterneAus(gleichungEl.querySelector('.rest'), Math.round(stand.sternFlug * (rundeFertig ? 2.2 : 1)));
+  sterneAus(gleichungEl.querySelector('.rest'), Math.round(STERNE * (rundeFertig ? 2.2 : 1)));
   if (rundeFertig) {
     klang.runde();
     hinweisEl.textContent = 'Alle Zerlegungen der ' + stand.n + ' geschafft!';
@@ -792,36 +767,6 @@ function antwort(k, btn) {
     if (phase === 'geloest') bereit(rundeFertig ? 'Neue Runde: Tippe auf den Würfel!' : undefined);
   }, rundeFertig ? 3000 : 1800);
 }
-
-/* ---------- Regler (senkrecht, eigene Bauart – verhält sich auf dem iPhone überall gleich) ---------- */
-function regler(el, min, max, schritt, wert, text, setzen, probe) {
-  const bahn = el.querySelector('.regler-bahn');
-  let v = wert;
-  const zeige = () => {
-    el.style.setProperty('--anteil', ((v - min) / (max - min) * 100).toFixed(1) + '%');
-    el.setAttribute('aria-valuenow', v); el.setAttribute('aria-valuetext', text(v));
-    el.querySelector('.regler-wert').textContent = text(v);
-  };
-  const ausY = y => {
-    const r = bahn.getBoundingClientRect(), a = Math.min(1, Math.max(0, (r.bottom - y) / r.height));
-    return +(Math.round((min + a * (max - min)) / schritt) * schritt).toFixed(2);
-  };
-  const neu = n => { if (n !== v) { v = n; zeige(); setzen(v); speichereAlles(); } };
-  el.addEventListener('pointerdown', e => { el.setPointerCapture(e.pointerId); neu(ausY(e.clientY)); e.preventDefault(); });
-  el.addEventListener('pointermove', e => { if (el.hasPointerCapture(e.pointerId)) neu(ausY(e.clientY)); });
-  el.addEventListener('pointerup', () => probe(v));                         // beim Loslassen: Probe zeigen
-  el.addEventListener('keydown', e => {
-    if (e.key === 'ArrowUp') neu(Math.min(max, +(v + schritt).toFixed(2)));
-    else if (e.key === 'ArrowDown') neu(Math.max(min, +(v - schritt).toFixed(2)));
-    else return;
-    e.preventDefault(); probe(v);
-  });
-  zeige();
-}
-regler($('#regler-staub'), 0, 4, 0.25, stand.staub, v => v ? v.toString().replace('.', ',') + '×' : 'aus',
-  v => { stand.staub = v; }, () => { if (phase !== 'rollt') { streue(staubMenge(30), 1); staubWolke(); } });
-regler($('#regler-sterne'), 0, 60, 1, stand.sternFlug, v => String(v),
-  v => { stand.sternFlug = v; }, v => sterneAus($('#regler-sterne .regler-knopf'), v));
 
 /* ---------- Verdrahtung ---------- */
 // Ältere iPhones und eingebettete Browser federn trotz CSS: dort jedes Wischen abfangen.
@@ -931,7 +876,6 @@ window.wuerfelSpiel = {
   get zahl() { return zahl; }, get phase() { return phase; }, get beutel() { return beutel.slice(); },
   get staub() { return koerner.length; }, bewegung, ROLLZEIT, AUFPRALL,
   get sterne() { return funken.length; },
-  setzeRegler(staub, sternFlug) { stand.staub = staub; stand.sternFlug = sternFlug; },
   get seiten() { return Object.fromEntries(Object.keys(seiten).map(k => [k, seiten[k].el.textContent])); },
 };
 </script>

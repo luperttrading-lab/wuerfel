@@ -134,7 +134,7 @@ console.log('Startseite');
   const kante = await page.evaluate(() => document.querySelector('#koerper').offsetWidth);
   ok(verschoben < kante * 0.06, `Er bleibt dabei auf der Stelle (höchstens ${verschoben.toFixed(1)} px beim Stauchen)`);
   ok(gestaucht < 0.94, `Beim Aufprall staucht er sich (flach auf ${Math.round(gestaucht * 100)} %)`);
-  ok(staubMax >= 10, `Beim Wirbeln fliegt Staub (bis ${staubMax} Körner gleichzeitig)`);
+  ok(staubMax >= 150, `Beim Wirbeln fliegt viel Staub (bis ${staubMax} Körner gleichzeitig)`);
   ok(lagenRollen.size >= 20 && wechsel >= 6, `Beim Rollen überschlägt er sich (${lagenRollen.size} Lagen) und die Zahlen wechseln (${wechsel}×)`);
   ok(dauer >= 1900 && dauer <= 2600, `Rollen dauert ${dauer} ms (Soll 2 s)`);
   const k = await page.evaluate(() => window.wuerfelSpiel.zahl);
@@ -160,7 +160,7 @@ console.log('Startseite');
   await page.click(`.zahl[data-zahl="${8 - k}"]`);
   ok(await page.evaluate(() => document.body.classList.contains('gut')), 'Richtige Zahl: grüner Hintergrund');
   ok(await page.evaluate(() => window.wuerfelSpiel.stand.sterne) === sterne + 1, 'Richtige Zahl: ein Stern mehr');
-  ok(await page.evaluate(() => window.wuerfelSpiel.sterne) >= 10, 'Richtige Zahl: Sterne fliegen');
+  ok(await page.evaluate(() => window.wuerfelSpiel.sterne) >= 55, 'Richtige Zahl: 60 Sterne fliegen');
   ok(await gleichung(page) === `${k}+${8 - k}=8`, `Lösung steht da: ${k} + ${8 - k} = 8`);
   await page.waitForTimeout(450);                    // Lösung ploppt 0,35 s lang auf
   const ab = await abstaende(page);
@@ -187,49 +187,6 @@ console.log('Startseite');
   const nach = await page.evaluate(() => [document.querySelector('#zahlwahl').getBoundingClientRect().top, document.documentElement.scrollHeight]);
   ok(vor[0] === nach[0] && vor[1] === nach[1], 'Banner verschiebt den Inhalt nicht');
 
-  ok(konsole.length === 0, 'Keine Fehler in der Konsole' + (konsole.length ? ': ' + konsole.join(' | ') : ''));
-  await ctx.close();
-}
-
-console.log('Regler für Staub und Sterne');
-{
-  const { page, konsole, ctx } = await seite(390, 844);
-  await page.click('#zahlwahl button[data-n="6"]');
-  const wert = sel => page.textContent(sel + ' .regler-wert');
-  ok(await wert('#regler-staub') === '2×' && await wert('#regler-sterne') === '18', 'Startwerte: Staub 2×, Sterne 18');
-  const ueberlappt = await page.evaluate(() => {
-    const w = document.querySelector('#wuerfel').getBoundingClientRect();
-    return [...document.querySelectorAll('.regler')].some(el => {
-      const r = el.getBoundingClientRect();
-      return r.left < w.right && r.right > w.left && r.top < w.bottom && r.bottom > w.top;
-    });
-  });
-  ok(!ueberlappt, 'Regler liegen neben dem Würfel, nicht darauf');
-  // Ziehen: ganz nach unten = aus / 0
-  async function ziehe(sel, nachUnten) {
-    const r = await page.evaluate(sel => { const b = document.querySelector(sel + ' .regler-bahn').getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2, unten: b.bottom, oben: b.top }; }, sel);
-    await page.mouse.move(r.x, r.y); await page.mouse.down();
-    await page.mouse.move(r.x, nachUnten ? r.unten + 30 : r.oben - 30, { steps: 5 }); await page.mouse.up();
-  }
-  await ziehe('#regler-staub', true);
-  await ziehe('#regler-sterne', true);
-  ok(await wert('#regler-staub') === 'aus' && await wert('#regler-sterne') === '0', 'Nach unten gezogen: Staub aus, Sterne 0');
-  await page.waitForTimeout(1600);                    // Probe-Sterne/-Staub verfliegen lassen
-  await page.click('#wuerfel', { force: true });
-  let staubMax = 0;
-  while (await phase(page) === 'rollt') { staubMax = Math.max(staubMax, await page.evaluate(() => window.wuerfelSpiel.staub)); await page.waitForTimeout(50); }
-  ok(staubMax === 0, 'Staub aus: beim Würfeln fliegt keiner');
-  const k = await page.evaluate(() => window.wuerfelSpiel.zahl);
-  await page.click(`.zahl[data-zahl="${6 - k}"]`);
-  ok(await page.evaluate(() => window.wuerfelSpiel.sterne) === 0, 'Sterne 0: bei richtiger Antwort fliegen keine');
-  await ziehe('#regler-staub', false);
-  await ziehe('#regler-sterne', false);
-  ok(await wert('#regler-staub') === '4×' && await wert('#regler-sterne') === '60', 'Nach oben gezogen: Staub 4×, Sterne 60');
-  ok(await page.evaluate(() => window.wuerfelSpiel.sterne) >= 50, 'Beim Loslassen fliegen zur Probe so viele Sterne');
-  await page.reload();
-  await page.click('#zahlwahl button[data-n="6"]');
-  ok(await wert('#regler-staub') === '4×' && await wert('#regler-sterne') === '60', 'Einstellungen bleiben nach dem Neuladen');
-  await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('wuerfel.stand')); s.staub = 2; s.sternFlug = 18; localStorage.setItem('wuerfel.stand', JSON.stringify(s)); });
   ok(konsole.length === 0, 'Keine Fehler in der Konsole' + (konsole.length ? ': ' + konsole.join(' | ') : ''));
   await ctx.close();
 }
@@ -289,8 +246,8 @@ for (const [breite, hoehe] of [[390, 844], [375, 667]]) {
     const y = await page.evaluate(() => window.scrollY + document.documentElement.scrollTop + document.body.scrollTop);
     ok(m.fest && m.y === 0 && y === 0, `${breite}×${hoehe} ${ziel === 'start' ? 'Startseite' : 'Spielseite'}: steht fest, scrollt nicht`);
   }
-  // Inhalt der Spielseite passt komplett: unterster Knopf und Regler innerhalb des Bildschirms
-  const passt = await page.evaluate(() => [...document.querySelectorAll('#spielseite .zahl, #spielseite .regler')]
+  // Inhalt der Spielseite passt komplett: alle Zahlknöpfe innerhalb des Bildschirms
+  const passt = await page.evaluate(() => [...document.querySelectorAll('#spielseite .zahl')]
     .every(el => el.getBoundingClientRect().bottom <= innerHeight && el.getBoundingClientRect().top >= 0));
   ok(passt, `${breite}×${hoehe}: alles Nötige ist sichtbar, ohne zu scrollen`);
   await ctx.close();

@@ -12,7 +12,7 @@ Lernspiel fürs Handy, damit sich die Zerlegungen der Zahlen 4 bis 10 als **Ziff
    In Ruhe steht vorne die gewählte Zahl (lila), die Nebenseiten sind grau.
 3. **Antippen:** Luftzug-Geräusch, dann wirbelt er 2 Sekunden auf der Stelle und wird langsamer:
    fünf Überschläge, zwei Drehungen seitwärts, eine um die eigene Mitte. Dabei wird er kleiner
-   (bis 70 %) und wieder groß, der Schatten schrumpft mit; Staub stiebt kräftig hinter ihm hervor
+   (bis 70 %) und wieder groß, der Schatten schrumpft mit; Staub stiebt kräftig (4×) hinter ihm hervor
    und verweht bis etwa 1,9 s. Bei 1,76 s schlägt er auf: „Bumm“, er staucht sich kurz (91 % hoch),
    ein Staubwölkchen am Boden. Die Ziffern wirken eingeprägt. Bei jedem
    Überschlag klickt es (25-mal). Seiten, die gerade nach hinten zeigen, bekommen neue Zahlen;
@@ -23,13 +23,12 @@ Lernspiel fürs Handy, damit sich die Zerlegungen der Zahlen 4 bis 10 als **Ziff
    Drehen ist hier der Kern des Spiels.
 4. Unten die fehlende Zahl antippen (Knöpfe 0 bis zur gewählten Zahl).
    Richtig → grün, Fanfare, `3 + 5 = 8`, aus der eingesetzten Zahl steigt eine Fontäne goldener
-   Sterne (18, nach einer ganzen Runde 40). Falsch → rot, tiefer Ton, nochmal versuchen.
+   Sterne (60, nach einer ganzen Runde 132). Falsch → rot, tiefer Ton, nochmal versuchen.
 5. Danach zeigt der Würfel wieder die 8; die gelöste Gleichung bleibt zum Einprägen stehen,
    bis zum nächsten Antippen. Vor der ersten Aufgabe steht nur „Tippe auf den Würfel!“.
 
-**Regler** (Spielseite, senkrecht): links 💨 Staub von aus bis 4× (Start 2×), rechts ⭐ Sterne von 0
-bis 60 (Start 18; nach einer ganzen Runde 2,2-mal so viele). Beim Loslassen zeigt eine Probe die
-Menge; die Werte bleiben gespeichert.
+**Effekte** (am Gerät mit Reglern ausprobiert, dann fest eingestellt): Staub 4× (`STAUB`), 60 Sterne
+bei jeder richtigen Antwort, 132 nach einer ganzen Runde (`STERNE`).
 
 **Zufall:** Gezogen wird **ohne Zurücklegen**: Jede Zerlegung 0 + n … n + 0 kommt pro Runde
 genau einmal (bei 10: 11 Würfe statt im Mittel 11 · H₁₁ ≈ 33,2 mit einem echten Würfel), danach

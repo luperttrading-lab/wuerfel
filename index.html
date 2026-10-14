@@ -88,15 +88,15 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   position: relative; width: var(--s); height: var(--s);
   transform-style: preserve-3d; transform: rotateX(-10deg) rotateY(-12deg); will-change: transform;
 }
-.flaeche, .kern { position: absolute; inset: 0; }
-.flaeche {
-  display: grid; place-items: center; border-radius: 6%;   /* mehr Rundung wirkt wie Deckel und lose Platten */
+.flaeche {               /* scharfe Ecken (runde lassen an den Würfelecken Löcher); die Rundung deutet der Randschatten an */
+  position: absolute; inset: -0.5px;   /* halber Pixel Überlappung: keine hellen Fugen an den Kanten */
+  display: grid; place-items: center;
   background: radial-gradient(circle at 35% 30%, #fff 0%, #fcfaff 55%, #f0e9fa 100%);
-  box-shadow: inset 0 0 0 1px rgba(108, 75, 216, .10), inset 0 0 calc(var(--s) * .09) rgba(108, 75, 216, .14);
+  box-shadow: inset 0 0 0 1px rgba(108, 75, 216, .16), inset 0 0 calc(var(--s) * .14) rgba(108, 75, 216, .20);
   -webkit-backface-visibility: hidden; backface-visibility: hidden;
 }
 .flaeche::after {         /* Licht und Schatten je nach Lage der Seite, aus dem Skript gesetzt */
-  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  content: ""; position: absolute; inset: 0;
   background: var(--ink); opacity: var(--schatten, 0); pointer-events: none;
 }
 .flaeche span {
@@ -109,10 +109,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 .links  { transform: rotateY(-90deg) translateZ(calc(var(--s) / 2)); }
 .oben   { transform: rotateX(90deg) translateZ(calc(var(--s) / 2)); }
 .unten  { transform: rotateX(-90deg) translateZ(calc(var(--s) / 2)); }
-.kern { inset: 3%; background: #ddd3ee; border-radius: 6%; }  /* füllt die Ecken; 3 % innen, sonst flackern ihre Kanten durch die Flächen */
 .koerper, .koerper * { pointer-events: none; }  /* Tipps gehen an den Knopf, gedrehte Flächen liegen nie im Weg */
-.kern.kx { transform: rotateY(90deg); }
-.kern.ky { transform: rotateX(90deg); }
 .wuerfel.rollt .flaeche span { color: var(--ink); }
 .wuerfel.ganz .vorne span { color: var(--ganz); }
 .wuerfel.gelandet .vorne span { color: var(--teil); }
@@ -203,7 +200,6 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
     <div class="sockel">
       <button class="wuerfel" id="wuerfel" aria-label="Würfeln">
         <div class="koerper" id="koerper">
-          <i class="kern"></i><i class="kern kx"></i><i class="kern ky"></i>
           <div class="flaeche vorne"><span id="augenzahl"></span></div>
           <div class="flaeche hinten"><span></span></div>
           <div class="flaeche rechts"><span></span></div>
@@ -220,7 +216,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 </main>
 
 <script>
-const APP_VERSION = '0.6';          // bei JEDER Änderung hochzählen
+const APP_VERSION = '0.7';          // bei JEDER Änderung hochzählen
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
@@ -240,7 +236,6 @@ function speichereAlles() { try { localStorage.setItem(SPEICHER, JSON.stringify(
 const startEl = $('#startseite'), spielEl = $('#spielseite');
 const wuerfelEl = $('#wuerfel'), koerperEl = $('#koerper'), gleichungEl = $('#gleichung');
 const hinweisEl = $('#hinweis'), zahlenEl = $('#zahlen');
-const ruhig = matchMedia('(prefers-reduced-motion: reduce)');
 const LOB = ['Richtig!', 'Super!', 'Toll!', 'Prima!', 'Klasse!'];
 
 let phase = 'start';                // 'start' | 'bereit' | 'rollt' | 'frage' | 'geloest'
@@ -393,10 +388,9 @@ function schritt(t) {
   const kante = koerperEl.offsetWidth;
   const luft = p < AUFPRALL ? Math.sin(Math.PI * p / AUFPRALL) : 0.15 * Math.sin(Math.PI * (p - AUFPRALL) / (1 - AUFPRALL));
   if (p >= AUFPRALL && !lauf.aufgeschlagen) { lauf.aufgeschlagen = true; klang.landen(); }
-  if (!ruhig.matches) {
-    stelle(ax, ay, az, luft * kante * 0.4, (p < AUFPRALL ? luft : 0) * kante * 0.35);
-    sockelEl.style.setProperty('--sprung', luft.toFixed(3));
-  }
+  // Bewusst auch bei „Bewegung reduzieren“: Das Drehen ist hier der Kern des Spiels (Wunsch des Auftraggebers).
+  stelle(ax, ay, az, luft * kante * 0.4, (p < AUFPRALL ? luft : 0) * kante * 0.35);
+  sockelEl.style.setProperty('--sprung', luft.toFixed(3));
   if (p >= 1) { landen(); return; }
   rafId = requestAnimationFrame(schritt);
 }

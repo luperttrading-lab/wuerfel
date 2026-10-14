@@ -23,8 +23,11 @@ let fehler = 0;
 const ok = (bed, text) => { console.log((bed ? '  ok   ' : '  FEHLER ') + text); if (!bed) fehler++; };
 const browser = await pw.chromium.launch();
 
-async function seite(breite, hoehe) {
-  const ctx = await browser.newContext({ viewport: { width: breite, height: hoehe }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
+async function seite(breite, hoehe, ruhig = false) {
+  const ctx = await browser.newContext({
+    viewport: { width: breite, height: hoehe }, deviceScaleFactor: 2, hasTouch: true, isMobile: true,
+    reducedMotion: ruhig ? 'reduce' : 'no-preference',
+  });
   const page = await ctx.newPage();
   const konsole = [];
   page.on('pageerror', e => konsole.push(e.message));
@@ -184,6 +187,17 @@ console.log('Ganze Runden (jede Zerlegung genau einmal)');
     ok(naechste.length === n + 1 && naechste[naechste.length - 1] !== gezogen[n], `${n}: neue Runde beginnt nicht mit derselben Zahl`);
   }
   ok(konsole.length === 0, 'Keine Fehler in der Konsole' + (konsole.length ? ': ' + konsole.join(' | ') : ''));
+  await ctx.close();
+}
+
+console.log('Auch mit „Bewegung reduzieren“ (iPhone: Bedienungshilfen → Bewegung)');
+{
+  const { page, ctx } = await seite(390, 844, true);
+  await page.click('#zahlwahl button[data-n="6"]');
+  await page.click('#wuerfel', { force: true });
+  const lagen = new Set();
+  while (await phase(page) === 'rollt') { lagen.add(await lage(page)); await page.waitForTimeout(40); }
+  ok(lagen.size >= 10, `Der ganze Würfel dreht sich trotzdem (${lagen.size} Lagen gesehen)`);
   await ctx.close();
 }
 

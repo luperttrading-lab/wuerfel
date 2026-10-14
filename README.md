@@ -15,6 +15,8 @@ Lernspiel fürs Handy, damit sich die Zerlegungen der Zahlen 4 bis 10 als **Ziff
    die Vorderseite bekommt die ausgeloste Zahl, solange sie verdeckt ist (bis 1,56 s), und liegt
    ab 1,72 s vorn (blau). Darunter steht `3 + ? = 8`. Die sichtbaren Nebenseiten zeigen nie die
    gewürfelte Zahl oder die Lösung.
+   Der Würfel dreht sich auch, wenn am iPhone „Bewegung reduzieren“ eingeschaltet ist – das
+   Drehen ist hier der Kern des Spiels.
 4. Unten die fehlende Zahl antippen (Knöpfe 0 bis zur gewählten Zahl).
    Richtig → grün, Fanfare, `3 + 5 = 8`. Falsch → rot, tiefer Ton, nochmal versuchen.
 5. Danach zeigt der Würfel wieder die 8; die gelöste Gleichung bleibt zum Einprägen stehen,

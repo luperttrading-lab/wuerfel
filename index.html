@@ -88,27 +88,24 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   position: relative; width: var(--s); height: var(--s);
   transform-style: preserve-3d; transform: rotateX(-10deg) rotateY(-12deg); will-change: transform;
 }
-.flaeche {               /* scharfe Ecken (runde lassen an den Würfelecken Löcher); die Rundung deutet der Randschatten an */
-  position: absolute; inset: -0.5px;   /* halber Pixel Überlappung: keine hellen Fugen an den Kanten */
-  display: grid; place-items: center;
-  background: radial-gradient(circle at 35% 30%, #fff 0%, #fcfaff 55%, #f0e9fa 100%);
-  box-shadow: inset 0 0 0 1px rgba(108, 75, 216, .16), inset 0 0 calc(var(--s) * .14) rgba(108, 75, 216, .20);
+/* Würfel aus 26 Teilen: 6 Flächen, 12 schräge Kantenstreifen, 8 Eckdreiecke. Größe und Lage
+   rechnet das Skript (baueKoerper); die Kantenstreifen bekommen einen Verlauf, der sie rund wirken lässt. */
+.flaeche, .kante, .ecke {
+  position: absolute; left: 50%; top: 50%;
   -webkit-backface-visibility: hidden; backface-visibility: hidden;
 }
-.flaeche::after {         /* Licht und Schatten je nach Lage der Seite, aus dem Skript gesetzt */
-  content: ""; position: absolute; inset: 0;
-  background: var(--ink); opacity: var(--schatten, 0); pointer-events: none;
+.flaeche { display: grid; place-items: center; background: radial-gradient(circle at 35% 30%, #fff 0%, #fcfaff 60%, #f5f0fc 100%); }
+.kante, .ecke { background: #f5f0fc; }
+.flaeche::after, .kante::after { content: ""; position: absolute; inset: 0; pointer-events: none; }
+.flaeche::after { background: rgba(43, 33, 64, var(--m, 0)); }          /* Licht je nach Lage */
+.kante::after {
+  background: linear-gradient(to bottom, rgba(43, 33, 64, var(--o, 0)), rgba(43, 33, 64, var(--m, 0)), rgba(43, 33, 64, var(--u, 0)));
 }
 .flaeche span {
+  position: relative; z-index: 1;
   font-size: calc(var(--s) * .56); font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums;
   color: #c9bfdb; transition: color .25s ease;
 }
-.vorne  { transform: translateZ(calc(var(--s) / 2)); }
-.hinten { transform: rotateY(180deg) translateZ(calc(var(--s) / 2)); }
-.rechts { transform: rotateY(90deg) translateZ(calc(var(--s) / 2)); }
-.links  { transform: rotateY(-90deg) translateZ(calc(var(--s) / 2)); }
-.oben   { transform: rotateX(90deg) translateZ(calc(var(--s) / 2)); }
-.unten  { transform: rotateX(-90deg) translateZ(calc(var(--s) / 2)); }
 .koerper, .koerper * { pointer-events: none; }  /* Tipps gehen an den Knopf, gedrehte Flächen liegen nie im Weg */
 .wuerfel.rollt .flaeche span { color: var(--ink); }
 .wuerfel.ganz .vorne span { color: var(--ganz); }
@@ -216,7 +213,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 </main>
 
 <script>
-const APP_VERSION = '0.7';          // bei JEDER Änderung hochzählen
+const APP_VERSION = '0.8';          // bei JEDER Änderung hochzählen
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
@@ -339,6 +336,76 @@ const NORMALE = { vorne: [0, 0, 1], hinten: [0, 0, -1], rechts: [1, 0, 0], links
 const seiten = {};
 for (const k in NORMALE) seiten[k] = { el: $('.flaeche.' + k), weg: false };
 const sockelEl = wuerfelEl.parentElement;
+
+/* ---- Geometrie: Würfel mit abgerundeten Kanten (Fase mit Verlauf) ---- */
+const RUNDUNG = 0.1;                                    // Breite der Kantenfase als Anteil der Kantenlänge
+// Achsen jeder Fläche: u = Schriftrichtung, v = nach unten, n = nach außen (u × v = n)
+const ACHSEN = {
+  vorne: [[1, 0, 0], [0, 1, 0]], hinten: [[-1, 0, 0], [0, 1, 0]],
+  rechts: [[0, 0, -1], [0, 1, 0]], links: [[0, 0, 1], [0, 1, 0]],
+  oben: [[1, 0, 0], [0, 0, 1]], unten: [[1, 0, 0], [0, 0, -1]],
+};
+const plus = (a, b) => a.map((x, i) => x + b[i]), minus = (a, b) => a.map((x, i) => x - b[i]);
+const mal = (a, k) => a.map(x => x * k), punkt = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const kreuz = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const einheit = a => mal(a, 1 / Math.hypot(...a));
+const kanten = [], ecken = [];
+function platziere(el, u, v, n, t, breite, hoehe) {
+  el.style.width = breite + 'px'; el.style.height = hoehe + 'px';
+  el.style.marginLeft = -breite / 2 + 'px'; el.style.marginTop = -hoehe / 2 + 'px';
+  el.style.transform = `matrix3d(${[...u, 0, ...v, 0, ...n, 0, ...t, 1].map(x => +x.toFixed(4)).join(',')})`;
+}
+function baueKoerper() {
+  const s = koerperEl.offsetWidth; if (!s) return;
+  const h = s / 2, c = s * RUNDUNG, ueber = 1;           // 1 px Überlappung gegen helle Fugen
+  for (const k in seiten) {
+    const [u, v] = ACHSEN[k];
+    platziere(seiten[k].el, u, v, NORMALE[k], mal(NORMALE[k], h), s - 2 * c + ueber, s - 2 * c + ueber);
+  }
+  if (!kanten.length) {                                   // einmal anlegen: 12 Kanten, 8 Ecken
+    const namen = Object.keys(NORMALE);
+    for (let i = 0; i < 6; i++) for (let j = i + 1; j < 6; j++) {
+      if (punkt(NORMALE[namen[i]], NORMALE[namen[j]]) !== 0) continue;
+      const el = document.createElement('i'); el.className = 'kante'; koerperEl.append(el);
+      kanten.push({ el, a: namen[i], b: namen[j] });
+    }
+    for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) {
+      const el = document.createElement('i'); el.className = 'ecke'; koerperEl.append(el);
+      ecken.push({ el, s: [sx, sy, sz], n: einheit([sx, sy, sz]) });
+    }
+  }
+  for (const k of kanten) {                               // Streifen zwischen zwei Flächen, 45° geneigt
+    const nA = NORMALE[k.a], nB = NORMALE[k.b];
+    const n = einheit(plus(nA, nB)), u = kreuz(nA, nB), v = kreuz(n, u);
+    k.n = n;
+    k.aUnten = punkt(minus(nA, nB), v) > 0;                 // liegt Fläche a am unteren Rand des Streifens?
+    platziere(k.el, u, v, n, mal(n, (s - c) / Math.SQRT2), s - 2 * c + ueber, c * Math.SQRT2 + ueber);
+  }
+  for (const e of ecken) {                                // Dreieck zwischen den drei Flächenecken
+    const [sx, sy, sz] = e.s;
+    const P = [[sx * h, sy * (h - c), sz * (h - c)], [sx * (h - c), sy * h, sz * (h - c)], [sx * (h - c), sy * (h - c), sz * h]];
+    const t = mal(plus(plus(P[0], P[1]), P[2]), 1 / 3);
+    const u = einheit(minus(P[0], P[1])), v = kreuz(e.n, u);
+    const lokal = P.map(q => { const d = minus(q, t); return [punkt(d, u), punkt(d, v)]; });   // exakt: größer ragt über den Würfel
+    const L = 2 * Math.max(...lokal.flat().map(Math.abs)) + 2;
+    e.el.style.clipPath = `polygon(${lokal.map(([x, y]) => `${(50 + x / L * 100).toFixed(2)}% ${(50 + y / L * 100).toFixed(2)}%`).join(', ')})`;
+    platziere(e.el, u, v, e.n, t, L, L);
+    // Licht baryzentrisch: jede Spitze dunkelt wie die Fläche, die sie berührt (P[i] liegt auf Fläche i),
+    // linear auslaufend bis zur gegenüberliegenden Seite – drei übereinandergelegte Verläufe.
+    e.flaechen = [0, 1, 2].map(i => Object.keys(NORMALE).find(k => NORMALE[k][i] === e.s[i]));
+    e.el.style.background = [0, 1, 2].map(i => {
+      const [q, r1, r2] = [lokal[i], lokal[(i + 1) % 3], lokal[(i + 2) % 3]];
+      const kante = einheit([r2[0] - r1[0], r2[1] - r1[1], 0]);
+      let d = [-kante[1], kante[0]];                                 // senkrecht zur Gegenseite …
+      if ((q[0] - r1[0]) * d[0] + (q[1] - r1[1]) * d[1] < 0) d = [-d[0], -d[1]];   // … zur Spitze hin
+      const winkel = Math.atan2(d[0], -d[1]) * 180 / Math.PI;       // CSS: 0deg = nach oben, im Uhrzeigersinn
+      const laenge = Math.abs(L * d[0]) + Math.abs(L * d[1]);
+      const pos = w => (w[0] * d[0] + w[1] * d[1] + laenge / 2).toFixed(2);
+      return `linear-gradient(${winkel.toFixed(2)}deg, rgba(43, 33, 64, 0) ${pos(r1)}px, rgba(43, 33, 64, var(--a${i}, 0)) ${pos(q)}px)`;
+    }).join(', ') + ', #f5f0fc';
+  }
+}
+window.addEventListener('resize', baueKoerper);
 let lauf = null, rafId = 0;
 
 function drehe([x, y, z], ax, ay, az = 0) {             // Normale nach rotateZ(az) rotateX(ax) rotateY(ay), wie im CSS
@@ -350,11 +417,15 @@ function drehe([x, y, z], ax, ay, az = 0) {             // Normale nach rotateZ(
 function stelle(ax, ay, az = 0, hoch = 0, nah = 0) {
   koerperEl.style.transform =
     `translate3d(0px, ${(-hoch).toFixed(1)}px, ${nah.toFixed(1)}px) rotateZ(${az}deg) rotateX(${ax}deg) rotateY(${ay}deg)`;
-  for (const k in seiten) {
-    const n = drehe(NORMALE[k], ax, ay, az);
-    const hell = Math.max(0, n[0] * LICHT[0] + n[1] * LICHT[1] + n[2] * LICHT[2]);
-    seiten[k].el.style.setProperty('--schatten', (0.2 * (1 - hell)).toFixed(3));
+  const schatten = n => (0.2 * (1 - Math.max(0, punkt(drehe(n, ax, ay, az), LICHT)))).toFixed(3);
+  const flaechen = {};
+  for (const k in seiten) { flaechen[k] = schatten(NORMALE[k]); seiten[k].el.style.setProperty('--m', flaechen[k]); }
+  for (const k of kanten) {                               // Verlauf von einer Nachbarfläche zur anderen: wirkt rund
+    k.el.style.setProperty('--m', schatten(k.n));
+    k.el.style.setProperty('--o', flaechen[k.aUnten ? k.b : k.a]);
+    k.el.style.setProperty('--u', flaechen[k.aUnten ? k.a : k.b]);
   }
+  for (const e of ecken) if (e.flaechen) e.flaechen.forEach((k, i) => e.el.style.setProperty('--a' + i, flaechen[k]));
 }
 function beschrifte(k, z) { seiten[k].el.firstElementChild.textContent = z; }
 function zeigeZiffer(z) { beschrifte('vorne', z); }
@@ -502,6 +573,8 @@ function starteSpiel(n) {
   zeigeStand();
   startEl.hidden = true;
   spielEl.hidden = false;
+  baueKoerper();
+  stelle(RUHE.x, RUHE.y);
   zeigeGleichung(0, null);                        // unsichtbar, hält aber ihren Platz – nichts springt
   for (const k in seiten) if (k !== 'vorne') beschrifte(k, zufallsZahl(n, k));
   gleichungEl.classList.add('weg');               // vor der ersten Aufgabe keine Gleichung

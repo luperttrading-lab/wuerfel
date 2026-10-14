@@ -7,6 +7,8 @@ Lernspiel fürs Handy, damit sich die Zerlegungen der Zahlen 4 bis 10 als **Ziff
 
 1. **Startseite:** „Welche Zahl zerlegen wir?“ – 4, 5, 6, 7, 8, 9 oder 10.
 2. **Echter 3D-Würfel**, fast von vorn (10° / 12° geneigt, oben und rechts nur schmale Kanten).
+   Abgerundete Kanten: 12 schräge Kantenstreifen mit Lichtverlauf und 8 Eckdreiecke mit
+   baryzentrisch gemischtem Licht – Lage und Größe aller 26 Teile rechnet `baueKoerper()`.
    In Ruhe steht vorne die gewählte Zahl (lila), die Nebenseiten sind grau.
 3. **Antippen:** Luftzug-Geräusch, dann wirbelt er 2 Sekunden lang und wird langsamer: fünf
    Überschläge, zwei Drehungen seitwärts, eine um die eigene Mitte, dazu ein Sprung auf den

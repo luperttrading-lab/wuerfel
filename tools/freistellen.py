@@ -46,11 +46,14 @@ def freistellen(bild, grund=None, rauschen=.04, aussen_blass=0):
     return rgba.crop(rgba.getchannel('A').point(lambda v: 255 if v > 25 else 0).getbbox())
 
 
-def ins_quadrat(rgba, groesse, anteil=.94):
-    """In ein durchsichtiges Quadrat einpassen; vormultipliert verkleinert, damit kein dunkler Saum entsteht."""
-    faktor = groesse * anteil / max(rgba.size)
+def zuschneiden(rgba, kante, rand=.02):
+    """Eng um das Tier, Seitenverhältnis bleibt (kein Quadrat mit leeren Streifen): die längere Seite wird
+    kante px, ringsum ein schmaler durchsichtiger Rand für den Schatten. Vormultipliert verkleinert,
+    damit kein dunkler Saum entsteht."""
+    faktor = kante * (1 - 2 * rand) / max(rgba.size)
     neu = (round(rgba.width * faktor), round(rgba.height * faktor))
     klein = rgba.convert('RGBa').resize(neu, Image.LANCZOS).convert('RGBA')
-    ziel = Image.new('RGBA', (groesse, groesse), (0, 0, 0, 0))
-    ziel.alpha_composite(klein, ((groesse - neu[0]) // 2, (groesse - neu[1]) // 2))
+    r = round(kante * rand)
+    ziel = Image.new('RGBA', (neu[0] + 2 * r, neu[1] + 2 * r), (0, 0, 0, 0))
+    ziel.alpha_composite(klein, (r, r))
     return ziel, faktor

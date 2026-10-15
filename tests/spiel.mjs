@@ -270,18 +270,21 @@ console.log('Tiere (einschaltbar)');
         return n;
       });
       if (verdeckt) zugedeckt.push(`${n}: ${verdeckt} Bildpunkte`);
+      const rechts = await page.evaluate(() => document.querySelector('#tier-zahl').getBoundingClientRect().right);
+      if (rechts > w) zugedeckt.push(`${n}: Plakette ragt aus dem Bild (${Math.round(rechts)} px)`);
     }
-    ok(!zugedeckt.length, `${w} px, ${satz}: Zahlplakette verdeckt bei keinem der 7 Tiere etwas` + (zugedeckt.length ? ' – ' + zugedeckt.join(', ') : ''));
+    ok(!zugedeckt.length, `${w} px, ${satz}: Zahlplakette verdeckt bei keinem der 7 Tiere etwas und bleibt im Bild` + (zugedeckt.length ? ' – ' + zugedeckt.join(', ') : ''));
   }
   await page.evaluate(() => { window.wuerfelSpiel.stand.tiere = 'sticker'; window.wuerfelSpiel.starteSpiel(7); });
-  for (const [w, h, min] of [[320, 568, 100], [375, 667, 160], [390, 844, 170], [430, 932, 190]]) {
+  for (const [w, h, min] of [[320, 568, 135], [375, 667, 205], [390, 844, 235], [430, 932, 260]]) {
     await page.setViewportSize({ width: w, height: h });
     const m = await page.evaluate(() => {
       const r = s => document.querySelector(s).getBoundingClientRect();
-      return { groesse: r('#tier-bild').width, oben: r('#tier-bild').top, unten: r('#tier-bild').bottom, kopf: r('#spielseite .kopf').bottom, wuerfel: r('.sockel').top };
+      let wuerfel = 1e9; for (const f of document.querySelectorAll('#koerper > *')) { const q = f.getBoundingClientRect(); if (q.width) wuerfel = Math.min(wuerfel, q.top); }
+      return { groesse: r('#tier-bild').height, oben: r('#tier-bild').top, unten: r('#tier-bild').bottom, kopf: r('#spielseite .kopf').bottom, wuerfel };
     });
     ok(m.groesse >= min && m.oben >= m.kopf && m.unten <= m.wuerfel,
-      `${w}×${h}: Tier groß (${Math.round(m.groesse)} px), zwischen Kopfzeile und Würfel`);
+      `${w}×${h}: Tier groß (${Math.round(m.groesse)} px hoch), zwischen Kopfzeile und ruhendem Würfel`);
   }
   await page.setViewportSize({ width: 390, height: 844 });
   const k = await wuerfle(page);

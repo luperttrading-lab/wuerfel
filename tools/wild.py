@@ -10,14 +10,14 @@ Aufruf im Projektordner: python3 tools/wild.py
 """
 from pathlib import Path
 from PIL import Image
-from freistellen import freistellen, ins_quadrat
+from freistellen import freistellen, zuschneiden
 
 QUELLE, ZIEL = Path('tiere/quelle/wild'), Path('tiere/wild')
-GROESSE = 560           # Anzeige 179 px × 3 auf dem iPhone (390 pt); Aquarell ist teuer, darum nicht 640
+GROESSE = 700           # längere Seite; Anzeige bis ~242 px × 3 = 726 auf dem iPhone (390 pt)
 
 ZIEL.mkdir(exist_ok=True)
 for n in range(4, 11):
     tier = freistellen(Image.open(QUELLE / f'{n}.jpg'))                      # Grund: Grau vom Bildrand
-    bild, faktor = ins_quadrat(tier, GROESSE)
+    bild, faktor = zuschneiden(tier, GROESSE)
     bild.save(ZIEL / f'{n}.webp', quality=68, alpha_quality=75, method=6)
-    print(f'tiere/wild/{n}.webp  Tier {tier.width}×{tier.height} px, ×{faktor:.2f}')
+    print(f'tiere/wild/{n}.webp  {bild.width}×{bild.height} px, ×{faktor:.2f}')

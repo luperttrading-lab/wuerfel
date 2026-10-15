@@ -63,11 +63,14 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 
 /* Tiere: jede Zahl hat ihr Tier (Vogel 4 … Zebra 10) – Anker „wir sind bei der 7, beim Seestern“.
    Zwei Sätze: Sticker (tiere/) und wild & bunt (tiere/wild/), Schalter 🐾 auf der Startseite. */
-/* Das Tier nimmt den freien Platz über dem Würfel: so groß, wie die Seite hergibt, höchstens 46 % der Breite
-   bzw. 210 px. Auf dem kleinen iPhone wird es kleiner, statt etwas aus dem Bild zu schieben. */
-.tier { position: relative; flex: 1 1 0; width: 100%; min-height: 70px; max-height: min(46vw, 210px);
+/* Das Tier nimmt den freien Platz über dem Würfel: so groß, wie die Seite hergibt, höchstens 62 % der Breite
+   bzw. 280 px hoch. Auf dem kleinen iPhone wird es kleiner, statt etwas aus dem Bild zu schieben.
+   Das Feld hat das Seitenverhältnis des Tiers (--seiten, vom Skript): breite Tiere werden breit, nicht klein.
+   Unten ragt es 12 px in die Luft über dem ruhenden Würfel (die braucht er nur beim Rollen). */
+.tier { position: relative; flex: 1 1 0; width: 100%; min-height: 70px; max-height: min(62vw, 280px); margin-bottom: -12px;
   display: flex; justify-content: center; }
-.tier-platte { position: relative; height: 100%; aspect-ratio: 1; container-type: size; }
+.tier-platte { position: relative; height: 100%; aspect-ratio: var(--seiten, 1); container-type: size;
+  max-width: calc(100vw - 150px); }            /* rechts bleibt Platz für die Zahlplakette */
 .tier img { width: 100%; height: 100%; object-fit: contain; display: block; filter: drop-shadow(0 4px 8px rgba(43, 33, 64, .22)); }
 .tier-zahl {
   /* wächst mit dem Tier (24 % des Bildes) und steht rechts unten daneben – die Sticker haben freie Formen,
@@ -84,7 +87,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 }
 .zahlwahl img { display: none; }
 .mit-tieren .zahlwahl button { height: auto; padding: 6px 0 8px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
-.mit-tieren .zahlwahl img { display: block; width: 86%; aspect-ratio: 1; }
+.mit-tieren .zahlwahl img { display: block; width: 86%; aspect-ratio: 1; object-fit: contain; }
 .zurueck { font-size: 28px; font-weight: 800; color: var(--ganz); line-height: 1; }
 
 /* Startseite */
@@ -102,7 +105,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 
 /* Spielseite */
 .titel .ganz { color: var(--ganz); }
-.buehne { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+.buehne { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
 .sockel { position: relative; --s: clamp(130px, 38vw, 210px); }   /* --s: Kantenlänge des Würfels */
 .sockel::after {          /* Schatten bleibt liegen, während der Würfel sich überschlägt */
   content: ""; position: absolute; left: 22%; right: 22%; bottom: 2%; height: 16px;
@@ -149,7 +152,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 
 .gleichung {
   --rahmen: .14em;        /* so weit steht der Lückenkasten über die Ziffer hinaus */
-  margin: 8px 0 0; display: flex; align-items: center; gap: .34em; line-height: 1.15;
+  margin: 2px 0 0; display: flex; align-items: center; gap: .34em; line-height: 1.15;
   font-size: clamp(38px, 11vw, 58px); font-weight: 900; font-variant-numeric: tabular-nums;
 }
 .gleichung .teil, .gleichung .luecke, .gleichung .rest, .gleichung .ganz { min-width: 1ch; text-align: center; }
@@ -273,7 +276,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 </main>
 
 <script>
-const APP_VERSION = '0.32';          // bei JEDER Änderung hochzählen
+const APP_VERSION = '0.33';          // bei JEDER Änderung hochzählen
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
@@ -858,6 +861,9 @@ for (const n of ZAHLEN) {
   $('#zahlwahl').append(b);
 }
 wuerfelEl.addEventListener('click', tippeWuerfel);
+$('#tier-bild').addEventListener('load', e => {                // Feld bekommt die Form des Tiers
+  e.target.parentElement.style.setProperty('--seiten', (e.target.naturalWidth / e.target.naturalHeight).toFixed(3));
+});
 // Zahlenleiste: Finger aufsetzen, notfalls seitlich rutschen – es zählt die Taste beim Loslassen.
 const lupeEl = $('#lupe');
 let gedrueckt = null;

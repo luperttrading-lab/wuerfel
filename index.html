@@ -138,6 +138,8 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 }
 .gleichung.weg { visibility: hidden; }          /* Platz bleibt, nichts springt */
 .hinweis { margin: 0; min-height: 1.3em; text-align: center; font-size: clamp(18px, 5vw, 24px); font-weight: 800; }
+.hinweis.lockt { animation: locken 1.8s ease-in-out infinite; }   /* leiser Hinweis: Schwarz ↔ Lila (Würfelzahl) */
+@keyframes locken { 0%, 100% { color: var(--ink); } 50% { color: var(--ganz); } }
 
 .zahlen {                /* eine Leiste wie ein Zahlenstrahl: klein links, groß rechts, kein Zeilensprung */
   display: flex; gap: 3px; touch-action: none; margin: 0 calc(8px - var(--rand));
@@ -170,6 +172,8 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 @keyframes hops { 0%, 100% { transform: none; } 40% { transform: scale(1.35); } }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition: none !important; }
+  /* Farbwechsel ist keine Bewegung: der Hinweis „Tippe auf den Würfel!“ darf weiter leuchten */
+  .hinweis.lockt { animation-duration: 1.8s !important; animation-iteration-count: infinite !important; }
 }
 
 .funken { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 25; }   /* Sterne */
@@ -239,7 +243,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 </main>
 
 <script>
-const APP_VERSION = '0.17';          // bei JEDER Änderung hochzählen
+const APP_VERSION = '0.18';          // bei JEDER Änderung hochzählen
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
@@ -265,7 +269,7 @@ const LOB = ['Richtig!', 'Super!', 'Toll!', 'Prima!', 'Klasse!'];
 
 let phase = 'start';                // 'start' | 'bereit' | 'rollt' | 'frage' | 'geloest'
 let zahl = null;                    // gewürfelte Zahl
-let beutel = [], geschafft = 0, weiterTimer = null;
+let beutel = [], geschafft = 0, weiterTimer = null, lockTimer = null;
 
 /* ---------- Zufall ---------- */
 // Gleichverteilt 0..m-1 – Verwerfungsmethode, damit kein Modulo-Überhang bleibt
@@ -633,9 +637,18 @@ function bereit(text = 'Tippe auf den Würfel!') {                 // zeigt die 
   zahlenEl.classList.add('ruht');
   zahlenEl.querySelectorAll('.richtig').forEach(b => b.classList.remove('richtig'));
   hinweisEl.textContent = text;
+  locke();
 }
+// Nach 2 s ohne Tipp beginnt „Tippe auf den Würfel!“ sanft die Farbe zu wechseln – bis gewürfelt wird
+function locke() {
+  clearTimeout(lockTimer);
+  hinweisEl.classList.remove('lockt');
+  lockTimer = setTimeout(() => { if (phase === 'bereit') hinweisEl.classList.add('lockt'); }, 2000);
+}
+function lockeNicht() { clearTimeout(lockTimer); hinweisEl.classList.remove('lockt'); }
 function wuerfeln() {
   clearTimeout(weiterTimer);
+  lockeNicht();
   if (!beutel.length) beutel = neuerBeutel(stand.n, null);
   lauf = { ziel: beutel.pop(), t0: performance.now(), gesetzt: false, vorn: 'vorne', aufgeschlagen: false, staub: 0 };
   for (const k in seiten) seiten[k].weg = false;
@@ -712,6 +725,7 @@ function baueZahlen() {
 /* ---------- Ablauf ---------- */
 function zeigeStart() {
   stoppeWuerfel();
+  lockeNicht();
   phase = 'start';
   document.body.classList.remove('gut', 'falsch');
   $$('#zahlwahl button').forEach(b => b.classList.toggle('zuletzt', +b.dataset.n === stand.n));

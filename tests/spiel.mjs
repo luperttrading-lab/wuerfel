@@ -86,6 +86,13 @@ console.log('Startseite');
   if (bilder) await page.screenshot({ path: `${bilder}/1-bereit.png` });
   const wuerfelOben = await page.evaluate(() => document.querySelector('#wuerfel').getBoundingClientRect().top);
 
+  // Leiser Hinweis: erst nach 2 s beginnt „Tippe auf den Würfel!“ die Farbe zu wechseln
+  ok(!(await page.evaluate(() => document.querySelector('#hinweis').classList.contains('lockt'))), 'Hinweis anfangs ruhig');
+  await page.waitForTimeout(2200);
+  const farben = new Set();
+  for (let i = 0; i < 6; i++) { farben.add(await page.evaluate(() => getComputedStyle(document.querySelector('#hinweis')).color)); await page.waitForTimeout(150); }
+  ok(await page.evaluate(() => document.querySelector('#hinweis').classList.contains('lockt')) && farben.size >= 3,
+    `Nach 2 s wechselt der Hinweis sanft die Farbe (${farben.size} Farbtöne gesehen)`);
   const farbeVorher = await page.evaluate(() => getComputedStyle(document.querySelector('.zahl')).backgroundColor);
   await page.click('.zahl[data-zahl="4"]');
   ok(await phase(page) === 'bereit', 'Zahl antippen vor dem Würfeln zählt nicht');
@@ -94,6 +101,7 @@ console.log('Startseite');
   const t0 = Date.now();
   await page.click('#wuerfel', { force: true });
   ok(await phase(page) === 'rollt', 'Antippen: Würfel rollt');
+  ok(!(await page.evaluate(() => document.querySelector('#hinweis').classList.contains('lockt'))), 'Beim Würfeln hört der Hinweis auf');
   // Im Browser Bild für Bild mitschreiben – kurze Momente wie das Stauchen (≈ 0,1 s) entgehen sonst der Abtastung
   await page.evaluate(() => {
     const w = window.__messung = { lagen: [], staub: 0, seiten: [] };
@@ -258,6 +266,12 @@ console.log('Auch mit „Bewegung reduzieren“ (iPhone: Bedienungshilfen → Be
   const lagen = new Set();
   while (await phase(page) === 'rollt') { lagen.add(await lage(page)); await page.waitForTimeout(40); }
   ok(lagen.size >= 10, `Der ganze Würfel dreht sich trotzdem (${lagen.size} Lagen gesehen)`);
+  const k = await page.evaluate(() => window.wuerfelSpiel.zahl);
+  await page.click(`.zahl[data-zahl="${6 - k}"]`);
+  await page.waitForFunction(() => window.wuerfelSpiel.phase === 'bereit', null, { timeout: 4000 });
+  await page.waitForTimeout(2300);
+  const dauer = await page.evaluate(() => getComputedStyle(document.querySelector('#hinweis')).animationDuration);
+  ok(dauer === '1.8s', `Auch nach einer Lösung und bei „Bewegung reduzieren“ leuchtet der Hinweis nach 2 s (${dauer})`);
   await ctx.close();
 }
 

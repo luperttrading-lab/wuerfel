@@ -5,8 +5,8 @@
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
 import { readFileSync, writeFileSync } from 'fs';
 
-const GROESSE = 384;   // größte Anzeige 108 px × 3 (Retina) = 324 px
-const GUETE = 0.86;
+const GROESSE = 640;   // größte Anzeige 210 px × 3 (Retina) = 630 px
+const GUETE = 0.82;
 
 const browser = await chromium.launch();
 const page = await browser.newPage();

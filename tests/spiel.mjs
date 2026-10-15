@@ -249,6 +249,15 @@ console.log('Tiere (einschaltbar)');
     });
     ok(frei >= 0.85, `${w} px: Zahlplakette lässt die Arme frei (verdeckt erst ab ${Math.round(frei * 100)} % des Radius)`);
   }
+  for (const [w, h, min] of [[320, 568, 100], [375, 667, 160], [390, 844, 170], [430, 932, 190]]) {
+    await page.setViewportSize({ width: w, height: h });
+    const m = await page.evaluate(() => {
+      const r = s => document.querySelector(s).getBoundingClientRect();
+      return { groesse: r('#tier-bild').width, oben: r('#tier-bild').top, unten: r('#tier-bild').bottom, kopf: r('#spielseite .kopf').bottom, wuerfel: r('.sockel').top };
+    });
+    ok(m.groesse >= min && m.oben >= m.kopf && m.unten <= m.wuerfel,
+      `${w}×${h}: Tier groß (${Math.round(m.groesse)} px), zwischen Kopfzeile und Würfel`);
+  }
   await page.setViewportSize({ width: 390, height: 844 });
   const k = await wuerfle(page);
   await page.click(`.zahl[data-zahl="${7 - k}"]`);

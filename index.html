@@ -61,12 +61,17 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 .tiere-schalter[aria-pressed="false"] { filter: grayscale(1); opacity: .45; }
 
 /* Tiere: jede Zahl hat ihr Tier (Vogel 4 … Zebra 10) – Anker „wir sind bei der 7, beim Seestern“ */
-.tier { position: relative; width: clamp(70px, 21vw, 108px); aspect-ratio: 1; flex: none; }
-.tier img { width: 100%; height: 100%; display: block; filter: drop-shadow(0 4px 8px rgba(43, 33, 64, .22)); }
+/* Das Tier nimmt den freien Platz über dem Würfel: so groß, wie die Seite hergibt, höchstens 46 % der Breite
+   bzw. 210 px. Auf dem kleinen iPhone wird es kleiner, statt etwas aus dem Bild zu schieben. */
+.tier { position: relative; flex: 1 1 0; width: 100%; min-height: 70px; max-height: min(46vw, 210px);
+  display: flex; justify-content: center; }
+.tier-platte { position: relative; height: 100%; aspect-ratio: 1; container-type: size; }
+.tier img { width: 100%; height: 100%; object-fit: contain; display: block; filter: drop-shadow(0 4px 8px rgba(43, 33, 64, .22)); }
 .tier-zahl {
-  /* sitzt halb außerhalb (Richtung 126°, Innenkante bei 0,88 R), damit Arme und Punkte zählbar bleiben */
-  position: absolute; left: calc(85.6% - 4px); top: calc(76% - 8px); min-width: 38px; height: 38px; padding: 0 7px; border-radius: 19px;
-  display: grid; place-items: center; background: var(--ganz); color: #fff; font-size: 21px; font-weight: 900;
+  /* wächst mit dem Tier (24 % der Plakette) und sitzt halb außerhalb (Richtung 126°, Innenkante bei 0,88 R),
+     damit Arme und Punkte zählbar bleiben */
+  position: absolute; left: 83.3%; top: 70.9%; min-width: 24%; height: 24%; padding: 0 .3em; border-radius: 999px;
+  display: grid; place-items: center; background: var(--ganz); color: #fff; font-size: 21px; font-size: 13cqh; font-weight: 900;
   border: 3px solid #fff; box-shadow: 0 2px 6px rgba(43, 33, 64, .2);
 }
 .tier.hops { animation: tierHops .7s ease; }
@@ -243,7 +248,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
     <button class="ton" aria-label="Ton an oder aus"></button>
   </header>
   <section class="buehne">
-    <div class="tier" id="tier" hidden><img id="tier-bild" alt=""><span class="tier-zahl" id="tier-zahl"></span></div>
+    <div class="tier" id="tier" hidden><div class="tier-platte"><img id="tier-bild" alt=""><span class="tier-zahl" id="tier-zahl"></span></div></div>
     <div class="sockel">
       <canvas class="staub" id="staub" aria-hidden="true"></canvas>
       <button class="wuerfel" id="wuerfel" aria-label="Würfeln">
@@ -265,7 +270,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 </main>
 
 <script>
-const APP_VERSION = '0.22';          // bei JEDER Änderung hochzählen
+const APP_VERSION = '0.23';          // bei JEDER Änderung hochzählen
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);

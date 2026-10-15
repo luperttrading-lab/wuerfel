@@ -38,14 +38,14 @@ Anlaut des Zahlworts – 4 **V**ogel, 5 **F**rosch, 6 **S**eepferdchen (der Schw
 7 **S**eestern (7 Arme, einer nach oben: 3 + 1 + 3), 8 Oktopus (Ausnahme: *okto* = acht, 8 Arme als
 4 + 4), 9 **N**ashorn, 10 **Z**ebra. Regel fürs Zeichnen: Beine und Arme sind nur zu sehen, wenn ihre
 Anzahl die Zahl ist – sonst lernt das Kind beim Oktopus „Beine zählen“ und liest am Frosch eine 4.
-Auf der Spielseite sitzt das Tier mit seiner Zahl über dem Würfel („wir sind beim Oktopus, bei der 8“)
+Auf der Spielseite sitzt das Tier groß (freier Platz über dem Würfel, bis 46 % der Breite bzw. 210 px) mit seiner Zahl über dem Würfel („wir sind beim Oktopus, bei der 8“)
 und hüpft bei jeder richtigen Antwort, nach einer ganzen Runde zweimal. Schalter aus = die Fassung
 ohne Tiere.
 
 Die runden Plaketten sind von Hand als SVG gezeichnet (`tiere/quelle/*.svg`): braune, leicht
 handgezogene Kontur, Papierkorn, Licht von oben links. Diese Papierstruktur sind SVG-Filter, die
 nicht jeder Browser gleich rendert (Safari) – darum liefert die App fertig gerasterte Bilder aus
-(`tiere/*.webp`, 384 px, je ~20–27 KB). Nach jeder Änderung an einer Quelle: `node tools/tiere.mjs`.
+(`tiere/*.webp`, 640 px, je ~28–43 KB). Nach jeder Änderung an einer Quelle: `node tools/tiere.mjs`.
 
 **Effekte** (am Gerät mit Reglern ausprobiert, dann fest eingestellt): Staub 4× (`STAUB`), 60 Sterne
 bei jeder richtigen Antwort, 132 nach einer ganzen Runde (`STERNE`).

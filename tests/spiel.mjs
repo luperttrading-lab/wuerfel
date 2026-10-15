@@ -240,6 +240,16 @@ console.log('Tiere (einschaltbar)');
   const tier = await page.evaluate(() => ({ alt: document.querySelector('#tier-bild').alt, zahl: document.querySelector('#tier-zahl').textContent,
     sichtbar: !document.querySelector('#tier').hidden }));
   ok(tier.sichtbar && tier.alt === 'Seestern' && tier.zahl === '7' && await geladen('#tier-bild'), 'Spielseite: Seestern mit der 7 über dem Würfel');
+  for (const w of [320, 375, 390, 430]) {
+    await page.setViewportSize({ width: w, height: 844 });
+    const frei = await page.evaluate(() => {
+      const t = document.querySelector('#tier-bild').getBoundingClientRect(), z = document.querySelector('#tier-zahl').getBoundingClientRect();
+      const R = t.width / 2, d = Math.hypot(z.x + z.width / 2 - t.x - R, z.y + z.height / 2 - t.y - R);
+      return (d - z.height / 2) / R;
+    });
+    ok(frei >= 0.85, `${w} px: Zahlplakette lässt die Arme frei (verdeckt erst ab ${Math.round(frei * 100)} % des Radius)`);
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
   const k = await wuerfle(page);
   await page.click(`.zahl[data-zahl="${7 - k}"]`);
   ok(await page.evaluate(() => document.querySelector('#tier').classList.contains('hops')), 'Richtige Antwort: das Tier hüpft vor Freude');

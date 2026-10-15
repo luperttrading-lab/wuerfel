@@ -41,8 +41,9 @@ Breite bzw. 210 px), die Zahl als Plakette rechts unten daneben („wir sind bei
 Es hüpft bei jeder richtigen Antwort, nach einer ganzen Runde zweimal. Schalter aus = ohne Tiere.
 
 Die Bilder sind Sticker aus einem Bildgenerator (`tiere/quelle/sticker.jpg`, ein Streifen mit allen
-sieben). `python3 tools/sticker.py` schneidet sie aus, macht den Grund durchsichtig und schreibt
-`tiere/*.webp` (640 px). Der Streifen ist nur 245 px hoch – die Sticker werden ~2,5× hochgerechnet;
+sieben). `python3 tools/sticker.py` findet die Sticker im Streifen (in jeder Auflösung), schneidet sie
+aus, macht den Grund durchsichtig und schreibt `tiere/*.webp` (640 px). Einzelbilder `tiere/quelle/5.png`
+usw. gehen vor – so lässt sich ein einzelnes Tier austauschen. Der Streifen ist nur 245 px hoch – die Sticker werden ~2,5× hochgerechnet;
 eine größere Vorlage macht sie schärfer. Offene Punkte: Der Frosch zeigt 4 Beine (bei der 5 lädt das
 zum falschen Zählen ein), das Seepferdchen liegt waagerecht statt als 6. Die frühere gezeichnete
 Fassung (SVG mit Papierstruktur, `tools/tiere.mjs`) liegt in der Git-Historie (bis v0.23).

@@ -55,8 +55,11 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   text-decoration: underline dotted; text-underline-offset: 3px;
 }
 .stand { font-size: 14px; font-weight: 700; color: var(--leise); white-space: nowrap; }
-.ton, .zurueck, .tiere-schalter { width: 44px; height: 44px; flex: none; border-radius: 12px; background: var(--wahl); font-size: 22px; }
-.tiere-schalter[aria-pressed="false"] { filter: grayscale(1); opacity: .45; }
+.ton, .zurueck, .tiere-schalter, .staub-schalter { width: 44px; height: 44px; flex: none; border-radius: 12px; background: var(--wahl); font-size: 22px; }
+.tiere-schalter[aria-pressed="false"], .staub-schalter[aria-pressed="false"] { filter: grayscale(1); opacity: .45; }
+.staub-schalter[aria-pressed="true"] {   /* bunter Staub */
+  background: linear-gradient(135deg, #ff6fae, #ffb347 28%, #ffe45c 46%, #5fe0a0 64%, #5ab8ff 82%, #a77bff);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .55); }
 .tiere-schalter[data-satz="wild"] {   /* wilde, bunte Tiere: kräftiger Regenbogen wie ihre Farbspritzer */
   background: linear-gradient(135deg, #ff6fae, #ffb347 28%, #ffe45c 46%, #5fe0a0 64%, #5ab8ff 82%, #a77bff);
   box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .55); }
@@ -241,6 +244,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 <main class="seite" id="startseite">
   <header class="kopf">
     <h1>Würfel <span class="version" id="version"></span></h1>
+    <button class="staub-schalter" id="staub-schalter" aria-label="Bunter Staub an oder aus" aria-pressed="true">💨</button>
     <button class="tiere-schalter" id="tiere-schalter" aria-label="Tiere an oder aus" aria-pressed="false">🐾</button>
     <button class="ton" aria-label="Ton an oder aus"></button>
   </header>
@@ -280,7 +284,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 </main>
 
 <script>
-const APP_VERSION = '0.37';          // bei JEDER Änderung hochzählen
+const APP_VERSION = '0.38';          // bei JEDER Änderung hochzählen
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
@@ -292,7 +296,7 @@ const SPEICHER = 'wuerfel.stand';
 const SAGEN = !new URLSearchParams(location.search).has('tippen');   // Standard: Antwort laut sagen; ?tippen: Zahlenleiste
 document.body.classList.toggle('sagen', SAGEN);
 if (SAGEN) document.querySelector('.erklaerung').textContent = 'Tippe auf den Würfel. Sag laut, was bis zur gewählten Zahl fehlt – dann tippe wieder.';
-const stand = { n: 10, ton: true, sterne: 0, tiere: 'aus' };   // Tiere zuerst aus; 🐾 schaltet: aus → Sticker → wild
+const stand = { n: 10, ton: true, sterne: 0, tiere: 'aus', staub: true };   // staub: bunter Staub beim Würfeln (💨)   // Tiere zuerst aus; 🐾 schaltet: aus → Sticker → wild
 const TIERSAETZE = { aus: 'Ohne Tiere', sticker: 'Tiere: Sticker', wild: 'Tiere: wild & bunt' };
 const STAUB = 4;                    // Staubmenge (Faktor), am Gerät ausprobiert: Maximum
 const STERNE = 60;                  // Sterne bei richtiger Antwort (nach einer ganzen Runde 2,2-mal so viele)
@@ -300,6 +304,7 @@ try {
   const s = JSON.parse(localStorage.getItem(SPEICHER)) || {};
   if (ZAHLEN.includes(s.n)) stand.n = s.n;
   if (s.ton === false) stand.ton = false;
+  if (s.staub === false) stand.staub = false;
   if (Object.prototype.hasOwnProperty.call(TIERSAETZE, s.tiere)) stand.tiere = s.tiere;
   else if (s.tiere === true) stand.tiere = 'sticker';           // gespeichert vor v0.29: an/aus
   if (Number.isInteger(s.sterne) && s.sterne >= 0) stand.sterne = s.sterne;
@@ -415,17 +420,23 @@ function staubLeinwand() {
   staubCtx.setTransform(d, 0, 0, d, 0, 0);
 }
 // Ein Korn wird einmal vorgezeichnet und dann nur noch gestempelt – auch 4× Staub läuft flüssig
-const kornBild = document.createElement('canvas');
-kornBild.width = kornBild.height = 64;
-{
-  const c = kornBild.getContext('2d'), g = c.createRadialGradient(32, 32, 0, 32, 32, 32);
-  g.addColorStop(0, 'rgba(150, 128, 100, 1)'); g.addColorStop(1, 'rgba(150, 128, 100, 0)');
-  c.fillStyle = g; c.fillRect(0, 0, 64, 64);
-}
+// Bunt: sechs Farben wie ein Regenbogen, jedes Korn bekommt zufällig eine
+// kräftig und eher mittelhell: auf dem cremefarbenen Grund verschwinden helle Pastelltöne
+const STAUBFARBEN = [[236, 48, 138], [255, 122, 0], [240, 180, 0], [31, 179, 90], [30, 136, 229], [124, 77, 255]];
+const kornBilder = STAUBFARBEN.map(([r, g, b]) => {
+  const bild = document.createElement('canvas'); bild.width = bild.height = 64;
+  const c = bild.getContext('2d'), v = c.createRadialGradient(32, 32, 0, 32, 32, 32);
+  v.addColorStop(0, `rgba(${r}, ${g}, ${b}, 1)`); v.addColorStop(.5, `rgba(${r}, ${g}, ${b}, .9)`);   // fester Kern, weicher Rand
+  v.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+  c.fillStyle = v; c.fillRect(0, 0, 64, 64);
+  return bild;
+});
 const staubMenge = n => Math.round(n * STAUB);
 function korn(x, y, vx, vy, groesse, dauer) {
+  if (!stand.staub) return;                                                  // 💨 aus: kein Staub
   groesse *= 1 + 0.12 * (STAUB - 1);                                         // viel Staub: auch etwas dicker
-  koerner.push({ x, y, vx, vy, r: groesse, geburt: performance.now(), leben: 0, dauer, alpha: 0.32 + Math.random() * 0.28 });
+  koerner.push({ x, y, vx, vy, r: groesse, geburt: performance.now(), leben: 0, dauer, alpha: 0.6 + Math.random() * 0.35,
+    farbe: Math.floor(Math.random() * kornBilder.length) });
   if (!staubRaf) { staubZuletzt = 0; staubRaf = requestAnimationFrame(staubSchritt); }
 }
 function streue(anzahl, kraft) {                                               // von den Kanten, mit dem Drehsinn
@@ -454,9 +465,9 @@ function staubSchritt(t) {
   for (const k of koerner) {
     k.vx *= 1 - 3 * dt; k.vy *= 1 - 3 * dt; k.vy -= 25 * dt;               // Luftwiderstand, leichter Auftrieb
     k.x += k.vx * dt; k.y += k.vy * dt;
-    const f = k.leben / k.dauer, a = k.alpha * (1 - f) * (1 - f), rad = k.r * (1 + 1.6 * f);
+    const f = k.leben / k.dauer, a = k.alpha * (1 - f * f), rad = k.r * (1 + 0.7 * f);   // bunte Tupfer: bleiben länger kräftig, quellen wenig auf
     staubCtx.globalAlpha = a;
-    staubCtx.drawImage(kornBild, k.x - rad, k.y - rad, 2 * rad, 2 * rad);
+    staubCtx.drawImage(kornBilder[k.farbe], k.x - rad, k.y - rad, 2 * rad, 2 * rad);
   }
   staubCtx.globalAlpha = 1;
   staubRaf = koerner.length ? requestAnimationFrame(staubSchritt) : 0;
@@ -917,6 +928,11 @@ $('#tiere-schalter').addEventListener('click', e => {
   speichereAlles(); zeigeTiere();
   showInfo(TIERSAETZE[stand.tiere], 1.6, e.currentTarget);
 });
+function zeigeStaub() { $('#staub-schalter').setAttribute('aria-pressed', String(stand.staub)); }
+$('#staub-schalter').addEventListener('click', e => {
+  stand.staub = !stand.staub; speichereAlles(); zeigeStaub();
+  showInfo(stand.staub ? 'Bunter Staub an' : 'Ohne Staub', 1.6, e.currentTarget);
+});
 $$('.ton').forEach(b => b.addEventListener('click', () => {
   stand.ton = !stand.ton; speichereAlles(); zeigeTon();
   if (stand.ton) ton(783.99, 0, 0.15);
@@ -926,6 +942,7 @@ $('#version').textContent = 'v' + APP_VERSION;
 stelle(RUHE.x, RUHE.y);
 zeigeTon();
 zeigeTiere();
+zeigeStaub();
 zeigeStart();
 
 /* ---------- Updates (Bausteine 0–4, Skill app-update-iphone) ---------- */

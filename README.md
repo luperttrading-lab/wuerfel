@@ -67,6 +67,9 @@ damit die weichen Aquarellränder und Spritzer bleiben; was innen liegt (grauer 
 Zebrastreifen) bleibt voll deckend. Ergebnis `tiere/wild/*.webp` (eng zugeschnitten, längere Seite 700 px, je ~110–180 KB; wird erst
 geladen, wenn der Satz gewählt ist). Auch hier: Oktopus genau 8 Arme (4 + 4), Seestern genau 7.
 
+**Staub** (Schalter 💨 auf der Startseite, Start: an): bunt – Tupfer in sechs kräftigen Farben, die beim
+Wirbeln aus dem Würfel stieben; ausgeschaltet fliegt kein einziges Korn. Die Wahl wird gespeichert.
+
 **Effekte** (am Gerät mit Reglern ausprobiert, dann fest eingestellt): Staub 4× (`STAUB`), 60 Sterne
 bei jeder richtigen Antwort, 132 nach einer ganzen Runde (`STERNE`).
 

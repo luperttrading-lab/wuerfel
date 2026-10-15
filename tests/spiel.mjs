@@ -390,6 +390,51 @@ console.log('Sagen (Standard): nur würfeln, die Antwort laut sagen');
   await ctx.close();
 }
 
+console.log('Staub: bunt oder aus (💨)');
+{
+  const { page, konsole, ctx } = await seite(390, 844, false, '');
+  ok(await page.getAttribute('#staub-schalter', 'aria-pressed') === 'true', 'Anfangs an');
+  await page.click('#zahlwahl button[data-n="6"]');
+  await page.waitForTimeout(300);
+  const farbenBeimRollen = async () => {
+    await page.click('#wuerfel', { force: true });
+    await page.waitForTimeout(220);                       // mitten im Wirbeln, viel Staub in der Luft
+    return page.evaluate(() => {
+      const c = document.querySelector('#staub'), d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+      const toene = new Set(); let koerner = 0;
+      for (let i = 0; i < d.length; i += 4 * 7) {
+        if (d[i + 3] < 60) continue;
+        koerner++;
+        const r = d[i] / 255, g = d[i + 1] / 255, b = d[i + 2] / 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+        if (mx - mn < .15) continue;                       // grau/braun zählt nicht als bunt
+        let h = mx === r ? (g - b) / (mx - mn) : mx === g ? 2 + (b - r) / (mx - mn) : 4 + (r - g) / (mx - mn);
+        toene.add(Math.floor(((h * 60 + 360) % 360) / 60));   // sechs Farbbereiche à 60°
+      }
+      return { koerner, toene: toene.size, anzahl: window.wuerfelSpiel.staub };
+    });
+  };
+  const an = await farbenBeimRollen();
+  ok(an.anzahl > 50 && an.toene >= 4, `Staub an: bunt (${an.toene} von 6 Farbbereichen, ${an.anzahl} Körner)`);
+  await page.waitForFunction(() => window.wuerfelSpiel.phase === 'frage', null, { timeout: 5000 });
+  await page.waitForTimeout(900);
+  await page.click('#zurueck');
+  await page.click('#staub-schalter');
+  ok(await page.getAttribute('#staub-schalter', 'aria-pressed') === 'false', '💨 antippen: Staub aus');
+  await page.click('#zahlwahl button[data-n="6"]');
+  await page.waitForTimeout(300);
+  const aus = await farbenBeimRollen();
+  ok(aus.anzahl === 0 && aus.koerner === 0, 'Staub aus: kein einziges Korn beim Würfeln');
+  await page.waitForFunction(() => window.wuerfelSpiel.phase === 'frage', null, { timeout: 5000 });
+  await page.click('#zurueck');
+  await page.reload();
+  ok(await page.getAttribute('#staub-schalter', 'aria-pressed') === 'false', 'Die Wahl bleibt nach dem Neuladen');
+  await page.setViewportSize({ width: 320, height: 568 });
+  ok(await page.evaluate(() => { const k = document.querySelector('#startseite .kopf'); return k.scrollWidth <= k.clientWidth + 1 && document.scrollingElement.scrollWidth <= innerWidth; }),
+    '320 px: Kopfzeile mit drei Knöpfen passt');
+  ok(konsole.length === 0, 'Keine Fehler in der Konsole' + (konsole.length ? ': ' + konsole.join(' | ') : ''));
+  await ctx.close();
+}
+
 console.log('Ganze Runden (jede Zerlegung genau einmal)');
 {
   const { page, konsole, ctx } = await seite(390, 844);

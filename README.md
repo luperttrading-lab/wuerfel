@@ -67,6 +67,11 @@ damit die weichen Aquarellränder und Spritzer bleiben; was innen liegt (grauer 
 Zebrastreifen) bleibt voll deckend. Ergebnis `tiere/wild/*.webp` (eng zugeschnitten, längere Seite 700 px, je ~110–180 KB; wird erst
 geladen, wenn der Satz gewählt ist). Auch hier: Oktopus genau 8 Arme (4 + 4), Seestern genau 7.
 
+**Hintergrund**: helles Tiefblau mit Licht in der Mitte (`--grund`); der weiße Würfel hebt sich mit
+gut 4 : 1 ab (vorher Creme: 1,1 : 1). Schrift auf dem Grund ist hell, Zahlfarben auf dem Grund haben
+helle Varianten (`--teil-hell`, `--ganz-hell`, `--rest-hell`); auf dem Würfel bleiben die kräftigen.
+Statusleiste am iPhone durchscheinend mit weißer Schrift.
+
 **Staub** (Schalter 💨 auf der Startseite, Start: an): bunt – Tupfer in sechs kräftigen Farben, die beim
 Wirbeln aus dem Würfel stieben; ausgeschaltet fliegt kein einziges Korn. Die Wahl wird gespeichert.
 

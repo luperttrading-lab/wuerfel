@@ -40,7 +40,10 @@ const gleichung = async page => (await page.textContent('#gleichung')).replace(/
 let RUHELAGE = null;                                   // wird nach dem Start gelesen
 const lage = page => page.evaluate(() => document.querySelector('#koerper').style.transform);
 // Sichtbare Abstände in der Gleichung: zwischen Textkanten, beim Lückenkasten bis zu seinem Rahmen
-const abstaende = page => page.evaluate(() => {
+const abstaende = async page => {
+  // erst messen, wenn das Aufploppen der Lösung (0,35 s, kurz 120 %) wirklich vorbei ist – unter Last kann es nachhinken
+  await page.waitForFunction(() => [...document.querySelectorAll('#gleichung *')].every(e => e.getAnimations().every(a => a.playState !== 'running')), null, { timeout: 3000 });
+  return page.evaluate(() => {
   const gl = document.querySelector('#gleichung');
   const rahmen = parseFloat(getComputedStyle(gl).getPropertyValue('--rahmen')) * parseFloat(getComputedStyle(gl).fontSize);
   const r = [...gl.children].map(el => {
@@ -48,7 +51,8 @@ const abstaende = page => page.evaluate(() => {
     const g = document.createRange(); g.selectNodeContents(el); return g.getBoundingClientRect();
   });
   return r.slice(1).map((b, i) => +(b.left - r[i].right).toFixed(1));
-});
+  });
+};
 const gleichmaessig = a => Math.max(...a) - Math.min(...a) <= 1.5;
 const sichtbar = (page, sel) => page.evaluate(sel => getComputedStyle(document.querySelector(sel)).visibility === 'visible', sel);
 // Würfel antippen und warten, bis er liegt (rollt 2 s); force, weil Playwright sonst auf Stillstand wartet

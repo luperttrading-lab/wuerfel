@@ -5,21 +5,26 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Zahlen zerlegen</title>
 <meta name="color-scheme" content="light">
-<meta name="theme-color" content="#fff8ec">
+<meta name="theme-color" content="#24508f">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Würfel">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="icon-192.png">
 <style>
 :root {
-  --bg: #fff8ec; --ink: #2b2140; --leise: #7a6f8f; --karte: #fff; --sockel: #eadfce;
+  /* Grund: helles Tiefblau mit Licht in der Mitte – der weiße Würfel hebt sich deutlich ab (vorher Creme, Kontrast 1,1 : 1) */
+  --bg: #2b5a98; --grund: radial-gradient(120% 90% at 50% 42%, #4d88d2, #24508f);
+  --ink: #2b2140;       /* dunkle Schrift auf hellen Flächen (Würfel, Tasten) */
+  --hell: #f5f8ff; --leise: #c9d8f2;   /* Schrift direkt auf dem blauen Grund */
+  --teil-hell: #b5d8ff; --ganz-hell: #ddd2ff; --rest-hell: #ffbf5e;   /* Zahlfarben auf dem Grund */
+  --karte: #fff; --sockel: rgba(8, 24, 56, .35);
   --teil: #2f6bd0;      /* gewürfelte Zahl */
   --rest: #e8780c;      /* gesuchte Zahl */
   --ganz: #6c4bd8;      /* Zahl, die zerlegt wird */
-  --richtig: #2fbf55; --gut: #9be7a8; --falsch: #ff9d9d;
+  --richtig: #2fbf55; --gut: #2f9e5b; --falsch: #c94848;   /* kräftig genug für helle Schrift */
   --wahl: #efe7ff;
   --rand: 16px;
 }
@@ -30,7 +35,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
 html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
 body {
   position: fixed; inset: 0;
-  margin: 0; background: var(--bg); color: var(--ink);
+  margin: 0; background: var(--bg) var(--grund) fixed; color: var(--hell);
   font-family: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
   -webkit-tap-highlight-color: transparent;
@@ -111,12 +116,12 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 .erklaerung { margin: 0; max-width: 340px; text-align: center; font-size: 15px; line-height: 1.4; color: var(--leise); }
 
 /* Spielseite */
-.titel .ganz { color: var(--ganz); }
+.titel .ganz { color: var(--ganz-hell); }
 .buehne { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
 .sockel { position: relative; --s: clamp(130px, 38vw, 210px); }   /* --s: Kantenlänge des Würfels */
 .sockel::after {          /* Schatten bleibt liegen, während der Würfel sich überschlägt */
   content: ""; position: absolute; left: 22%; right: 22%; bottom: 2%; height: 16px;
-  border-radius: 50%; background: rgba(43, 33, 64, .18); filter: blur(5px);
+  border-radius: 50%; background: rgba(6, 18, 44, .45); filter: blur(5px);
   transform: scale(calc(1 - var(--sprung, 0) * .45)); opacity: calc(1 - var(--sprung, 0) * .6);   /* in der Luft kleiner */
 }
 .wuerfel {                /* echter Würfel in 3D */
@@ -163,20 +168,20 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   font-size: clamp(38px, 11vw, 58px); font-weight: 900; font-variant-numeric: tabular-nums;
 }
 .gleichung .teil, .gleichung .luecke, .gleichung .rest, .gleichung .ganz { min-width: 1ch; text-align: center; }
-.gleichung .teil { color: var(--teil); }
-.gleichung .rest { color: var(--rest); animation: pop .35s ease both; }
-.gleichung .ganz { color: var(--ganz); }
+.gleichung .teil { color: var(--teil-hell); }
+.gleichung .rest { color: var(--rest-hell); animation: pop .35s ease both; }
+.gleichung .ganz { color: var(--ganz-hell); }
 /* Der Kasten ist nur gezeichnet und nimmt keinen Platz; der Außenabstand gleicht seinen Überstand aus.
    So ist der Abstand zum Kasten gleich dem Abstand zwischen den Ziffern – in Frage und Lösung. */
-.gleichung .luecke { position: relative; margin: 0 var(--rahmen); color: var(--rest); }
+.gleichung .luecke { position: relative; margin: 0 var(--rahmen); color: var(--rest-hell); }
 .gleichung .luecke::before {
   content: ""; position: absolute; inset: -.04em calc(-1 * var(--rahmen));
-  border: .06em dashed var(--rest); border-radius: .18em;
+  border: .06em dashed var(--rest-hell); border-radius: .18em;
 }
 .gleichung.weg { visibility: hidden; }          /* Platz bleibt, nichts springt */
 .hinweis { margin: 0; min-height: 1.3em; text-align: center; font-size: clamp(18px, 5vw, 24px); font-weight: 800; }
 .hinweis.lockt { animation: locken 1.8s ease-in-out infinite; }   /* leiser Hinweis: Schwarz ↔ Lila (Würfelzahl) */
-@keyframes locken { 0%, 100% { color: var(--ink); } 50% { color: var(--ganz); } }
+@keyframes locken { 0%, 100% { color: var(--hell); } 50% { color: var(--ganz-hell); } }
 
 .zahlen {                /* eine Leiste wie ein Zahlenstrahl: klein links, groß rechts, kein Zeilensprung */
   display: flex; gap: 3px; touch-action: none; margin: 0 calc(8px - var(--rand));
@@ -284,7 +289,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 </main>
 
 <script>
-const APP_VERSION = '0.38';          // bei JEDER Änderung hochzählen
+const APP_VERSION = '0.39';          // bei JEDER Änderung hochzählen
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);

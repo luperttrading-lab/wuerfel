@@ -33,11 +33,15 @@ Lernspiel fürs Handy, damit sich die Zerlegungen der Zahlen 4 bis 10 als **Ziff
    Wird 2 s lang nicht getippt, wechselt dieser Hinweis sanft die Farbe (Schwarz ↔ Lila der Würfelzahl,
    alle 1,8 s) – auch bei „Bewegung reduzieren“, denn Farbe ist keine Bewegung.
 
-**Tiere** (Schalter 🐾 auf der Startseite, Start: an): jede Zahl hat ihr Tier – 4 Frosch, 5 Bär,
-6 Elefant, 7 Löwe, 8 Affe, 9 Eule, 10 Rakete (Countdown). Auf der Spielseite sitzt es mit seiner Zahl
-über dem Würfel („wir sind beim Löwen, bei der 7“) und hüpft bei jeder richtigen Antwort, nach einer
-ganzen Runde zweimal. Die runden Plaketten (`tiere/*.webp`, je ~10 KB) sind aus der Illustration des
-Auftraggebers geschnitten. Schalter aus = die Fassung ohne Tiere.
+**Tiere** (Schalter 🐾 auf der Startseite, Start: an): jede Zahl hat ihr Tier, gewählt nach dem
+Anlaut des Zahlworts – 4 **V**ogel, 5 **F**rosch, 6 **S**eepferdchen (der Schwanz ist eine 6),
+7 **S**eestern (7 Arme, einer nach oben: 3 + 1 + 3), 8 Oktopus (Ausnahme: *okto* = acht, 8 Arme als
+4 + 4), 9 **N**ashorn, 10 **Z**ebra. Regel fürs Zeichnen: Beine und Arme sind nur zu sehen, wenn ihre
+Anzahl die Zahl ist – sonst lernt das Kind beim Oktopus „Beine zählen“ und liest am Frosch eine 4.
+Auf der Spielseite sitzt das Tier mit seiner Zahl über dem Würfel („wir sind beim Oktopus, bei der 8“)
+und hüpft bei jeder richtigen Antwort, nach einer ganzen Runde zweimal. Die runden Plaketten
+(`tiere/*.svg`, je ~2–3 KB) sind von Hand gezeichnet und bleiben in jeder Größe scharf.
+Schalter aus = die Fassung ohne Tiere.
 
 **Effekte** (am Gerät mit Reglern ausprobiert, dann fest eingestellt): Staub 4× (`STAUB`), 60 Sterne
 bei jeder richtigen Antwort, 132 nach einer ganzen Runde (`STERNE`).
@@ -54,6 +58,6 @@ der vorigen.
 | `index.html` | ganze App (HTML, CSS, JS); `APP_VERSION` bei jeder Änderung hochzählen |
 | `sw.js` | Service Worker, Netz zuerst (Updates kommen an, offline läuft es weiter) |
 | `manifest.webmanifest`, `*.png` | Home-Bildschirm-Symbol |
-| `tiere/4.webp` … `tiere/10.webp` | Tier-Plaketten je Zahl |
+| `tiere/4.svg` … `tiere/10.svg` | Tier-Plaketten je Zahl (SVG) |
 | `tests/spiel.mjs` | Browser-Test: `node tests/spiel.mjs [bildordner]` |
 | `tools/kosten.py` | Kostenzeile für Claude-Sitzungen |

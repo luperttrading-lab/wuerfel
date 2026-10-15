@@ -10,7 +10,7 @@ catch { pw = await import('/opt/node22/lib/node_modules/playwright/index.mjs'); 
 
 const wurzel = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const bilder = process.argv[2];
-const typen = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.png': 'image/png', '.webp': 'image/webp', '.webmanifest': 'application/manifest+json' };
+const typen = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.png': 'image/png', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json' };
 const server = http.createServer((req, res) => {
   const p = path.join(wurzel, decodeURIComponent(new URL(req.url, 'http://x').pathname).replace(/\/$/, '/index.html'));
   if (!p.startsWith(wurzel) || !fs.existsSync(p)) { res.writeHead(404); return res.end(); }
@@ -239,7 +239,7 @@ console.log('Tiere (einschaltbar)');
   await page.waitForTimeout(300);
   const tier = await page.evaluate(() => ({ alt: document.querySelector('#tier-bild').alt, zahl: document.querySelector('#tier-zahl').textContent,
     sichtbar: !document.querySelector('#tier').hidden }));
-  ok(tier.sichtbar && tier.alt === 'Löwe' && tier.zahl === '7' && await geladen('#tier-bild'), 'Spielseite: Löwe mit der 7 über dem Würfel');
+  ok(tier.sichtbar && tier.alt === 'Seestern' && tier.zahl === '7' && await geladen('#tier-bild'), 'Spielseite: Seestern mit der 7 über dem Würfel');
   const k = await wuerfle(page);
   await page.click(`.zahl[data-zahl="${7 - k}"]`);
   ok(await page.evaluate(() => document.querySelector('#tier').classList.contains('hops')), 'Richtige Antwort: das Tier hüpft vor Freude');

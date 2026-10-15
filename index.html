@@ -264,14 +264,14 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 </main>
 
 <script>
-const APP_VERSION = '0.19';          // bei JEDER Änderung hochzählen
+const APP_VERSION = '0.20';          // bei JEDER Änderung hochzählen
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 
 /* ---------- Zustand ---------- */
 const ZAHLEN = [4, 5, 6, 7, 8, 9, 10];
-const TIERE = { 4: 'Frosch', 5: 'Bär', 6: 'Elefant', 7: 'Löwe', 8: 'Affe', 9: 'Eule', 10: 'Rakete' };
+const TIERE = { 4: 'Vogel', 5: 'Frosch', 6: 'Seepferdchen', 7: 'Seestern', 8: 'Oktopus', 9: 'Nashorn', 10: 'Zebra' };
 const SPEICHER = 'wuerfel.stand';
 const stand = { n: 10, ton: true, sterne: 0, tiere: true };
 const STAUB = 4;                    // Staubmenge (Faktor), am Gerät ausprobiert: Maximum
@@ -765,7 +765,7 @@ function starteSpiel(n) {
   speichereAlles();
   audio();                                       // iOS: Ton im Rahmen eines Tipps freischalten
   $('#titel-n').textContent = n;
-  $('#tier-bild').src = `tiere/${n}.webp`;
+  $('#tier-bild').src = `tiere/${n}.svg`;
   $('#tier-bild').alt = TIERE[n];
   $('#tier-zahl').textContent = n;
   zeigeTiere();
@@ -838,7 +838,7 @@ document.addEventListener('touchmove', e => e.preventDefault(), { passive: false
 for (const n of ZAHLEN) {
   const b = document.createElement('button');
   b.dataset.n = n;
-  b.innerHTML = `<img src="tiere/${n}.webp" alt=""><span>${n}</span>`;
+  b.innerHTML = `<img src="tiere/${n}.svg" alt=""><span>${n}</span>`;
   b.setAttribute('aria-label', `${n} – ${TIERE[n]}`);
   b.addEventListener('click', () => starteSpiel(n));
   $('#zahlwahl').append(b);

@@ -265,7 +265,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 </main>
 
 <script>
-const APP_VERSION = '0.21';          // bei JEDER Änderung hochzählen
+const APP_VERSION = '0.22';          // bei JEDER Änderung hochzählen
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
@@ -766,7 +766,7 @@ function starteSpiel(n) {
   speichereAlles();
   audio();                                       // iOS: Ton im Rahmen eines Tipps freischalten
   $('#titel-n').textContent = n;
-  $('#tier-bild').src = `tiere/${n}.svg`;
+  $('#tier-bild').src = `tiere/${n}.webp`;
   $('#tier-bild').alt = TIERE[n];
   $('#tier-zahl').textContent = n;
   zeigeTiere();
@@ -839,7 +839,7 @@ document.addEventListener('touchmove', e => e.preventDefault(), { passive: false
 for (const n of ZAHLEN) {
   const b = document.createElement('button');
   b.dataset.n = n;
-  b.innerHTML = `<img src="tiere/${n}.svg" alt=""><span>${n}</span>`;
+  b.innerHTML = `<img src="tiere/${n}.webp" alt=""><span>${n}</span>`;
   b.setAttribute('aria-label', `${n} – ${TIERE[n]}`);
   b.addEventListener('click', () => starteSpiel(n));
   $('#zahlwahl').append(b);

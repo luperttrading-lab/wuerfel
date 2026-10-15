@@ -1,7 +1,7 @@
 // Netz zuerst für eigene Dateien, Cache nur als Rückfall für offline (Skill app-update-iphone)
 const CACHE = 'wuerfel';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './apple-touch-icon.png',
-  ...[4, 5, 6, 7, 8, 9, 10].map(n => `./tiere/${n}.svg`)];
+  ...[4, 5, 6, 7, 8, 9, 10].map(n => `./tiere/${n}.webp`)];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));

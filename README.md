@@ -39,9 +39,13 @@ Anlaut des Zahlworts – 4 **V**ogel, 5 **F**rosch, 6 **S**eepferdchen (der Schw
 4 + 4), 9 **N**ashorn, 10 **Z**ebra. Regel fürs Zeichnen: Beine und Arme sind nur zu sehen, wenn ihre
 Anzahl die Zahl ist – sonst lernt das Kind beim Oktopus „Beine zählen“ und liest am Frosch eine 4.
 Auf der Spielseite sitzt das Tier mit seiner Zahl über dem Würfel („wir sind beim Oktopus, bei der 8“)
-und hüpft bei jeder richtigen Antwort, nach einer ganzen Runde zweimal. Die runden Plaketten
-(`tiere/*.svg`, je ~2–3 KB) sind von Hand gezeichnet und bleiben in jeder Größe scharf.
-Schalter aus = die Fassung ohne Tiere.
+und hüpft bei jeder richtigen Antwort, nach einer ganzen Runde zweimal. Schalter aus = die Fassung
+ohne Tiere.
+
+Die runden Plaketten sind von Hand als SVG gezeichnet (`tiere/quelle/*.svg`): braune, leicht
+handgezogene Kontur, Papierkorn, Licht von oben links. Diese Papierstruktur sind SVG-Filter, die
+nicht jeder Browser gleich rendert (Safari) – darum liefert die App fertig gerasterte Bilder aus
+(`tiere/*.webp`, 384 px, je ~20–27 KB). Nach jeder Änderung an einer Quelle: `node tools/tiere.mjs`.
 
 **Effekte** (am Gerät mit Reglern ausprobiert, dann fest eingestellt): Staub 4× (`STAUB`), 60 Sterne
 bei jeder richtigen Antwort, 132 nach einer ganzen Runde (`STERNE`).
@@ -58,6 +62,7 @@ der vorigen.
 | `index.html` | ganze App (HTML, CSS, JS); `APP_VERSION` bei jeder Änderung hochzählen |
 | `sw.js` | Service Worker, Netz zuerst (Updates kommen an, offline läuft es weiter) |
 | `manifest.webmanifest`, `*.png` | Home-Bildschirm-Symbol |
-| `tiere/4.svg` … `tiere/10.svg` | Tier-Plaketten je Zahl (SVG) |
+| `tiere/4.webp` … `tiere/10.webp` | Tier-Plaketten je Zahl (gerastert von `tools/tiere.mjs`) |
+| `tiere/quelle/*.svg` | Zeichnungen der Tiere (Quelle) |
 | `tests/spiel.mjs` | Browser-Test: `node tests/spiel.mjs [bildordner]` |
 | `tools/kosten.py` | Kostenzeile für Claude-Sitzungen |

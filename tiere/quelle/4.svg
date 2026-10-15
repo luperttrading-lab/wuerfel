@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <clipPath id="k"><circle cx="128" cy="128" r="118"/></clipPath>
+    <radialGradient id="hg" cx="38%" cy="32%" r="80%"><stop offset="0" stop-color="#fffaf0"/><stop offset="1" stop-color="#bfe3ff"/></radialGradient>
+    <filter id="papier" x="0" y="0" width="256" height="256" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="2" seed="3" result="welle"/>
+      <feDisplacementMap in="SourceGraphic" in2="welle" scale="4" xChannelSelector="R" yChannelSelector="G" result="hand"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" seed="11" result="korn"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.012 0.02" numOctaves="3" seed="5" result="wolke"/>
+      <feComposite in="korn" in2="wolke" operator="arithmetic" k2="0.6" k3="0.4" result="mix"/>
+      <feColorMatrix in="mix" type="matrix" values="0.33 0.33 0.33 0 0  0.33 0.33 0.33 0 0  0.33 0.33 0.33 0 0  0 0 0 0 1" result="grau"/>
+      <feComposite in="hand" in2="grau" operator="arithmetic" k1="0.34" k2="0.83"/>
+      <feColorMatrix type="saturate" values="1.08"/>
+    </filter>
+    <radialGradient id="licht" cx="30%" cy="22%" r="85%"><stop offset="0" stop-color="#fffaf0" stop-opacity=".4"/><stop offset=".55" stop-color="#fff6e0" stop-opacity="0"/><stop offset="1" stop-color="#c0703a" stop-opacity=".1"/></radialGradient>
+  </defs>
+  <g filter="url(#papier)">
+  <circle cx="128" cy="128" r="125" fill="#fffaf0"/>
+  <g clip-path="url(#k)" stroke="#4a2e24" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+    <rect width="256" height="256" fill="url(#hg)" stroke="none"/>
+    <path d="M10 214 Q128 200 246 210" fill="none" stroke="#8a5a2b" stroke-width="16"/>
+    <path d="M10 214 Q128 200 246 210" fill="none" stroke="#b07a40" stroke-width="9"/>
+    <path d="M72 168 L36 196 L50 158 Z" fill="#3f8fda"/>
+    <ellipse cx="128" cy="140" rx="70" ry="66" fill="#5aa9ef"/>
+    <ellipse cx="128" cy="166" rx="44" ry="34" fill="#e3f2ff" stroke="none"/>
+    <path d="M118 76 Q112 56 126 52 Q124 66 132 74 Q136 58 150 60 Q140 70 138 80" fill="#3f8fda"/>
+    <ellipse cx="190" cy="148" rx="22" ry="36" transform="rotate(-24 190 148)" fill="#3f8fda"/>
+    <ellipse cx="66" cy="148" rx="22" ry="36" transform="rotate(24 66 148)" fill="#3f8fda"/>
+    <circle cx="106" cy="122" r="16" fill="#fff" stroke-width="4"/><circle cx="109" cy="124" r="8.5" fill="#4a2e24" stroke="none"/><circle cx="112" cy="120" r="3.2" fill="#fff" stroke="none"/>
+    <circle cx="150" cy="122" r="16" fill="#fff" stroke-width="4"/><circle cx="147" cy="124" r="8.5" fill="#4a2e24" stroke="none"/><circle cx="150" cy="120" r="3.2" fill="#fff" stroke="none"/>
+    <ellipse cx="90" cy="148" rx="10" ry="6" fill="#ff8fa3" opacity=".7" stroke="none"/><ellipse cx="166" cy="148" rx="10" ry="6" fill="#ff8fa3" opacity=".7" stroke="none"/>
+    <path d="M114 140 L142 140 L128 160 Z" fill="#ffa733" stroke-width="4"/>
+    <rect width="256" height="256" fill="url(#licht)" stroke="none"/>
+  </g>
+  </g>
+</svg>

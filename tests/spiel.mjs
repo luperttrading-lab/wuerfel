@@ -349,33 +349,38 @@ console.log('Sagen (Standard): nur würfeln, die Antwort laut sagen');
   ok(await page.evaluate(() => document.body.classList.contains('sagen')), 'Ohne ?tippen: Sagen-Fassung');
   await page.click('#zahlwahl button[data-n="4"]');
   await page.waitForTimeout(300);
-  ok(await page.isHidden('#zahlen') && await page.isHidden('#gleichung'), 'Keine Zahlenleiste, keine Gleichung');
+  ok(await page.isHidden('#zahlen') && await page.isHidden('#gleichung') && await page.isHidden('#hinweis') && await page.isHidden('#stand'),
+    'Nur der Würfel: keine Zahlenleiste, keine Gleichung, kein Text darunter, kein Zähler');
   ok(await page.isHidden('#tier'), 'Ohne Tiere: nichts über dem Würfel');
   const gesehen = [];
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 6; i++) {
     await page.click('#wuerfel', { force: true });
     await page.waitForFunction(() => window.wuerfelSpiel.phase === 'frage', null, { timeout: 5000 });
-    gesehen.push(await page.evaluate(() => window.wuerfelSpiel.zahl));
-    if (i === 0) ok(await page.textContent('#hinweis') === 'Was fehlt bis zur 4?' && await page.textContent('#stand') === '1/5',
-      'Gelandet: „Was fehlt bis zur 4?“, Stand 1/5');
+    const k = await page.evaluate(() => window.wuerfelSpiel.zahl);
+    if (await page.textContent('#augenzahl') !== String(k)) gesehen.push('FALSCH');
+    gesehen.push(k);
   }
-  ok(gesehen.slice().sort().join() === '0,1,2,3,4', `Antippen würfelt weiter, jede Zerlegung genau einmal (${gesehen.join(' ')})`);
-  ok((await page.textContent('#hinweis')).includes('Das war die letzte'), 'Bei der letzten Aufgabe: „Das war die letzte!“');
-  await page.click('#wuerfel', { force: true });
-  await page.waitForTimeout(200);
-  ok(await phase(page) === 'bereit' && await page.evaluate(() => document.body.classList.contains('gut'))
-    && (await page.textContent('#hinweis')).includes('Alle Zerlegungen der 4 geschafft') && await page.textContent('#stand') === '0/5',
-    'Danach: grün, Sterne, „Alle Zerlegungen der 4 geschafft!“, neue Runde');
-  await page.waitForTimeout(2700);
-  await page.click('#wuerfel', { force: true });
-  await page.waitForFunction(() => window.wuerfelSpiel.phase === 'frage', null, { timeout: 5000 });
-  ok(await page.textContent('#stand') === '1/5', 'Nächstes Antippen: neue Runde beginnt');
+  ok(gesehen.every(k => Number.isInteger(k) && k >= 0 && k <= 4), `Antippen würfelt immer weiter, Würfel zeigt 0 … 4 (${gesehen.join(' ')})`);
+  // Echter Würfel: gleichverteilt und ohne Gedächtnis – Doppelte kommen so oft vor wie beim echten Würfeln
+  const wurf = await page.evaluate(() => {
+    const N = 60000, m = 5, h = new Array(m).fill(0), paar = new Array(m * m).fill(0); let doppelt = 0, vorher = null;
+    window.wuerfelSpiel.stand.n = 4;
+    for (let i = 0; i < N; i++) {
+      const k = window.wuerfelSpiel.wurfZiel(); h[k]++;
+      if (vorher !== null) { paar[vorher * m + k]++; if (k === vorher) doppelt++; }
+      vorher = k;
+    }
+    const chi = (o, e) => o.reduce((s, x) => s + (x - e) ** 2 / e, 0);
+    return { chi1: chi(h, N / m), chi2: chi(paar, (N - 1) / (m * m)), doppelt: doppelt / (N - 1) };
+  });
+  ok(wurf.chi1 < 18.467, `Jede Zahl gleich wahrscheinlich: χ² = ${wurf.chi1.toFixed(1)} < 18.467 (df 4, α = 0,001)`);
+  ok(wurf.chi2 < 51.179, `Unabhängig vom vorigen Wurf (Paare): χ² = ${wurf.chi2.toFixed(1)} < 51.179 (df 24, α = 0,001)`);
+  ok(Math.abs(wurf.doppelt - 0.2) < 0.015, `Doppelte hintereinander wie beim echten Würfel: ${(wurf.doppelt * 100).toFixed(1)} % (Soll 1/5 = 20 %)`);
   await page.click('#zurueck');
   await page.click('#tiere-schalter');
   await page.click('#zahlwahl button[data-n="8"]');
   await page.waitForTimeout(300);
-  ok(await page.isVisible('#tier-bild'),
-    'Tiere an: das Tier über dem Würfel');
+  ok(await page.isVisible('#tier-bild'), 'Tiere an: das Tier über dem Würfel');
   for (const [w, h] of [[320, 568], [375, 667]]) {
     await page.setViewportSize({ width: w, height: h });
     await page.waitForTimeout(150);

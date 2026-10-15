@@ -87,7 +87,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 }
 /* „Sagen“ (Standard): nur würfeln und die fehlende Zahl laut sagen – ohne Zahlenleiste und Gleichung.
    Die Fassung zum Antippen bleibt in der Hinterhand: Adresse mit ?tippen */
-.sagen .zahlen, .sagen .lupe, .sagen .gleichung { display: none; }
+.sagen .zahlen, .sagen .lupe, .sagen .gleichung, .sagen .hinweis, .sagen .stand { display: none; }   /* nur der Würfel */
 .sagen .sockel { --s: clamp(140px, 44vw, 240px); }
 .zahlwahl img { display: none; }
 .mit-tieren .zahlwahl button { height: auto; padding: 6px 0 8px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
@@ -280,7 +280,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 </main>
 
 <script>
-const APP_VERSION = '0.36';          // bei JEDER Änderung hochzählen
+const APP_VERSION = '0.37';          // bei JEDER Änderung hochzählen
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
@@ -291,7 +291,7 @@ const TIERE = { 4: 'Vogel', 5: 'Frosch', 6: 'Seepferdchen', 7: 'Seestern', 8: 'O
 const SPEICHER = 'wuerfel.stand';
 const SAGEN = !new URLSearchParams(location.search).has('tippen');   // Standard: Antwort laut sagen; ?tippen: Zahlenleiste
 document.body.classList.toggle('sagen', SAGEN);
-if (SAGEN) document.querySelector('.erklaerung').textContent = 'Der Würfel zeigt eine Zahl. Sag laut, was bis zur gewählten Zahl fehlt – dann tippe wieder auf den Würfel.';
+if (SAGEN) document.querySelector('.erklaerung').textContent = 'Tippe auf den Würfel. Sag laut, was bis zur gewählten Zahl fehlt – dann tippe wieder.';
 const stand = { n: 10, ton: true, sterne: 0, tiere: 'aus' };   // Tiere zuerst aus; 🐾 schaltet: aus → Sticker → wild
 const TIERSAETZE = { aus: 'Ohne Tiere', sticker: 'Tiere: Sticker', wild: 'Tiere: wild & bunt' };
 const STAUB = 4;                    // Staubmenge (Faktor), am Gerät ausprobiert: Maximum
@@ -321,6 +321,13 @@ function zufall(m) {
   const u = new Uint32Array(1), grenze = Math.floor(2 ** 32 / m) * m;
   do crypto.getRandomValues(u); while (u[0] >= grenze);
   return u[0] % m;
+}
+// „Sagen“: würfeln wie mit einem echten Würfel – jede Zahl 0 … n gleich wahrscheinlich, unabhängig vom
+// vorigen Wurf (Doppelte möglich). „Antippen“ (?tippen): ohne Zurücklegen, jede Zerlegung einmal pro Runde.
+function wurfZiel() {
+  if (SAGEN) return zufall(stand.n + 1);
+  if (!beutel.length) beutel = neuerBeutel(stand.n, null);
+  return beutel.pop();
 }
 // Ziehen ohne Zurücklegen: jede Zerlegung 0+n … n+0 kommt pro Runde genau einmal.
 // Gezogen wird von hinten; die erste Zahl einer Runde ist nie die letzte der vorigen.
@@ -693,8 +700,7 @@ function lockeNicht() { clearTimeout(lockTimer); hinweisEl.classList.remove('loc
 function wuerfeln() {
   clearTimeout(weiterTimer);
   lockeNicht();
-  if (!beutel.length) beutel = neuerBeutel(stand.n, null);
-  lauf = { ziel: beutel.pop(), t0: performance.now(), gesetzt: false, vorn: 'vorne', aufgeschlagen: false, staub: 0 };
+  lauf = { ziel: wurfZiel(), t0: performance.now(), gesetzt: false, vorn: 'vorne', aufgeschlagen: false, staub: 0 };
   for (const k in seiten) seiten[k].weg = false;
   phase = 'rollt';
   zahl = null;
@@ -727,23 +733,6 @@ function landen() {
   zeigeGleichung(zahl, null);
   gleichungEl.classList.remove('weg');
   hinweisEl.textContent = 'Welche Zahl fehlt?';
-  if (SAGEN) {                                                    // kein Antippen: jede gewürfelte Aufgabe zählt
-    geschafft++;
-    zeigeStand();
-    hinweisEl.textContent = beutel.length ? `Was fehlt bis zur ${stand.n}?` : `Was fehlt bis zur ${stand.n}? Das war die letzte!`;
-  }
-}
-// „Sagen“: die Antwort war laut – nächstes Antippen würfelt weiter, nach der letzten Aufgabe wird gefeiert.
-function weiterSagen() {
-  if (beutel.length) { wuerfeln(); return; }
-  klang.runde();
-  faerbe('gut', 2600);
-  sterneAus(wuerfelEl, Math.round(STERNE * 2.2));
-  if (mitTieren()) nochmal($('#tier'), 'tanzt');
-  beutel = neuerBeutel(stand.n, zahl);
-  geschafft = 0;
-  zeigeStand();
-  bereit(`Alle Zerlegungen der ${stand.n} geschafft!`);
 }
 function stoppeWuerfel() {
   cancelAnimationFrame(rafId); clearTimeout(weiterTimer);
@@ -829,7 +818,7 @@ function starteSpiel(n) {
 
 function tippeWuerfel() {
   if (phase === 'bereit' || phase === 'geloest') wuerfeln();
-  else if (phase === 'frage' && SAGEN) weiterSagen();
+  else if (phase === 'frage' && SAGEN) wuerfeln();             // „Sagen“: Antwort war laut, weiter würfeln
   else if (phase === 'frage') { nochmal(wuerfelEl, 'stups'); hinweisEl.textContent = 'Tippe unten die Zahl an!'; }
 }
 
@@ -1018,7 +1007,7 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
 
 // Für die Tests in tests/spiel.mjs
 window.wuerfelSpiel = {
-  zufall, neuerBeutel, stand, starteSpiel,
+  zufall, neuerBeutel, wurfZiel, stand, starteSpiel,
   get zahl() { return zahl; }, get phase() { return phase; }, get beutel() { return beutel.slice(); },
   get staub() { return koerner.length; }, bewegung, ROLLZEIT, AUFPRALL,
   get sterne() { return funken.length; },

@@ -64,7 +64,7 @@ der vorigen.
 |---|---|
 | `index.html` | ganze App (HTML, CSS, JS); `APP_VERSION` bei jeder Änderung hochzählen |
 | `sw.js` | Service Worker, Netz zuerst (Updates kommen an, offline läuft es weiter) |
-| `manifest.webmanifest`, `*.png` | Home-Bildschirm-Symbol |
+| `manifest.webmanifest`, `*.png` | Home-Bildschirm-Symbol: der Würfel aus dem Spiel (lila 8) auf Bernstein, gebaut von `tools/icon.py` aus `icon-quelle/wuerfel-8.png`; `icon-maskable.png` mit mehr Rand für Android. iOS übernimmt ein neues Symbol erst, wenn die App neu zum Home-Bildschirm hinzugefügt wird |
 | `tiere/4.webp` … `tiere/10.webp` | Tier-Sticker je Zahl (ausgeschnitten von `tools/sticker.py`) |
 | `tiere/quelle/4.jpg` … `10.jpg` | Vorlagen der Sticker, je Tier ein Bild |
 | `tests/spiel.mjs` | Browser-Test: `node tests/spiel.mjs [bildordner]` |

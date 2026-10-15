@@ -40,13 +40,13 @@ nach oben: 3 + 1 + 3), 8 Oktopus (Ausnahme: *okto* = acht, 8 Arme als 4 + 4), 9 
 Breite bzw. 210 px), die Zahl als Plakette rechts unten daneben („wir sind beim Oktopus, bei der 8“).
 Es hüpft bei jeder richtigen Antwort, nach einer ganzen Runde zweimal. Schalter aus = ohne Tiere.
 
-Die Bilder sind Sticker aus einem Bildgenerator (`tiere/quelle/sticker.jpg`, ein Streifen mit allen
-sieben). `python3 tools/sticker.py` findet die Sticker im Streifen (in jeder Auflösung), schneidet sie
-aus, macht den Grund durchsichtig und schreibt `tiere/*.webp` (640 px). Einzelbilder `tiere/quelle/5.png`
-usw. gehen vor – so lässt sich ein einzelnes Tier austauschen. Der Streifen ist nur 245 px hoch – die Sticker werden ~2,5× hochgerechnet;
-eine größere Vorlage macht sie schärfer. Offene Punkte: Der Frosch zeigt 4 Beine (bei der 5 lädt das
-zum falschen Zählen ein), das Seepferdchen liegt waagerecht statt als 6. Die frühere gezeichnete
-Fassung (SVG mit Papierstruktur, `tools/tiere.mjs`) liegt in der Git-Historie (bis v0.23).
+Die Bilder sind Sticker aus einem Bildgenerator, je Tier eine Vorlage (`tiere/quelle/4.jpg` …
+`10.jpg`, ~800–1000 px, aus Bildschirmfotos ausgeschnitten – der Chat-Upload verkleinert breite Bilder,
+Einzelbilder kommen in voller Größe an). `python3 tools/sticker.py` macht den Grund durchsichtig und
+schreibt `tiere/*.webp` (640 px, nur verkleinert, also scharf). Es nimmt auch einen Streifen
+`sticker.jpg` mit allen sieben; Einzelbilder gehen vor. Offene Punkte: Der Frosch zeigt 4 Beine (bei
+der 5 lädt das zum falschen Zählen ein), das Seepferdchen liegt waagerecht statt als 6. Die frühere
+gezeichnete Fassung (SVG mit Papierstruktur, `tools/tiere.mjs`) liegt in der Git-Historie (bis v0.23).
 
 **Effekte** (am Gerät mit Reglern ausprobiert, dann fest eingestellt): Staub 4× (`STAUB`), 60 Sterne
 bei jeder richtigen Antwort, 132 nach einer ganzen Runde (`STERNE`).
@@ -64,6 +64,6 @@ der vorigen.
 | `sw.js` | Service Worker, Netz zuerst (Updates kommen an, offline läuft es weiter) |
 | `manifest.webmanifest`, `*.png` | Home-Bildschirm-Symbol |
 | `tiere/4.webp` … `tiere/10.webp` | Tier-Sticker je Zahl (ausgeschnitten von `tools/sticker.py`) |
-| `tiere/quelle/sticker.jpg` | Vorlage: alle sieben Sticker in einem Streifen |
+| `tiere/quelle/4.jpg` … `10.jpg` | Vorlagen der Sticker, je Tier ein Bild |
 | `tests/spiel.mjs` | Browser-Test: `node tests/spiel.mjs [bildordner]` |
 | `tools/kosten.py` | Kostenzeile für Claude-Sitzungen |

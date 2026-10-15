@@ -68,9 +68,9 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 .tier-platte { position: relative; height: 100%; aspect-ratio: 1; container-type: size; }
 .tier img { width: 100%; height: 100%; object-fit: contain; display: block; filter: drop-shadow(0 4px 8px rgba(43, 33, 64, .22)); }
 .tier-zahl {
-  /* wächst mit dem Tier (24 % der Plakette) und sitzt halb außerhalb (Richtung 126°, Innenkante bei 0,88 R),
-     damit Arme und Punkte zählbar bleiben */
-  position: absolute; left: 83.3%; top: 70.9%; min-width: 24%; height: 24%; padding: 0 .3em; border-radius: 999px;
+  /* wächst mit dem Tier (24 % des Bildes) und steht rechts unten daneben – die Sticker haben freie Formen,
+     so verdeckt sie nie ein Bein, einen Arm oder einen Punkt (Test prüft das Pixel für Pixel) */
+  position: absolute; left: 100%; top: 70%; min-width: 24%; height: 24%; padding: 0 .3em; border-radius: 999px;
   display: grid; place-items: center; background: var(--ganz); color: #fff; font-size: 21px; font-size: 13cqh; font-weight: 900;
   border: 3px solid #fff; box-shadow: 0 2px 6px rgba(43, 33, 64, .2);
 }
@@ -270,7 +270,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 </main>
 
 <script>
-const APP_VERSION = '0.23';          // bei JEDER Änderung hochzählen
+const APP_VERSION = '0.24';          // bei JEDER Änderung hochzählen
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);

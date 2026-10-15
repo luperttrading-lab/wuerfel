@@ -34,18 +34,18 @@ Lernspiel fürs Handy, damit sich die Zerlegungen der Zahlen 4 bis 10 als **Ziff
    alle 1,8 s) – auch bei „Bewegung reduzieren“, denn Farbe ist keine Bewegung.
 
 **Tiere** (Schalter 🐾 auf der Startseite, Start: an): jede Zahl hat ihr Tier, gewählt nach dem
-Anlaut des Zahlworts – 4 **V**ogel, 5 **F**rosch, 6 **S**eepferdchen (der Schwanz ist eine 6),
-7 **S**eestern (7 Arme, einer nach oben: 3 + 1 + 3), 8 Oktopus (Ausnahme: *okto* = acht, 8 Arme als
-4 + 4), 9 **N**ashorn, 10 **Z**ebra. Regel fürs Zeichnen: Beine und Arme sind nur zu sehen, wenn ihre
-Anzahl die Zahl ist – sonst lernt das Kind beim Oktopus „Beine zählen“ und liest am Frosch eine 4.
-Auf der Spielseite sitzt das Tier groß (freier Platz über dem Würfel, bis 46 % der Breite bzw. 210 px) mit seiner Zahl über dem Würfel („wir sind beim Oktopus, bei der 8“)
-und hüpft bei jeder richtigen Antwort, nach einer ganzen Runde zweimal. Schalter aus = die Fassung
-ohne Tiere.
+Anlaut des Zahlworts – 4 **V**ogel, 5 **F**rosch, 6 **S**eepferdchen, 7 **S**eestern (7 Arme, einer
+nach oben: 3 + 1 + 3), 8 Oktopus (Ausnahme: *okto* = acht, 8 Arme als 4 + 4), 9 **N**ashorn,
+10 **Z**ebra. Auf der Spielseite sitzt das Tier groß über dem Würfel (freier Platz, bis 46 % der
+Breite bzw. 210 px), die Zahl als Plakette rechts unten daneben („wir sind beim Oktopus, bei der 8“).
+Es hüpft bei jeder richtigen Antwort, nach einer ganzen Runde zweimal. Schalter aus = ohne Tiere.
 
-Die runden Plaketten sind von Hand als SVG gezeichnet (`tiere/quelle/*.svg`): braune, leicht
-handgezogene Kontur, Papierkorn, Licht von oben links. Diese Papierstruktur sind SVG-Filter, die
-nicht jeder Browser gleich rendert (Safari) – darum liefert die App fertig gerasterte Bilder aus
-(`tiere/*.webp`, 640 px, je ~28–43 KB). Nach jeder Änderung an einer Quelle: `node tools/tiere.mjs`.
+Die Bilder sind Sticker aus einem Bildgenerator (`tiere/quelle/sticker.jpg`, ein Streifen mit allen
+sieben). `python3 tools/sticker.py` schneidet sie aus, macht den Grund durchsichtig und schreibt
+`tiere/*.webp` (640 px). Der Streifen ist nur 245 px hoch – die Sticker werden ~2,5× hochgerechnet;
+eine größere Vorlage macht sie schärfer. Offene Punkte: Der Frosch zeigt 4 Beine (bei der 5 lädt das
+zum falschen Zählen ein), das Seepferdchen liegt waagerecht statt als 6. Die frühere gezeichnete
+Fassung (SVG mit Papierstruktur, `tools/tiere.mjs`) liegt in der Git-Historie (bis v0.23).
 
 **Effekte** (am Gerät mit Reglern ausprobiert, dann fest eingestellt): Staub 4× (`STAUB`), 60 Sterne
 bei jeder richtigen Antwort, 132 nach einer ganzen Runde (`STERNE`).
@@ -62,7 +62,7 @@ der vorigen.
 | `index.html` | ganze App (HTML, CSS, JS); `APP_VERSION` bei jeder Änderung hochzählen |
 | `sw.js` | Service Worker, Netz zuerst (Updates kommen an, offline läuft es weiter) |
 | `manifest.webmanifest`, `*.png` | Home-Bildschirm-Symbol |
-| `tiere/4.webp` … `tiere/10.webp` | Tier-Plaketten je Zahl (gerastert von `tools/tiere.mjs`) |
-| `tiere/quelle/*.svg` | Zeichnungen der Tiere (Quelle) |
+| `tiere/4.webp` … `tiere/10.webp` | Tier-Sticker je Zahl (ausgeschnitten von `tools/sticker.py`) |
+| `tiere/quelle/sticker.jpg` | Vorlage: alle sieben Sticker in einem Streifen |
 | `tests/spiel.mjs` | Browser-Test: `node tests/spiel.mjs [bildordner]` |
 | `tools/kosten.py` | Kostenzeile für Claude-Sitzungen |

@@ -240,15 +240,29 @@ console.log('Tiere (einschaltbar)');
   const tier = await page.evaluate(() => ({ alt: document.querySelector('#tier-bild').alt, zahl: document.querySelector('#tier-zahl').textContent,
     sichtbar: !document.querySelector('#tier').hidden }));
   ok(tier.sichtbar && tier.alt === 'Seestern' && tier.zahl === '7' && await geladen('#tier-bild'), 'Spielseite: Seestern mit der 7 über dem Würfel');
-  for (const w of [320, 375, 390, 430]) {
+  for (const w of [320, 390]) {
     await page.setViewportSize({ width: w, height: 844 });
-    const frei = await page.evaluate(() => {
-      const t = document.querySelector('#tier-bild').getBoundingClientRect(), z = document.querySelector('#tier-zahl').getBoundingClientRect();
-      const R = t.width / 2, d = Math.hypot(z.x + z.width / 2 - t.x - R, z.y + z.height / 2 - t.y - R);
-      return (d - z.height / 2) / R;
-    });
-    ok(frei >= 0.85, `${w} px: Zahlplakette lässt die Arme frei (verdeckt erst ab ${Math.round(frei * 100)} % des Radius)`);
+    const zugedeckt = [];
+    for (const n of [4, 5, 6, 7, 8, 9, 10]) {
+      await page.evaluate(n => window.wuerfelSpiel.starteSpiel(n), n);
+      await page.waitForFunction(() => { const i = document.querySelector('#tier-bild'); return i.complete && i.naturalWidth > 0; });
+      const verdeckt = await page.evaluate(() => {
+        const img = document.querySelector('#tier-bild'), t = img.getBoundingClientRect(), z = document.querySelector('#tier-zahl').getBoundingClientRect();
+        const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
+        const g = c.getContext('2d'); g.drawImage(img, 0, 0);
+        const k = img.naturalWidth / t.width;        // Bildpunkte je CSS-Pixel
+        const x0 = Math.max(0, Math.floor((z.left - t.left) * k)), x1 = Math.min(c.width, Math.ceil((z.right - t.left) * k));
+        const y0 = Math.max(0, Math.floor((z.top - t.top) * k)), y1 = Math.min(c.height, Math.ceil((z.bottom - t.top) * k));
+        if (x1 <= x0 || y1 <= y0) return 0;
+        const d = g.getImageData(x0, y0, x1 - x0, y1 - y0).data;
+        let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 128) n++;
+        return n;
+      });
+      if (verdeckt) zugedeckt.push(`${n}: ${verdeckt} Bildpunkte`);
+    }
+    ok(!zugedeckt.length, `${w} px: Zahlplakette verdeckt bei keinem der 7 Tiere etwas` + (zugedeckt.length ? ' – ' + zugedeckt.join(', ') : ''));
   }
+  await page.evaluate(() => window.wuerfelSpiel.starteSpiel(7));
   for (const [w, h, min] of [[320, 568, 100], [375, 667, 160], [390, 844, 170], [430, 932, 190]]) {
     await page.setViewportSize({ width: w, height: h });
     const m = await page.evaluate(() => {

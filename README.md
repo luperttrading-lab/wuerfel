@@ -10,14 +10,14 @@ Lernspiel fürs Handy, damit sich die Zerlegungen der Zahlen 4 bis 10 als **Ziff
    Abgerundete Kanten: 12 schräge Kantenstreifen mit Lichtverlauf und 8 Eckdreiecke mit
    baryzentrisch gemischtem Licht – Lage und Größe aller 26 Teile rechnet `baueKoerper()`.
    In Ruhe steht vorne die gewählte Zahl (lila), die Nebenseiten sind grau.
-3. **Antippen:** Luftzug-Geräusch, dann wirbelt er 2 Sekunden auf der Stelle und wird langsamer:
-   fünf Überschläge, zwei Drehungen seitwärts, eine um die eigene Mitte. Dabei wird er kleiner
+3. **Antippen:** Luftzug-Geräusch, dann wirbelt er 1 Sekunde auf der Stelle und wird langsamer:
+   drei Überschläge, eine Drehung seitwärts, eine um die eigene Mitte (bis v0.34: 2 s, fünf Überschläge). Dabei wird er kleiner
    (bis 70 %) und wieder groß, der Schatten schrumpft mit; Staub stiebt kräftig (4×) hinter ihm hervor
-   und verweht bis etwa 1,9 s. Bei 1,76 s schlägt er auf: „Bumm“, er staucht sich kurz (91 % hoch),
+   und verweht bis etwa 1,3 s. Bei 0,88 s schlägt er auf: „Bumm“, er staucht sich kurz (91 % hoch),
    ein Staubwölkchen am Boden. Die Ziffern wirken eingeprägt. Bei jedem
-   Überschlag klickt es (25-mal). Seiten, die gerade nach hinten zeigen, bekommen neue Zahlen;
-   die Vorderseite bekommt die ausgeloste Zahl, solange sie verdeckt ist (bis 1,56 s), und liegt
-   ab 1,72 s vorn (blau). Darunter steht `3 + ? = 8`. Die sichtbaren Nebenseiten zeigen nie die
+   Überschlag klickt es. Seiten, die gerade nach hinten zeigen, bekommen neue Zahlen;
+   die Vorderseite bekommt die ausgeloste Zahl, solange sie verdeckt ist (0,53–0,72 s), und liegt
+   ab 0,88 s vorn (blau). Darunter steht `3 + ? = 8`. Die sichtbaren Nebenseiten zeigen nie die
    gewürfelte Zahl oder die Lösung.
    Der Würfel dreht sich auch, wenn am iPhone „Bewegung reduzieren“ eingeschaltet ist – das
    Drehen ist hier der Kern des Spiels.
@@ -39,7 +39,7 @@ Lernspiel fürs Handy, damit sich die Zerlegungen der Zahlen 4 bis 10 als **Ziff
 weiter (jede Zerlegung genau einmal); nach der letzten Aufgabe Fanfare, grün, Sterne. Keine Zahlenleiste,
 keine Gleichung, der Würfel ist etwas größer. Die Fassung **Antippen** (Zahlenleiste, Gleichung, Lupe,
 richtig/falsch) liegt in der Hinterhand: Adresse mit `?tippen`, also
-https://luperttrading-lab.github.io/wuerfel/?tippen. Ohne Tiere steht über dem Würfel die runde Zahl.
+https://luperttrading-lab.github.io/wuerfel/?tippen. Ohne Tiere steht nichts über dem Würfel.
 
 **Tiere** (Schalter 🐾 auf der Startseite: aus → Sticker → wild & bunt → aus; beim ersten Laden aus, die Wahl wird gespeichert): jede Zahl hat ihr Tier, gewählt nach dem
 Anlaut des Zahlworts – 4 **V**ogel, 5 **F**rosch, 6 **S**eepferdchen, 7 **S**eestern (7 Arme, einer

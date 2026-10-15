@@ -138,7 +138,7 @@ console.log('Startseite');
     return { kleinste, flachste, ersteStauchung };
   });
   const kleinste = kurve.kleinste, gestaucht = kurve.flachste;
-  ok(kurve.ersteStauchung >= 1750 && kurve.ersteStauchung <= 1770, `„Bumm“ und Stauchen bei ${kurve.ersteStauchung} ms`);
+  ok(kurve.ersteStauchung >= 875 && kurve.ersteStauchung <= 885, `„Bumm“ und Stauchen bei ${kurve.ersteStauchung} ms`);
   const dauer = Date.now() - t0;
   ok(kleinste < 0.8 && kleinste > 0.6, `Er wird beim Wirbeln kleiner und wieder groß (kleinste Größe ${Math.round(kleinste * 100)} %)`);
   const kante = await page.evaluate(() => document.querySelector('#koerper').offsetWidth);
@@ -146,7 +146,7 @@ console.log('Startseite');
   ok(gestaucht < 0.94, `Beim Aufprall staucht er sich (flach auf ${Math.round(gestaucht * 100)} %)`);
   ok(staubMax >= 150, `Beim Wirbeln fliegt viel Staub (bis ${staubMax} Körner gleichzeitig)`);
   ok(lagenRollen.size >= 20 && wechsel >= 6, `Beim Rollen überschlägt er sich (${lagenRollen.size} Lagen) und die Zahlen wechseln (${wechsel}×)`);
-  ok(dauer >= 1900 && dauer <= 2600, `Rollen dauert ${dauer} ms (Soll 2 s)`);
+  ok(dauer >= 950 && dauer <= 1500, `Rollen dauert ${dauer} ms (Soll 1 s)`);
   let k = await page.evaluate(() => window.wuerfelSpiel.zahl);
   ok(await page.textContent('#augenzahl') === String(k), `Würfel zeigt die gezogene Zahl ${k}`);
   ok(await lage(page) === RUHELAGE, 'Würfel liegt danach wieder in Ruhelage');
@@ -237,8 +237,7 @@ console.log('Tiere (einschaltbar)');
   ok(await page.getAttribute('#tiere-schalter', 'aria-pressed') === 'false' && await page.isHidden('#zahlwahl img'),
     'Beim ersten Laden: ohne Tiere');
   await page.click('#zahlwahl button[data-n="7"]');
-  ok(await page.evaluate(() => { const t = document.querySelector('#tier'); return !t.hidden && t.classList.contains('nur-zahl')
-    && getComputedStyle(document.querySelector('#tier-bild')).display === 'none' && document.querySelector('#tier-zahl').textContent === '7'; }), 'Beim ersten Laden: kein Tier, nur die runde 7 über dem Würfel');
+  ok(await page.isHidden('#tier'), 'Beim ersten Laden: kein Tier und keine Zahl über dem Würfel');
   await page.click('#zurueck');
   const quellen = () => page.evaluate(() => [...document.querySelectorAll('#zahlwahl img')].map(i => i.getAttribute('src')));
   await page.click('#tiere-schalter');
@@ -313,8 +312,7 @@ console.log('Tiere (einschaltbar)');
   await page.click('#tiere-schalter');
   ok(await page.getAttribute('#tiere-schalter', 'aria-pressed') === 'false' && await page.isHidden('#zahlwahl img'), 'Tatzen 3×: wieder ohne Tiere');
   await page.click('#zahlwahl button[data-n="7"]');
-  ok(await page.evaluate(() => { const t = document.querySelector('#tier'); return !t.hidden && t.classList.contains('nur-zahl')
-    && getComputedStyle(document.querySelector('#tier-bild')).display === 'none' && document.querySelector('#tier-zahl').textContent === '7'; }), 'Ohne Tiere: nur die runde Zahl');
+  ok(await page.isHidden('#tier'), 'Ohne Tiere: nichts über dem Würfel');
   await page.click('#zurueck');
   await page.click('#tiere-schalter'); await page.click('#tiere-schalter'); await page.click('#tiere-schalter');
   ok(await page.getAttribute('#tiere-schalter', 'data-satz') === 'aus', 'Dreimal schnell hintereinander: einmal rundherum (Hinweis fängt keine Tipps ab)');
@@ -332,8 +330,7 @@ console.log('Sagen (Standard): nur würfeln, die Antwort laut sagen');
   await page.click('#zahlwahl button[data-n="4"]');
   await page.waitForTimeout(300);
   ok(await page.isHidden('#zahlen') && await page.isHidden('#gleichung'), 'Keine Zahlenleiste, keine Gleichung');
-  ok(await page.isVisible('#tier-zahl') && await page.textContent('#tier-zahl') === '4' && await page.isHidden('#tier-bild'),
-    'Ohne Tiere: die runde 4 über dem Würfel');
+  ok(await page.isHidden('#tier'), 'Ohne Tiere: nichts über dem Würfel');
   const gesehen = [];
   for (let i = 0; i < 5; i++) {
     await page.click('#wuerfel', { force: true });
@@ -357,8 +354,8 @@ console.log('Sagen (Standard): nur würfeln, die Antwort laut sagen');
   await page.click('#tiere-schalter');
   await page.click('#zahlwahl button[data-n="8"]');
   await page.waitForTimeout(300);
-  ok(await page.isVisible('#tier-bild') && await page.evaluate(() => !document.querySelector('#tier').classList.contains('nur-zahl')),
-    'Tiere an: das Tier statt der runden Zahl');
+  ok(await page.isVisible('#tier-bild'),
+    'Tiere an: das Tier über dem Würfel');
   for (const [w, h] of [[320, 568], [375, 667]]) {
     await page.setViewportSize({ width: w, height: h });
     await page.waitForTimeout(150);

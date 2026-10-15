@@ -85,12 +85,6 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   0%, 100% { transform: none; } 25% { transform: translateY(-16px) scale(1.08) rotate(-6deg); }
   50% { transform: none; } 75% { transform: translateY(-7px) rotate(5deg); }
 }
-/* Ohne Tiere: an ihrer Stelle die runde Zahl – man sieht immer, welche Zahl zerlegt wird */
-.tier.nur-zahl { flex: none; align-items: center; margin-bottom: 0; }
-.tier.nur-zahl .tier-platte { height: auto; width: clamp(84px, 26vw, 124px); aspect-ratio: 1; max-width: none; container-type: normal; }
-.tier.nur-zahl img { display: none; }
-.tier.nur-zahl .tier-zahl { position: static; width: 100%; height: 100%; min-width: 0; padding: 0;
-  font-size: clamp(44px, 14vw, 66px); border-width: 4px; box-shadow: 0 6px 16px rgba(108, 75, 216, .28); }
 /* „Sagen“ (Standard): nur würfeln und die fehlende Zahl laut sagen – ohne Zahlenleiste und Gleichung.
    Die Fassung zum Antippen bleibt in der Hinterhand: Adresse mit ?tippen */
 .sagen .zahlen, .sagen .lupe, .sagen .gleichung { display: none; }
@@ -264,7 +258,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
     <button class="ton" aria-label="Ton an oder aus"></button>
   </header>
   <section class="buehne">
-    <div class="tier nur-zahl" id="tier"><div class="tier-platte"><img id="tier-bild" alt=""><span class="tier-zahl" id="tier-zahl"></span></div></div>
+    <div class="tier" id="tier" hidden><div class="tier-platte"><img id="tier-bild" alt=""><span class="tier-zahl" id="tier-zahl"></span></div></div>
     <div class="sockel">
       <canvas class="staub" id="staub" aria-hidden="true"></canvas>
       <button class="wuerfel" id="wuerfel" aria-label="Würfeln">
@@ -286,7 +280,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 </main>
 
 <script>
-const APP_VERSION = '0.34';          // bei JEDER Änderung hochzählen
+const APP_VERSION = '0.35';          // bei JEDER Änderung hochzählen
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
@@ -404,8 +398,8 @@ const klang = {
 
 /* ---------- Staub ---------- */
 // Weiche Körner fliegen von den Kanten weg (mit dem Drehsinn), bremsen in der Luft, steigen leicht,
-// dehnen sich und verblassen. Ausgestoßen wird nur in der ersten Sekunde – nach spätestens 1,9 s ist
-// alles verweht. Beim Aufprall ein kurzes Wölkchen unten.
+// dehnen sich und verblassen. Ausgestoßen wird nur in der ersten halben Sekunde – nach spätestens 1,3 s
+// ist alles verweht. Beim Aufprall ein kurzes Wölkchen unten.
 const staubEl = $('#staub'), staubCtx = staubEl.getContext('2d');
 let koerner = [], staubRaf = 0, staubZuletzt = 0;
 function staubLeinwand() {
@@ -433,7 +427,7 @@ function streue(anzahl, kraft) {                                               /
     const w = Math.random() * 2 * Math.PI, v = s * (0.6 + Math.random() * 1.1) * (0.4 + 0.6 * kraft);
     korn(r.width / 2 + Math.cos(w) * s * 0.42, r.height / 2 + Math.sin(w) * s * 0.42,
       Math.cos(w) * v - Math.sin(w) * v * 0.7, Math.sin(w) * v + Math.cos(w) * v * 0.7,
-      3.5 + Math.random() * 6.5, 0.45 + Math.random() * 0.45);
+      3.5 + Math.random() * 6.5, 0.4 + Math.random() * 0.4);
   }
 }
 function staubWolke() {                                                        // Aufprall: seitlich am Boden
@@ -513,17 +507,18 @@ funkenLeinwand();
 
 /* ---------- Würfel: echter Würfel in 3D ---------- */
 // In Ruhe fast von vorn (oben und rechts nur schmale Kanten), vorne die Zahl, die zerlegt wird.
-// Beim Antippen wird die Zahl sofort ausgelost. Dann wirbelt er 2 Sekunden: fünf Überschläge,
-// zwei Drehungen seitwärts, eine um die eigene Mitte – auf der Stelle. Dabei wird er kleiner
-// (bis 70 %) und wieder groß; bei 1,76 s ist er zurück, staucht sich kurz (Aufprall) und es macht
+// Beim Antippen wird die Zahl sofort ausgelost. Dann wirbelt er 1 Sekunde: drei Überschläge,
+// eine Drehung seitwärts, eine um die eigene Mitte – auf der Stelle, etwa so schnell wie früher in 2 s
+// mit fünf Überschlägen (36° statt 30° pro Bild; schneller flimmert es). Dabei wird er kleiner
+// (bis 70 %) und wieder groß; bei 0,88 s ist er zurück, staucht sich kurz (Aufprall) und es macht
 // „Bumm“. Dabei fliegt Staub, der verweht, bevor die Zahl dasteht. Seiten, die nach hinten zeigen,
 // bekommen neue Zahlen;
-// die Vorderseite bekommt die ausgeloste Zahl, solange sie verdeckt ist (bis 1,56 s), und liegt
-// ab 1,72 s vorn. Zeiten gerechnet für Bremsen mit 1 − (1 − p)².
-const ROLLZEIT = 2000;                                  // ms
+// die Vorderseite bekommt die ausgeloste Zahl, solange sie verdeckt ist (0,53–0,72 s), und liegt
+// ab 0,88 s vorn. Zeiten gerechnet für Bremsen mit 1 − (1 − p)².
+const ROLLZEIT = 1000;                                  // ms (bis v0.34: 2000)
 const RUHE = { x: -10, y: -12 };                        // Grad
-const DREH = { x: 1800, y: -720, z: 360 };              // nur Vielfache von 360°: endet wieder in Ruhelage
-const AUFPRALL = 0.88;                                  // Anteil der Rollzeit bis „Bumm“ (1,76 s: Drehung fast vorbei)
+const DREH = { x: 1080, y: -360, z: 360 };              // nur Vielfache von 360°: endet wieder in Ruhelage
+const AUFPRALL = 0.88;                                  // Anteil der Rollzeit bis „Bumm“ (0,88 s: Drehung fast vorbei)
 const KLEINSTE = 0.7;                                   // kleinste Größe beim Wirbeln
 const LICHT = [-0.25, -0.6, 0.76];                      // von links oben vorn
 const NORMALE = { vorne: [0, 0, 1], hinten: [0, 0, -1], rechts: [1, 0, 0], links: [-1, 0, 0], oben: [0, -1, 0], unten: [0, 1, 0] };
@@ -665,7 +660,7 @@ function schritt(t) {
   const { weg, groesse, breit, flach } = bewegung(p);
   if (p >= AUFPRALL && !lauf.aufgeschlagen) { lauf.aufgeschlagen = true; klang.landen(); staubWolke(); }
   if (p < 0.5) {                                                              // Staub, solange er schnell dreht
-    lauf.staub += 160 * STAUB * (1 - p / 0.5) * Math.max(0, (t - (lauf.tz || t)) / 1000);
+    lauf.staub += 320 * STAUB * (1 - p / 0.5) * Math.max(0, (t - (lauf.tz || t)) / 1000);   // so viel wie früher in 2 s
     while (lauf.staub >= 1) { lauf.staub--; streue(1, 1 - p / 0.5); }
   }
   lauf.tz = t;
@@ -772,7 +767,7 @@ function zeigeTiere() {
   knopf.setAttribute('aria-pressed', String(mitTieren()));
   knopf.dataset.satz = stand.tiere;
   knopf.setAttribute('aria-label', TIERSAETZE[stand.tiere] + ' – antippen zum Wechseln');
-  $('#tier').classList.toggle('nur-zahl', !mitTieren());
+  $('#tier').hidden = !mitTieren();
   if (mitTieren()) $$('#zahlwahl button').forEach(b => { b.querySelector('img').src = tierBild(b.dataset.n); });
 }
 function zeigeTon() { $$('.ton').forEach(b => { b.textContent = stand.ton ? '🔊' : '🔇'; }); }

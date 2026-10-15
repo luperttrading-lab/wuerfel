@@ -85,6 +85,16 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   0%, 100% { transform: none; } 25% { transform: translateY(-16px) scale(1.08) rotate(-6deg); }
   50% { transform: none; } 75% { transform: translateY(-7px) rotate(5deg); }
 }
+/* Ohne Tiere: an ihrer Stelle die runde Zahl – man sieht immer, welche Zahl zerlegt wird */
+.tier.nur-zahl { flex: none; align-items: center; margin-bottom: 0; }
+.tier.nur-zahl .tier-platte { height: auto; width: clamp(84px, 26vw, 124px); aspect-ratio: 1; max-width: none; container-type: normal; }
+.tier.nur-zahl img { display: none; }
+.tier.nur-zahl .tier-zahl { position: static; width: 100%; height: 100%; min-width: 0; padding: 0;
+  font-size: clamp(44px, 14vw, 66px); border-width: 4px; box-shadow: 0 6px 16px rgba(108, 75, 216, .28); }
+/* „Sagen“ (Standard): nur würfeln und die fehlende Zahl laut sagen – ohne Zahlenleiste und Gleichung.
+   Die Fassung zum Antippen bleibt in der Hinterhand: Adresse mit ?tippen */
+.sagen .zahlen, .sagen .lupe, .sagen .gleichung { display: none; }
+.sagen .sockel { --s: clamp(140px, 44vw, 240px); }
 .zahlwahl img { display: none; }
 .mit-tieren .zahlwahl button { height: auto; padding: 6px 0 8px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .mit-tieren .zahlwahl img { display: block; width: 86%; aspect-ratio: 1; object-fit: contain; }
@@ -254,7 +264,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
     <button class="ton" aria-label="Ton an oder aus"></button>
   </header>
   <section class="buehne">
-    <div class="tier" id="tier" hidden><div class="tier-platte"><img id="tier-bild" alt=""><span class="tier-zahl" id="tier-zahl"></span></div></div>
+    <div class="tier nur-zahl" id="tier"><div class="tier-platte"><img id="tier-bild" alt=""><span class="tier-zahl" id="tier-zahl"></span></div></div>
     <div class="sockel">
       <canvas class="staub" id="staub" aria-hidden="true"></canvas>
       <button class="wuerfel" id="wuerfel" aria-label="Würfeln">
@@ -276,7 +286,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 </main>
 
 <script>
-const APP_VERSION = '0.33';          // bei JEDER Änderung hochzählen
+const APP_VERSION = '0.34';          // bei JEDER Änderung hochzählen
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
@@ -285,6 +295,9 @@ const $$ = s => document.querySelectorAll(s);
 const ZAHLEN = [4, 5, 6, 7, 8, 9, 10];
 const TIERE = { 4: 'Vogel', 5: 'Frosch', 6: 'Seepferdchen', 7: 'Seestern', 8: 'Oktopus', 9: 'Nashorn', 10: 'Zebra' };
 const SPEICHER = 'wuerfel.stand';
+const SAGEN = !new URLSearchParams(location.search).has('tippen');   // Standard: Antwort laut sagen; ?tippen: Zahlenleiste
+document.body.classList.toggle('sagen', SAGEN);
+if (SAGEN) document.querySelector('.erklaerung').textContent = 'Der Würfel zeigt eine Zahl. Sag laut, was bis zur gewählten Zahl fehlt – dann tippe wieder auf den Würfel.';
 const stand = { n: 10, ton: true, sterne: 0, tiere: 'aus' };   // Tiere zuerst aus; 🐾 schaltet: aus → Sticker → wild
 const TIERSAETZE = { aus: 'Ohne Tiere', sticker: 'Tiere: Sticker', wild: 'Tiere: wild & bunt' };
 const STAUB = 4;                    // Staubmenge (Faktor), am Gerät ausprobiert: Maximum
@@ -720,6 +733,23 @@ function landen() {
   zeigeGleichung(zahl, null);
   gleichungEl.classList.remove('weg');
   hinweisEl.textContent = 'Welche Zahl fehlt?';
+  if (SAGEN) {                                                    // kein Antippen: jede gewürfelte Aufgabe zählt
+    geschafft++;
+    zeigeStand();
+    hinweisEl.textContent = beutel.length ? `Was fehlt bis zur ${stand.n}?` : `Was fehlt bis zur ${stand.n}? Das war die letzte!`;
+  }
+}
+// „Sagen“: die Antwort war laut – nächstes Antippen würfelt weiter, nach der letzten Aufgabe wird gefeiert.
+function weiterSagen() {
+  if (beutel.length) { wuerfeln(); return; }
+  klang.runde();
+  faerbe('gut', 2600);
+  sterneAus(wuerfelEl, Math.round(STERNE * 2.2));
+  if (mitTieren()) nochmal($('#tier'), 'tanzt');
+  beutel = neuerBeutel(stand.n, zahl);
+  geschafft = 0;
+  zeigeStand();
+  bereit(`Alle Zerlegungen der ${stand.n} geschafft!`);
 }
 function stoppeWuerfel() {
   cancelAnimationFrame(rafId); clearTimeout(weiterTimer);
@@ -742,7 +772,7 @@ function zeigeTiere() {
   knopf.setAttribute('aria-pressed', String(mitTieren()));
   knopf.dataset.satz = stand.tiere;
   knopf.setAttribute('aria-label', TIERSAETZE[stand.tiere] + ' – antippen zum Wechseln');
-  $('#tier').hidden = !mitTieren();
+  $('#tier').classList.toggle('nur-zahl', !mitTieren());
   if (mitTieren()) $$('#zahlwahl button').forEach(b => { b.querySelector('img').src = tierBild(b.dataset.n); });
 }
 function zeigeTon() { $$('.ton').forEach(b => { b.textContent = stand.ton ? '🔊' : '🔇'; }); }
@@ -805,6 +835,7 @@ function starteSpiel(n) {
 
 function tippeWuerfel() {
   if (phase === 'bereit' || phase === 'geloest') wuerfeln();
+  else if (phase === 'frage' && SAGEN) weiterSagen();
   else if (phase === 'frage') { nochmal(wuerfelEl, 'stups'); hinweisEl.textContent = 'Tippe unten die Zahl an!'; }
 }
 

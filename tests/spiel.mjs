@@ -23,7 +23,7 @@ let fehler = 0;
 const ok = (bed, text) => { console.log((bed ? '  ok   ' : '  FEHLER ') + text); if (!bed) fehler++; };
 const browser = await pw.chromium.launch();
 
-async function seite(breite, hoehe, ruhig = false) {
+async function seite(breite, hoehe, ruhig = false, adresse = '?tippen') {   // ?tippen: Fassung mit Zahlenleiste
   const ctx = await browser.newContext({
     viewport: { width: breite, height: hoehe }, deviceScaleFactor: 2, hasTouch: true, isMobile: true,
     reducedMotion: ruhig ? 'reduce' : 'no-preference',
@@ -32,7 +32,7 @@ async function seite(breite, hoehe, ruhig = false) {
   const konsole = [];
   page.on('pageerror', e => konsole.push(e.message));
   page.on('console', m => { if (m.type() === 'error') konsole.push(m.text()); });
-  await page.goto(url);
+  await page.goto(url + adresse);
   return { page, konsole, ctx };
 }
 const phase = page => page.evaluate(() => window.wuerfelSpiel.phase);
@@ -237,7 +237,8 @@ console.log('Tiere (einschaltbar)');
   ok(await page.getAttribute('#tiere-schalter', 'aria-pressed') === 'false' && await page.isHidden('#zahlwahl img'),
     'Beim ersten Laden: ohne Tiere');
   await page.click('#zahlwahl button[data-n="7"]');
-  ok(await page.isHidden('#tier'), 'Beim ersten Laden: kein Tier auf der Spielseite');
+  ok(await page.evaluate(() => { const t = document.querySelector('#tier'); return !t.hidden && t.classList.contains('nur-zahl')
+    && getComputedStyle(document.querySelector('#tier-bild')).display === 'none' && document.querySelector('#tier-zahl').textContent === '7'; }), 'Beim ersten Laden: kein Tier, nur die runde 7 über dem Würfel');
   await page.click('#zurueck');
   const quellen = () => page.evaluate(() => [...document.querySelectorAll('#zahlwahl img')].map(i => i.getAttribute('src')));
   await page.click('#tiere-schalter');
@@ -312,13 +313,57 @@ console.log('Tiere (einschaltbar)');
   await page.click('#tiere-schalter');
   ok(await page.getAttribute('#tiere-schalter', 'aria-pressed') === 'false' && await page.isHidden('#zahlwahl img'), 'Tatzen 3×: wieder ohne Tiere');
   await page.click('#zahlwahl button[data-n="7"]');
-  ok(await page.isHidden('#tier'), 'Ohne Tiere: kein Tier auf der Spielseite');
+  ok(await page.evaluate(() => { const t = document.querySelector('#tier'); return !t.hidden && t.classList.contains('nur-zahl')
+    && getComputedStyle(document.querySelector('#tier-bild')).display === 'none' && document.querySelector('#tier-zahl').textContent === '7'; }), 'Ohne Tiere: nur die runde Zahl');
   await page.click('#zurueck');
   await page.click('#tiere-schalter'); await page.click('#tiere-schalter'); await page.click('#tiere-schalter');
   ok(await page.getAttribute('#tiere-schalter', 'data-satz') === 'aus', 'Dreimal schnell hintereinander: einmal rundherum (Hinweis fängt keine Tipps ab)');
   await page.evaluate(() => localStorage.setItem('wuerfel.stand', JSON.stringify({ n: 7, tiere: true })));
   await page.reload();
   ok(await page.getAttribute('#tiere-schalter', 'data-satz') === 'sticker', 'Alte Einstellung „Tiere an“ (vor v0.29) wird zu Sticker');
+  ok(konsole.length === 0, 'Keine Fehler in der Konsole' + (konsole.length ? ': ' + konsole.join(' | ') : ''));
+  await ctx.close();
+}
+
+console.log('Sagen (Standard): nur würfeln, die Antwort laut sagen');
+{
+  const { page, konsole, ctx } = await seite(390, 844, false, '');
+  ok(await page.evaluate(() => document.body.classList.contains('sagen')), 'Ohne ?tippen: Sagen-Fassung');
+  await page.click('#zahlwahl button[data-n="4"]');
+  await page.waitForTimeout(300);
+  ok(await page.isHidden('#zahlen') && await page.isHidden('#gleichung'), 'Keine Zahlenleiste, keine Gleichung');
+  ok(await page.isVisible('#tier-zahl') && await page.textContent('#tier-zahl') === '4' && await page.isHidden('#tier-bild'),
+    'Ohne Tiere: die runde 4 über dem Würfel');
+  const gesehen = [];
+  for (let i = 0; i < 5; i++) {
+    await page.click('#wuerfel', { force: true });
+    await page.waitForFunction(() => window.wuerfelSpiel.phase === 'frage', null, { timeout: 5000 });
+    gesehen.push(await page.evaluate(() => window.wuerfelSpiel.zahl));
+    if (i === 0) ok(await page.textContent('#hinweis') === 'Was fehlt bis zur 4?' && await page.textContent('#stand') === '1/5',
+      'Gelandet: „Was fehlt bis zur 4?“, Stand 1/5');
+  }
+  ok(gesehen.slice().sort().join() === '0,1,2,3,4', `Antippen würfelt weiter, jede Zerlegung genau einmal (${gesehen.join(' ')})`);
+  ok((await page.textContent('#hinweis')).includes('Das war die letzte'), 'Bei der letzten Aufgabe: „Das war die letzte!“');
+  await page.click('#wuerfel', { force: true });
+  await page.waitForTimeout(200);
+  ok(await phase(page) === 'bereit' && await page.evaluate(() => document.body.classList.contains('gut'))
+    && (await page.textContent('#hinweis')).includes('Alle Zerlegungen der 4 geschafft') && await page.textContent('#stand') === '0/5',
+    'Danach: grün, Sterne, „Alle Zerlegungen der 4 geschafft!“, neue Runde');
+  await page.waitForTimeout(2700);
+  await page.click('#wuerfel', { force: true });
+  await page.waitForFunction(() => window.wuerfelSpiel.phase === 'frage', null, { timeout: 5000 });
+  ok(await page.textContent('#stand') === '1/5', 'Nächstes Antippen: neue Runde beginnt');
+  await page.click('#zurueck');
+  await page.click('#tiere-schalter');
+  await page.click('#zahlwahl button[data-n="8"]');
+  await page.waitForTimeout(300);
+  ok(await page.isVisible('#tier-bild') && await page.evaluate(() => !document.querySelector('#tier').classList.contains('nur-zahl')),
+    'Tiere an: das Tier statt der runden Zahl');
+  for (const [w, h] of [[320, 568], [375, 667]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.waitForTimeout(150);
+    ok(await page.evaluate(() => document.scrollingElement.scrollHeight <= innerHeight + 1), `${w}×${h}: passt ohne Scrollen`);
+  }
   ok(konsole.length === 0, 'Keine Fehler in der Konsole' + (konsole.length ? ': ' + konsole.join(' | ') : ''));
   await ctx.close();
 }

@@ -35,6 +35,12 @@ Lernspiel fürs Handy, damit sich die Zerlegungen der Zahlen 4 bis 10 als **Ziff
    Wird 2 s lang nicht getippt, wechselt dieser Hinweis sanft die Farbe (Schwarz ↔ Lila der Würfelzahl,
    alle 1,8 s) – auch bei „Bewegung reduzieren“, denn Farbe ist keine Bewegung.
 
+**Zwei Fassungen.** Standard ist **Sagen**: würfeln, das Kind sagt laut, was bis n fehlt, Antippen würfelt
+weiter (jede Zerlegung genau einmal); nach der letzten Aufgabe Fanfare, grün, Sterne. Keine Zahlenleiste,
+keine Gleichung, der Würfel ist etwas größer. Die Fassung **Antippen** (Zahlenleiste, Gleichung, Lupe,
+richtig/falsch) liegt in der Hinterhand: Adresse mit `?tippen`, also
+https://luperttrading-lab.github.io/wuerfel/?tippen. Ohne Tiere steht über dem Würfel die runde Zahl.
+
 **Tiere** (Schalter 🐾 auf der Startseite: aus → Sticker → wild & bunt → aus; beim ersten Laden aus, die Wahl wird gespeichert): jede Zahl hat ihr Tier, gewählt nach dem
 Anlaut des Zahlworts – 4 **V**ogel, 5 **F**rosch, 6 **S**eepferdchen, 7 **S**eestern (7 Arme, einer
 nach oben: 3 + 1 + 3), 8 Oktopus (Ausnahme: *okto* = acht, 8 Arme als 4 + 4), 9 **N**ashorn,

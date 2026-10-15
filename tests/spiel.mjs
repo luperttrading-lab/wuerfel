@@ -234,7 +234,13 @@ console.log('Tiere (einschaltbar)');
 {
   const { page, konsole, ctx } = await seite(390, 844);
   const geladen = sel => page.evaluate(sel => [...document.querySelectorAll(sel)].every(i => i.complete && i.naturalWidth > 0 && i.offsetWidth > 0), sel);
-  ok(await page.getAttribute('#tiere-schalter', 'aria-pressed') === 'true', 'Tiere sind anfangs an');
+  ok(await page.getAttribute('#tiere-schalter', 'aria-pressed') === 'false' && await page.isHidden('#zahlwahl img'),
+    'Beim ersten Laden: ohne Tiere');
+  await page.click('#zahlwahl button[data-n="7"]');
+  ok(await page.isHidden('#tier'), 'Beim ersten Laden: kein Tier auf der Spielseite');
+  await page.click('#zurueck');
+  await page.click('#tiere-schalter');
+  ok(await page.getAttribute('#tiere-schalter', 'aria-pressed') === 'true', 'Tatzen antippen: Tiere sind an');
   await page.waitForTimeout(300);
   ok(await geladen('#zahlwahl img'), 'Startseite: auf jeder Zahlentaste sitzt ihr Tier');
   await page.click('#zahlwahl button[data-n="7"]');
@@ -283,9 +289,11 @@ console.log('Tiere (einschaltbar)');
   ok(await page.getAttribute('#tiere-schalter', 'aria-pressed') === 'false' && await page.isHidden('#zahlwahl img'), 'Schalter aus: Starttasten ohne Tiere');
   await page.click('#zahlwahl button[data-n="7"]');
   ok(await page.isHidden('#tier'), 'Schalter aus: kein Tier auf der Spielseite – wie bisher');
-  await page.reload();
-  ok(await page.getAttribute('#tiere-schalter', 'aria-pressed') === 'false', 'Die Wahl bleibt nach dem Neuladen');
+  await page.click('#zurueck');
   await page.click('#tiere-schalter');
+  await page.reload();
+  ok(await page.getAttribute('#tiere-schalter', 'aria-pressed') === 'true' && await page.isVisible('#zahlwahl img'),
+    'Eingeschaltete Tiere bleiben nach dem Neuladen an');
   ok(konsole.length === 0, 'Keine Fehler in der Konsole' + (konsole.length ? ': ' + konsole.join(' | ') : ''));
   await ctx.close();
 }

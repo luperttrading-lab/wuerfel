@@ -35,7 +35,7 @@ Lernspiel fürs Handy, damit sich die Zerlegungen der Zahlen 4 bis 10 als **Ziff
    Wird 2 s lang nicht getippt, wechselt dieser Hinweis sanft die Farbe (Schwarz ↔ Lila der Würfelzahl,
    alle 1,8 s) – auch bei „Bewegung reduzieren“, denn Farbe ist keine Bewegung.
 
-**Tiere** (Schalter 🐾 auf der Startseite, Start: an): jede Zahl hat ihr Tier, gewählt nach dem
+**Tiere** (Schalter 🐾 auf der Startseite; beim ersten Laden aus, die Wahl wird gespeichert): jede Zahl hat ihr Tier, gewählt nach dem
 Anlaut des Zahlworts – 4 **V**ogel, 5 **F**rosch, 6 **S**eepferdchen, 7 **S**eestern (7 Arme, einer
 nach oben: 3 + 1 + 3), 8 Oktopus (Ausnahme: *okto* = acht, 8 Arme als 4 + 4), 9 **N**ashorn,
 10 **Z**ebra. Auf der Spielseite sitzt das Tier groß über dem Würfel (freier Platz, bis 46 % der

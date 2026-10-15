@@ -10,14 +10,16 @@ Lernspiel fürs Handy, damit sich die Zerlegungen der Zahlen 4 bis 10 als **Ziff
    Abgerundete Kanten: 12 schräge Kantenstreifen mit Lichtverlauf und 8 Eckdreiecke mit
    baryzentrisch gemischtem Licht – Lage und Größe aller 26 Teile rechnet `baueKoerper()`.
    In Ruhe steht vorne die gewählte Zahl (lila), die Nebenseiten sind grau.
-3. **Antippen:** Luftzug-Geräusch, dann wirbelt er 1 Sekunde auf der Stelle und wird langsamer:
-   drei Überschläge, eine Drehung seitwärts, eine um die eigene Mitte (bis v0.34: 2 s, fünf Überschläge). Dabei wird er kleiner
+3. **Antippen:** Luftzug-Geräusch, dann wirbelt er eine halbe Sekunde auf der Stelle und wird langsamer:
+   zwei Überschläge, eine Drehung seitwärts, eine um die eigene Mitte (bis v0.34: 2 s, v0.35: 1 s).
+   Mehr Überschläge in der Zeit würden flimmern (anfangs 48° pro Bild, ab ~60° flimmert es), einer allein
+   ließe keine Zeit, die Zahl verdeckt aufzumalen. Dabei wird er kleiner
    (bis 70 %) und wieder groß, der Schatten schrumpft mit; Staub stiebt kräftig (4×) hinter ihm hervor
-   und verweht bis etwa 1,3 s. Bei 0,88 s schlägt er auf: „Bumm“, er staucht sich kurz (91 % hoch),
+   und verweht bis etwa 0,85 s. Bei 0,44 s schlägt er auf: „Bumm“, er staucht sich kurz (91 % hoch),
    ein Staubwölkchen am Boden. Die Ziffern wirken eingeprägt. Bei jedem
    Überschlag klickt es. Seiten, die gerade nach hinten zeigen, bekommen neue Zahlen;
-   die Vorderseite bekommt die ausgeloste Zahl, solange sie verdeckt ist (0,53–0,72 s), und liegt
-   ab 0,88 s vorn (blau). Darunter steht `3 + ? = 8`. Die sichtbaren Nebenseiten zeigen nie die
+   die Vorderseite bekommt die ausgeloste Zahl, solange sie verdeckt ist (0,25–0,33 s), und liegt
+   ab 0,43 s vorn (blau). Darunter steht `3 + ? = 8`. Die sichtbaren Nebenseiten zeigen nie die
    gewürfelte Zahl oder die Lösung.
    Der Würfel dreht sich auch, wenn am iPhone „Bewegung reduzieren“ eingeschaltet ist – das
    Drehen ist hier der Kern des Spiels.

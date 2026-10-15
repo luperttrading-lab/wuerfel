@@ -138,15 +138,35 @@ console.log('Startseite');
     return { kleinste, flachste, ersteStauchung };
   });
   const kleinste = kurve.kleinste, gestaucht = kurve.flachste;
-  ok(kurve.ersteStauchung >= 875 && kurve.ersteStauchung <= 885, `„Bumm“ und Stauchen bei ${kurve.ersteStauchung} ms`);
+  ok(kurve.ersteStauchung >= 437 && kurve.ersteStauchung <= 443, `„Bumm“ und Stauchen bei ${kurve.ersteStauchung} ms`);
   const dauer = Date.now() - t0;
   ok(kleinste < 0.8 && kleinste > 0.6, `Er wird beim Wirbeln kleiner und wieder groß (kleinste Größe ${Math.round(kleinste * 100)} %)`);
   const kante = await page.evaluate(() => document.querySelector('#koerper').offsetWidth);
   ok(verschoben < kante * 0.06, `Er bleibt dabei auf der Stelle (höchstens ${verschoben.toFixed(1)} px beim Stauchen)`);
   ok(gestaucht < 0.94, `Beim Aufprall staucht er sich (flach auf ${Math.round(gestaucht * 100)} %)`);
   ok(staubMax >= 150, `Beim Wirbeln fliegt viel Staub (bis ${staubMax} Körner gleichzeitig)`);
-  ok(lagenRollen.size >= 20 && wechsel >= 6, `Beim Rollen überschlägt er sich (${lagenRollen.size} Lagen) und die Zahlen wechseln (${wechsel}×)`);
-  ok(dauer >= 950 && dauer <= 1500, `Rollen dauert ${dauer} ms (Soll 1 s)`);
+  // Was der Testbrowser sieht, hängt an seiner Bildrate (ohne Bildschirm oft nur ~12 Bilder/s) – darum
+  // nur: jedes Bild eine neue Lage, Nebenseiten wechseln. Die Drehung selbst wird unten genau nachgerechnet.
+  ok(messung.lagen.length >= 4 && lagenRollen.size >= messung.lagen.length - 2 && wechsel >= 2,
+    `Beim Rollen überschlägt er sich (${lagenRollen.size} Lagen in ${messung.lagen.length} Bildern) und die Zahlen wechseln (${wechsel}×)`);
+  const drehung = await page.evaluate(() => {
+    // Vorderseite Bild für Bild (1 ms) nachgerechnet – mit derselben Drehformel wie die App
+    let verdeckt = 0, vorn = null, letzteVerdeckt = null, schnellste = 0, vorher = null;
+    for (let ms = 0; ms <= ROLLZEIT; ms++) {
+      const p = ms / ROLLZEIT, f = 1 - (1 - p) ** 2, ax = RUHE.x + DREH.x * f, ay = RUHE.y + DREH.y * f;
+      const z = drehe(NORMALE.vorne, ax, ay)[2];
+      if (p > 0.5 && z < -0.1) { verdeckt++; letzteVerdeckt = ms; }
+      if (letzteVerdeckt !== null && ms > letzteVerdeckt && z > 0.9 && vorn === null) vorn = ms;
+      if (vorher !== null) schnellste = Math.max(schnellste, Math.abs(ax - vorher) * 1000 / 60);
+      vorher = ax;
+    }
+    return { verdeckt, vorn, aufprall: AUFPRALL * ROLLZEIT, schnellste, ueberschlaege: DREH.x / 360 };
+  });
+  ok(drehung.verdeckt >= 50 && drehung.vorn !== null && drehung.vorn <= drehung.aufprall,
+    `Gewürfelte Zahl kommt verdeckt auf die Vorderseite (${drehung.verdeckt} ms verdeckt), vorn ab ${drehung.vorn} ms, vor dem „Bumm“ (${drehung.aufprall} ms)`);
+  ok(drehung.ueberschlaege >= 2 && drehung.schnellste <= 55,
+    `${drehung.ueberschlaege} Überschläge, höchstens ${drehung.schnellste.toFixed(0)}° pro Bild bei 60 Bildern/s (ab ~60° flimmert es)`);
+  ok(dauer >= 450 && dauer <= 1000, `Rollen dauert ${dauer} ms (Soll 0,5 s)`);
   let k = await page.evaluate(() => window.wuerfelSpiel.zahl);
   ok(await page.textContent('#augenzahl') === String(k), `Würfel zeigt die gezogene Zahl ${k}`);
   ok(await lage(page) === RUHELAGE, 'Würfel liegt danach wieder in Ruhelage');
@@ -402,7 +422,7 @@ console.log('Auch mit „Bewegung reduzieren“ (iPhone: Bedienungshilfen → Be
   await page.click('#wuerfel', { force: true });
   const lagen = new Set();
   while (await phase(page) === 'rollt') { lagen.add(await lage(page)); await page.waitForTimeout(40); }
-  ok(lagen.size >= 10, `Der ganze Würfel dreht sich trotzdem (${lagen.size} Lagen gesehen)`);
+  ok(lagen.size >= 4, `Der ganze Würfel dreht sich trotzdem (${lagen.size} Lagen gesehen)`);
   const k = await page.evaluate(() => window.wuerfelSpiel.zahl);
   await page.click(`.zahl[data-zahl="${6 - k}"]`);
   await page.waitForFunction(() => window.wuerfelSpiel.phase === 'bereit', null, { timeout: 4000 });

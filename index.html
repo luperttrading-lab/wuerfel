@@ -280,7 +280,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 </main>
 
 <script>
-const APP_VERSION = '0.35';          // bei JEDER Änderung hochzählen
+const APP_VERSION = '0.36';          // bei JEDER Änderung hochzählen
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
@@ -370,13 +370,13 @@ function wusch() {                                                         // Lu
   q.buffer = rauschen;
   f.type = 'bandpass'; f.Q.value = 1.2;
   f.frequency.setValueAtTime(300, t);
-  f.frequency.exponentialRampToValueAtTime(1800, t + 0.25);
-  f.frequency.exponentialRampToValueAtTime(400, t + 0.65);
+  f.frequency.exponentialRampToValueAtTime(1800, t + 0.15);      // passt in die halbe Sekunde Rollen
+  f.frequency.exponentialRampToValueAtTime(400, t + 0.42);
   g.gain.setValueAtTime(0.0001, t);
-  g.gain.exponentialRampToValueAtTime(0.35, t + 0.08);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.65);
+  g.gain.exponentialRampToValueAtTime(0.35, t + 0.05);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.42);
   q.connect(f); f.connect(g); g.connect(a.destination);
-  q.start(t); q.stop(t + 0.7);
+  q.start(t); q.stop(t + 0.47);
 }
 const klang = {
   wusch,
@@ -398,8 +398,8 @@ const klang = {
 
 /* ---------- Staub ---------- */
 // Weiche Körner fliegen von den Kanten weg (mit dem Drehsinn), bremsen in der Luft, steigen leicht,
-// dehnen sich und verblassen. Ausgestoßen wird nur in der ersten halben Sekunde – nach spätestens 1,3 s
-// ist alles verweht. Beim Aufprall ein kurzes Wölkchen unten.
+// dehnen sich und verblassen. Ausgestoßen wird nur in der ersten Viertelsekunde – nach spätestens
+// 0,85 s ist alles verweht. Beim Aufprall ein kurzes Wölkchen unten.
 const staubEl = $('#staub'), staubCtx = staubEl.getContext('2d');
 let koerner = [], staubRaf = 0, staubZuletzt = 0;
 function staubLeinwand() {
@@ -427,7 +427,7 @@ function streue(anzahl, kraft) {                                               /
     const w = Math.random() * 2 * Math.PI, v = s * (0.6 + Math.random() * 1.1) * (0.4 + 0.6 * kraft);
     korn(r.width / 2 + Math.cos(w) * s * 0.42, r.height / 2 + Math.sin(w) * s * 0.42,
       Math.cos(w) * v - Math.sin(w) * v * 0.7, Math.sin(w) * v + Math.cos(w) * v * 0.7,
-      3.5 + Math.random() * 6.5, 0.4 + Math.random() * 0.4);
+      3.5 + Math.random() * 6.5, 0.3 + Math.random() * 0.25);
   }
 }
 function staubWolke() {                                                        // Aufprall: seitlich am Boden
@@ -507,18 +507,17 @@ funkenLeinwand();
 
 /* ---------- Würfel: echter Würfel in 3D ---------- */
 // In Ruhe fast von vorn (oben und rechts nur schmale Kanten), vorne die Zahl, die zerlegt wird.
-// Beim Antippen wird die Zahl sofort ausgelost. Dann wirbelt er 1 Sekunde: drei Überschläge,
-// eine Drehung seitwärts, eine um die eigene Mitte – auf der Stelle, etwa so schnell wie früher in 2 s
-// mit fünf Überschlägen (36° statt 30° pro Bild; schneller flimmert es). Dabei wird er kleiner
-// (bis 70 %) und wieder groß; bei 0,88 s ist er zurück, staucht sich kurz (Aufprall) und es macht
-// „Bumm“. Dabei fliegt Staub, der verweht, bevor die Zahl dasteht. Seiten, die nach hinten zeigen,
-// bekommen neue Zahlen;
-// die Vorderseite bekommt die ausgeloste Zahl, solange sie verdeckt ist (0,53–0,72 s), und liegt
-// ab 0,88 s vorn. Zeiten gerechnet für Bremsen mit 1 − (1 − p)².
-const ROLLZEIT = 1000;                                  // ms (bis v0.34: 2000)
+// Beim Antippen wird die Zahl sofort ausgelost. Dann wirbelt er eine halbe Sekunde: zwei Überschläge,
+// eine Drehung seitwärts, eine um die eigene Mitte – auf der Stelle. Anfangs 48° pro Bild (bei 60 Bildern/s);
+// mehr Überschläge in der Zeit würden flimmern, einer allein ließe keine Zeit, die Zahl verdeckt aufzumalen.
+// Dabei wird er kleiner (bis 70 %) und wieder groß; bei 0,44 s ist er zurück, staucht sich kurz (Aufprall)
+// und es macht „Bumm“. Dabei fliegt Staub, der gleich verweht. Seiten, die nach hinten zeigen, bekommen
+// neue Zahlen; die Vorderseite bekommt die ausgeloste Zahl, solange sie verdeckt ist (0,25–0,33 s), und
+// liegt ab 0,43 s vorn. Zeiten gerechnet für Bremsen mit 1 − (1 − p)².
+const ROLLZEIT = 500;                                   // ms (bis v0.34: 2000, v0.35: 1000)
 const RUHE = { x: -10, y: -12 };                        // Grad
-const DREH = { x: 1080, y: -360, z: 360 };              // nur Vielfache von 360°: endet wieder in Ruhelage
-const AUFPRALL = 0.88;                                  // Anteil der Rollzeit bis „Bumm“ (0,88 s: Drehung fast vorbei)
+const DREH = { x: 720, y: -360, z: 360 };               // nur Vielfache von 360°: endet wieder in Ruhelage
+const AUFPRALL = 0.88;                                  // Anteil der Rollzeit bis „Bumm“ (0,44 s: Drehung fast vorbei)
 const KLEINSTE = 0.7;                                   // kleinste Größe beim Wirbeln
 const LICHT = [-0.25, -0.6, 0.76];                      // von links oben vorn
 const NORMALE = { vorne: [0, 0, 1], hinten: [0, 0, -1], rechts: [1, 0, 0], links: [-1, 0, 0], oben: [0, -1, 0], unten: [0, 1, 0] };
@@ -660,7 +659,7 @@ function schritt(t) {
   const { weg, groesse, breit, flach } = bewegung(p);
   if (p >= AUFPRALL && !lauf.aufgeschlagen) { lauf.aufgeschlagen = true; klang.landen(); staubWolke(); }
   if (p < 0.5) {                                                              // Staub, solange er schnell dreht
-    lauf.staub += 320 * STAUB * (1 - p / 0.5) * Math.max(0, (t - (lauf.tz || t)) / 1000);   // so viel wie früher in 2 s
+    lauf.staub += 640 * STAUB * (1 - p / 0.5) * Math.max(0, (t - (lauf.tz || t)) / 1000);   // so viel wie früher in 2 s
     while (lauf.staub >= 1) { lauf.staub--; streue(1, 1 - p / 0.5); }
   }
   lauf.tz = t;

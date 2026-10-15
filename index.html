@@ -80,6 +80,13 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   0%, 100% { transform: none; } 25% { transform: translateY(-16px) scale(1.08) rotate(-6deg); }
   50% { transform: none; } 75% { transform: translateY(-7px) rotate(5deg); }
 }
+.tier-deckel { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;
+  filter: drop-shadow(0 4px 8px rgba(43, 33, 64, .22)); }
+.tier.verdeckt img { visibility: hidden; }          /* beim Freispielen zeigt die Leinwand das Tier samt Deckel */
+.freispiel { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; color: var(--leise); }
+.freispiel select { font: inherit; color: var(--ink); background: var(--wahl); border: 0; border-radius: 10px; padding: 8px 10px; }
+.freispiel button { width: 38px; height: 38px; border-radius: 10px; background: var(--wahl); color: var(--ganz); font-size: 20px; font-weight: 800; }
+body:not(.mit-tieren) .freispiel { display: none; }
 .zahlwahl img { display: none; }
 .mit-tieren .zahlwahl button { height: auto; padding: 6px 0 8px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .mit-tieren .zahlwahl img { display: block; width: 86%; aspect-ratio: 1; }
@@ -235,6 +242,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   <section class="start">
     <h2>Welche Zahl zerlegen wir?</h2>
     <div class="zahlwahl" id="zahlwahl"></div>
+    <div class="freispiel"><span>Tiere freispielen</span><select id="freispiel" aria-label="Tiere freispielen"></select><button id="freispiel-neu" type="button" aria-label="Alle Tiere wieder zudecken">↺</button></div>
     <p class="erklaerung">Der Würfel zeigt eine Zahl. Tippe die Zahl an, die bis zur gewählten Zahl fehlt.</p>
   </section>
 </main>
@@ -246,7 +254,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
     <button class="ton" aria-label="Ton an oder aus"></button>
   </header>
   <section class="buehne">
-    <div class="tier" id="tier" hidden><div class="tier-platte"><img id="tier-bild" alt=""><span class="tier-zahl" id="tier-zahl"></span></div></div>
+    <div class="tier" id="tier" hidden><div class="tier-platte"><img id="tier-bild" alt=""><canvas class="tier-deckel" id="tier-deckel" hidden aria-hidden="true"></canvas><span class="tier-zahl" id="tier-zahl"></span></div></div>
     <div class="sockel">
       <canvas class="staub" id="staub" aria-hidden="true"></canvas>
       <button class="wuerfel" id="wuerfel" aria-label="Würfeln">
@@ -268,7 +276,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 </main>
 
 <script>
-const APP_VERSION = '0.29';          // bei JEDER Änderung hochzählen
+const APP_VERSION = '0.30';          // bei JEDER Änderung hochzählen
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
@@ -277,17 +285,27 @@ const $$ = s => document.querySelectorAll(s);
 const ZAHLEN = [4, 5, 6, 7, 8, 9, 10];
 const TIERE = { 4: 'Vogel', 5: 'Frosch', 6: 'Seepferdchen', 7: 'Seestern', 8: 'Oktopus', 9: 'Nashorn', 10: 'Zebra' };
 const SPEICHER = 'wuerfel.stand';
-const stand = { n: 10, ton: true, sterne: 0, tiere: 'aus' };   // Tiere zuerst aus; 🐾 schaltet: aus → Sticker → wild
+const stand = { n: 10, ton: true, sterne: 0, tiere: 'aus', aufdecken: 'aus', frei: {}, saat: {} };   // 🐾: aus → Sticker → wild
 const TIERSAETZE = { aus: 'Ohne Tiere', sticker: 'Tiere: Sticker', wild: 'Tiere: wild & bunt' };
+// Tiere freispielen: jede richtige Antwort deckt ein Teil auf, nach allen n + 1 Zerlegungen ist das Tier ganz da.
+// stand.frei[n] = gelöste Würfelzahlen k (Aufgabe k + ? = n); stand.saat[n] = Zufallssaat für die Quadrate.
+const AUFDECKEN = { aus: 'aus – gleich ganz', quadrate: 'Quadrate', torte: 'Tortenstücke', streifen: 'Streifen',
+  schatten: 'Schattenriss', wolken: 'Wolken', mosaik: 'Mosaik', tuerchen: 'Türchen' };
+const eigen = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 const STAUB = 4;                    // Staubmenge (Faktor), am Gerät ausprobiert: Maximum
 const STERNE = 60;                  // Sterne bei richtiger Antwort (nach einer ganzen Runde 2,2-mal so viele)
 try {
   const s = JSON.parse(localStorage.getItem(SPEICHER)) || {};
   if (ZAHLEN.includes(s.n)) stand.n = s.n;
   if (s.ton === false) stand.ton = false;
-  if (s.tiere in TIERSAETZE) stand.tiere = s.tiere;
+  if (eigen(TIERSAETZE, s.tiere)) stand.tiere = s.tiere;
   else if (s.tiere === true) stand.tiere = 'sticker';           // gespeichert vor v0.29: an/aus
   if (Number.isInteger(s.sterne) && s.sterne >= 0) stand.sterne = s.sterne;
+  if (eigen(AUFDECKEN, s.aufdecken)) stand.aufdecken = s.aufdecken;
+  for (const n of ZAHLEN) {
+    if (Array.isArray(s.frei?.[n])) stand.frei[n] = [...new Set(s.frei[n].filter(k => Number.isInteger(k) && k >= 0 && k <= n))];
+    if (Number.isInteger(s.saat?.[n])) stand.saat[n] = s.saat[n];
+  }
 } catch (_) {}
 function speichereAlles() { try { localStorage.setItem(SPEICHER, JSON.stringify(stand)); } catch (_) {} }
 
@@ -735,7 +753,165 @@ function zeigeTiere() {
   knopf.dataset.satz = stand.tiere;
   knopf.setAttribute('aria-label', TIERSAETZE[stand.tiere] + ' – antippen zum Wechseln');
   $('#tier').hidden = !mitTieren();
-  if (mitTieren()) $$('#zahlwahl button').forEach(b => { b.querySelector('img').src = tierBild(b.dataset.n); });
+  $('#freispiel').value = stand.aufdecken;
+  $('#freispiel-neu').hidden = !freispielen();
+  if (mitTieren()) $$('#zahlwahl button').forEach(b => { b.querySelector('img').src = istFrei(+b.dataset.n) ? tierBild(b.dataset.n) : FRAGE; });
+}
+
+/* ---------- Tiere freispielen ---------- */
+const freispielen = () => mitTieren() && stand.aufdecken !== 'aus';
+const geloest = n => new Set(stand.frei[n] || []);
+const istFrei = n => !freispielen() || geloest(n).size >= n + 1;
+const GANZ = { 4: 'Der Vogel', 5: 'Der Frosch', 6: 'Das Seepferdchen', 7: 'Der Seestern', 8: 'Der Oktopus', 9: 'Das Nashorn', 10: 'Das Zebra' };
+const FRAGE = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">'
+  + '<circle cx="50" cy="50" r="43" fill="#efe7ff" stroke="#cdbdf5" stroke-width="4" stroke-dasharray="9 7"/>'
+  + '<text x="50" y="53" text-anchor="middle" dominant-baseline="middle" font-family="system-ui,sans-serif" font-weight="900" font-size="54" fill="#b9a5eb">?</text></svg>');
+const DECKEL = { lila: '#efe7ff', fuge: 'rgba(255,255,255,.95)', ziffer: '#b9a5eb', schatten: '#5c4e80' };
+function saatZufall(a) {                                     // kleiner, gesäter Zufall (mulberry32): gleiche Saat, gleiches Bild
+  return () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+}
+function raster(m, W) {                                      // m Felder in fast gleich vollen Reihen (5 → 3 + 2, 11 → 4 + 4 + 3)
+  const reihen = Math.round(Math.sqrt(m)), felder = [];
+  for (let r = 0, k = 0; r < reihen; r++) {
+    const anz = Math.floor(m / reihen) + (r < m % reihen ? 1 : 0);
+    for (let c = 0; c < anz; c++, k++) felder.push({ x: c * W / anz, y: r * W / reihen, w: W / anz, h: W / reihen });
+  }
+  return felder;
+}
+const regionenSpeicher = new Map();
+function regionen(img, m) {                                  // Schattenriss: das Tier in m etwa gleich große Teile (k-Means)
+  const schluessel = img.currentSrc + '|' + m;
+  if (regionenSpeicher.has(schluessel)) return regionenSpeicher.get(schluessel);
+  const R = 112, c = document.createElement('canvas'); c.width = c.height = R;
+  const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(img, 0, 0, R, R);
+  const a = g.getImageData(0, 0, R, R).data, px = [];
+  for (let i = 0; i < R * R; i++) if (a[i * 4 + 3] > 200) px.push(i);
+  let sx = 0, sy = 0; for (const i of px) { sx += i % R; sy += (i / R) | 0; }
+  const mx = sx / px.length, my = sy / px.length;
+  const winkel = i => Math.atan2(((i / R) | 0) - my, i % R - mx);
+  const rund = px.slice().sort((p, q) => winkel(p) - winkel(q));
+  let z = Array.from({ length: m }, (_, k) => { const i = rund[Math.floor((k + .5) * rund.length / m)]; return [(i % R + mx) / 2, (((i / R) | 0) + my) / 2]; });
+  const naechstes = (x, y) => { let b = 0, d = Infinity; z.forEach(([u, v], k) => { const e = (x - u) ** 2 + (y - v) ** 2; if (e < d) { d = e; b = k; } }); return b; };
+  for (let it = 0; it < 14; it++) {
+    const sum = z.map(() => [0, 0, 0]);
+    for (const i of px) { const x = i % R, y = (i / R) | 0, k = naechstes(x, y); sum[k][0] += x; sum[k][1] += y; sum[k][2]++; }
+    z = z.map((alt, k) => sum[k][2] ? [sum[k][0] / sum[k][2], sum[k][1] / sum[k][2]] : alt);
+  }
+  z.sort((p, q) => p[0] - q[0]);                            // Teil 0 links … Teil n rechts
+  const karte = new Uint8Array(R * R);
+  for (let i = 0; i < R * R; i++) karte[i] = naechstes(i % R, (i / R) | 0);
+  const r = { R, karte }; regionenSpeicher.set(schluessel, r); return r;
+}
+function deckelBild(img, n, W) {                             // das Tier mit Deckel über allem, was noch nicht frei ist
+  const m = n + 1, offen = geloest(n), c = document.createElement('canvas'); c.width = c.height = W;
+  const g = c.getContext('2d'), schrift = getComputedStyle(document.body).fontFamily, zu = k => !offen.has(k);
+  const ziffer = (text, x, y, groesse, farbe = DECKEL.ziffer) => {
+    g.font = `900 ${groesse}px ${schrift}`; g.fillStyle = farbe; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, x, y);
+  };
+  if (stand.aufdecken === 'mosaik') {                        // je mehr gelöst, desto feiner: 3 … gut 50 Blöcke je Seite
+    const b = Math.round(3 * Math.pow(20, offen.size / m)), k = document.createElement('canvas'); k.width = k.height = b;
+    k.getContext('2d').drawImage(img, 0, 0, b, b);
+    g.imageSmoothingEnabled = false; g.drawImage(k, 0, 0, W, W); return c;
+  }
+  g.drawImage(img, 0, 0, W, W);
+  switch (stand.aufdecken) {
+    case 'quadrate': {                                       // m × m Kacheln, je richtiger Antwort m zufällige mehr
+      if (!stand.saat[n]) { stand.saat[n] = crypto.getRandomValues(new Uint32Array(1))[0] | 1; speichereAlles(); }
+      const z = saatZufall(stand.saat[n]), folge = [...Array(m * m).keys()];
+      for (let i = folge.length - 1; i > 0; i--) { const j = Math.floor(z() * (i + 1)); [folge[i], folge[j]] = [folge[j], folge[i]]; }
+      const s = W / m; g.fillStyle = DECKEL.lila; g.strokeStyle = DECKEL.fuge; g.lineWidth = Math.max(1, W / 280);
+      for (const t of folge.slice(offen.size * m)) { const x = (t % m) * s, y = Math.floor(t / m) * s; g.fillRect(x, y, s, s); g.strokeRect(x, y, s, s); }
+      break;
+    }
+    case 'torte': {                                          // m Stücke zu je 360°/m, Stück k gehört zu k + ?
+      const r = W * .75;
+      for (let k = 0; k < m; k++) {
+        if (!zu(k)) continue;
+        const a0 = -Math.PI / 2 + k * 2 * Math.PI / m, a1 = a0 + 2 * Math.PI / m;
+        g.beginPath(); g.moveTo(W / 2, W / 2); g.arc(W / 2, W / 2, r, a0, a1); g.closePath();
+        g.fillStyle = DECKEL.lila; g.fill(); g.strokeStyle = DECKEL.fuge; g.lineWidth = W / 140; g.stroke();
+        ziffer(k, W / 2 + W * .36 * Math.cos((a0 + a1) / 2), W / 2 + W * .36 * Math.sin((a0 + a1) / 2), W * .07);
+      }
+      break;
+    }
+    case 'streifen': {                                       // wie die Zahlenleiste: 0 links … n rechts
+      const s = W / m;
+      for (let k = 0; k < m; k++) {
+        if (!zu(k)) continue;
+        g.fillStyle = DECKEL.lila; g.fillRect(k * s, 0, s, W);
+        g.fillStyle = DECKEL.fuge; g.fillRect(k * s, 0, Math.max(1, W / 280), W);
+        ziffer(k, (k + .5) * s, W - W * .07, Math.min(s * .55, W * .07));
+      }
+      break;
+    }
+    case 'tuerchen': {                                       // Türchen „k + ?“ – die Lösung steht erst drauf, wenn es offen ist
+      raster(m, W).forEach((f, k) => {
+        if (!zu(k)) return;
+        const p = W / 90, x = f.x + p, y = f.y + p, w = f.w - 2 * p, h = f.h - 2 * p;
+        g.beginPath(); g.roundRect(x, y, w, h, W / 30); g.fillStyle = '#ffbe50'; g.fill();
+        g.lineWidth = W / 110; g.strokeStyle = '#d98a12'; g.stroke();
+        ziffer(k + ' + ?', x + w / 2, y + h / 2, Math.min(h * .3, w * .24), '#2b2140');
+      });
+      break;
+    }
+    case 'wolken': {                                         // eine Wolke je Teil, zusammen decken sie alles zu
+      const wolke = document.createElement('canvas'); wolke.width = wolke.height = W; const w = wolke.getContext('2d');
+      w.fillStyle = '#fffdf9';
+      raster(m, W).forEach((f, k) => {
+        if (!zu(k)) return;
+        const z = saatZufall(n * 100 + k + 7), r = Math.min(f.w, f.h) * .36;
+        for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
+          const x = f.x + f.w * (i + .5) / 3 + (z() - .5) * r * .5, y = f.y + f.h * (j + .5) / 3 + (z() - .5) * r * .5;
+          w.beginPath(); w.arc(x, y, r * (.85 + z() * .45), 0, 2 * Math.PI); w.fill();
+        }
+      });
+      g.save(); g.shadowColor = 'rgba(160, 140, 115, .55)'; g.shadowBlur = W / 30; g.shadowOffsetY = W / 90;
+      g.drawImage(wolke, 0, 0); g.restore();
+      break;
+    }
+    case 'schatten': {                                       // Umriss von Anfang an sichtbar (raten!), Teil für Teil wird er bunt
+      const { R, karte } = regionen(img, m), mk = document.createElement('canvas'); mk.width = mk.height = R;
+      const mg = mk.getContext('2d'), d = mg.createImageData(R, R);
+      for (let i = 0; i < R * R; i++) if (zu(karte[i])) d.data[i * 4 + 3] = 255;
+      mg.putImageData(d, 0, 0);
+      const sil = document.createElement('canvas'); sil.width = sil.height = W; const s = sil.getContext('2d');
+      s.drawImage(img, 0, 0, W, W); s.globalCompositeOperation = 'source-in'; s.fillStyle = DECKEL.schatten; s.fillRect(0, 0, W, W);
+      s.globalCompositeOperation = 'destination-in'; s.imageSmoothingEnabled = true; s.drawImage(mk, 0, 0, W, W);
+      g.drawImage(sil, 0, 0);
+      break;
+    }
+  }
+  return c;
+}
+let deckelLetztes = null, deckelLauf = 0;
+async function zeigeAufdecken(animiert = false) {           // malt den Deckel; nach einer richtigen Antwort blendet das neue Teil weich auf
+  const img = $('#tier-bild'), lw = $('#tier-deckel'), tierEl = $('#tier'), n = stand.n, lauf = ++deckelLauf;
+  const verdeckt = freispielen() && !istFrei(n);
+  const fertig = () => { lw.hidden = true; tierEl.classList.remove('verdeckt'); deckelLetztes = null; };
+  if (!verdeckt && !(animiert && deckelLetztes)) { fertig(); return; }
+  tierEl.classList.add('verdeckt');                          // sofort: das ganze Tier blitzt nie vorher auf
+  if (!animiert) lw.getContext('2d').clearRect(0, 0, lw.width, lw.height);   // auch kein Rest vom vorigen Tier
+  try { await img.decode(); } catch (_) { return; }
+  if (lauf !== deckelLauf) return;
+  const W = Math.min(640, Math.round(lw.parentElement.clientWidth * (window.devicePixelRatio || 1)));
+  if (!W) return;
+  let neu;
+  if (verdeckt) neu = deckelBild(img, n, W);
+  else { neu = document.createElement('canvas'); neu.width = neu.height = W; neu.getContext('2d').drawImage(img, 0, 0, W, W); }
+  const alt = animiert && deckelLetztes && deckelLetztes.width === W ? deckelLetztes : null;
+  deckelLetztes = neu;
+  if (lw.width !== W) lw.width = lw.height = W;
+  lw.hidden = false;
+  const g = lw.getContext('2d');
+  if (!alt) { g.clearRect(0, 0, W, W); g.drawImage(neu, 0, 0); if (!verdeckt) fertig(); return; }
+  const t0 = performance.now();
+  const schritt = t => {
+    if (lauf !== deckelLauf) return;
+    const p = Math.min(1, (t - t0) / 700);
+    g.clearRect(0, 0, W, W); g.globalAlpha = 1; g.drawImage(neu, 0, 0); g.globalAlpha = 1 - p; g.drawImage(alt, 0, 0); g.globalAlpha = 1;
+    if (p < 1) requestAnimationFrame(schritt); else if (!verdeckt) fertig();
+  };
+  requestAnimationFrame(schritt);
 }
 function zeigeTon() { $$('.ton').forEach(b => { b.textContent = stand.ton ? '🔊' : '🔇'; }); }
 function zeigeStand() { $('#stand').textContent = geschafft + '/' + (stand.n + 1); }
@@ -768,6 +944,7 @@ function zeigeStart() {
   phase = 'start';
   document.body.classList.remove('gut', 'falsch');
   $$('#zahlwahl button').forEach(b => b.classList.toggle('zuletzt', +b.dataset.n === stand.n));
+  zeigeTiere();                                   // frisch freigespielte Tiere gleich auf den Starttasten
   spielEl.hidden = true;
   startEl.hidden = false;
 }
@@ -786,6 +963,8 @@ function starteSpiel(n) {
   zeigeStand();
   startEl.hidden = true;
   spielEl.hidden = false;
+  deckelLetztes = null;
+  zeigeAufdecken();
   baueKoerper();
   staubLeinwand();
   stelle(RUHE.x, RUHE.y);
@@ -814,6 +993,14 @@ function antwort(k, btn) {
   }
   phase = 'geloest';
   stand.sterne++;                   // zählt still mit, wird nicht angezeigt: Üben ohne Punktestand und Druck
+  let ganzDa = false;
+  if (freispielen()) {              // ein Teil mehr frei – falsche Antworten nehmen nie etwas weg
+    const frei = geloest(stand.n), vorher = frei.size;
+    frei.add(zahl);
+    stand.frei[stand.n] = [...frei].sort((a, b) => a - b);
+    ganzDa = vorher < stand.n + 1 && frei.size === stand.n + 1;
+    zeigeAufdecken(true);
+  }
   speichereAlles();
   geschafft++;
   zeigeStand();
@@ -823,13 +1010,15 @@ function antwort(k, btn) {
   const rundeFertig = !beutel.length;
   faerbe('gut', rundeFertig ? 2600 : 1600);
   sterneAus(gleichungEl.querySelector('.rest'), Math.round(STERNE * (rundeFertig ? 2.2 : 1)));
-  if (rundeFertig) {
+  if (rundeFertig || ganzDa) {
     klang.runde();
     if (mitTieren()) nochmal($('#tier'), 'tanzt');
-    hinweisEl.textContent = 'Alle Zerlegungen der ' + stand.n + ' geschafft!';
+    hinweisEl.textContent = ganzDa ? GANZ[stand.n] + ' ist ganz da!' : 'Alle Zerlegungen der ' + stand.n + ' geschafft!';
+  }
+  if (rundeFertig) {
     beutel = neuerBeutel(stand.n, zahl);
     geschafft = 0;
-  } else {
+  } else if (!ganzDa) {
     klang.richtig();
     if (mitTieren()) nochmal($('#tier'), 'hops');
     hinweisEl.textContent = LOB[zufall(LOB.length)];
@@ -886,6 +1075,13 @@ zahlenEl.addEventListener('click', e => {                                    // 
   if (b && e.detail === 0) antwort(+b.dataset.zahl, b);
 });
 $('#zurueck').addEventListener('click', zeigeStart);
+for (const [wert, text] of Object.entries(AUFDECKEN)) $('#freispiel').add(new Option(text, wert));
+$('#freispiel').addEventListener('change', e => { stand.aufdecken = e.target.value; speichereAlles(); zeigeTiere(); });
+$('#freispiel-neu').addEventListener('click', e => {
+  stand.frei = {}; stand.saat = {}; speichereAlles(); zeigeTiere();
+  showInfo('Alle Tiere sind wieder zugedeckt', 1.6, e.currentTarget);
+});
+new ResizeObserver(() => { if (!spielEl.hidden) zeigeAufdecken(); }).observe($('.tier-platte'));
 $('#tiere-schalter').addEventListener('click', e => {
   const reihe = Object.keys(TIERSAETZE);
   stand.tiere = reihe[(reihe.indexOf(stand.tiere) + 1) % reihe.length];

@@ -56,6 +56,17 @@ damit die weichen Aquarellränder und Spritzer bleiben; was innen liegt (grauer 
 Zebrastreifen) bleibt voll deckend. Ergebnis `tiere/wild/*.webp` (560 px, je ~70–110 KB; wird erst
 geladen, wenn der Satz gewählt ist). Auch hier: Oktopus genau 8 Arme (4 + 4), Seestern genau 7.
 
+**Tiere freispielen** (Auswahl unter den Zahlentasten, sobald Tiere an sind): Das Tier ist zugedeckt
+und wird mit jeder richtigen Antwort ein Stück sichtbar; nach allen n + 1 Zerlegungen ist es ganz da
+(„Das Zebra ist ganz da!“) und erscheint auch auf seiner Starttaste (vorher ein Fragezeichen). Nichts
+geht verloren: Falsches deckt nichts zu, der Fortschritt bleibt gespeichert (`stand.frei[n]` = gelöste
+Würfelzahlen k). ↺ deckt alle wieder zu. Sieben Arten zum Ausprobieren:
+- **Quadrate**: (n + 1) × (n + 1) Kacheln, je Antwort n + 1 zufällige (beim Zebra 11 × 11 = 121)
+- **Tortenstücke**: n + 1 Stücke zu 360°/(n + 1); Stück k gehört zur Aufgabe k + ?
+- **Streifen**: wie die Zahlenleiste 0 … n; k und n − k liegen spiegelbildlich (Tauschaufgaben)
+- **Schattenriss**: der Umriss ist von Anfang an da (raten!), Teil für Teil wird er bunt
+- **Wolken**, **Mosaik** (wird feiner), **Türchen** („k + ?“, die Lösung steht erst drauf, wenn es offen ist)
+
 **Effekte** (am Gerät mit Reglern ausprobiert, dann fest eingestellt): Staub 4× (`STAUB`), 60 Sterne
 bei jeder richtigen Antwort, 132 nach einer ganzen Runde (`STERNE`).
 

@@ -28,6 +28,8 @@ Lernspiel fürs Handy, damit sich die Zerlegungen der Zahlen 4 bis 10 als **Ziff
    wer vor dem Würfeln tippt, bekommt „Erst würfeln!“.
    Richtig → grün, Fanfare, `3 + 5 = 8`, aus der eingesetzten Zahl steigt eine Fontäne goldener
    Sterne (60, nach einer ganzen Runde 132). Falsch → rot, tiefer Ton, nochmal versuchen.
+   Kein Punktestand auf dem Bildschirm – Üben ohne Druck. Die App zählt richtige Antworten nur still
+   mit (`stand.sterne`), als Grundlage, falls später eine Auswertung dazukommt.
 5. Danach zeigt der Würfel wieder die 8; die gelöste Gleichung bleibt zum Einprägen stehen,
    bis zum nächsten Antippen. Vor der ersten Aufgabe steht nur „Tippe auf den Würfel!“.
    Wird 2 s lang nicht getippt, wechselt dieser Hinweis sanft die Farbe (Schwarz ↔ Lila der Würfelzahl,

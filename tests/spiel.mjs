@@ -197,6 +197,8 @@ console.log('Startseite');
   await page.click(`.zahl[data-zahl="${8 - k}"]`);
   ok(await page.evaluate(() => document.body.classList.contains('gut')), 'Richtige Zahl: grüner Hintergrund');
   ok(await page.evaluate(() => window.wuerfelSpiel.stand.sterne) === sterne + 1, 'Richtige Zahl: ein Stern mehr');
+  ok(!(await page.textContent('#spielseite .kopf')).includes('⭐') && !(await page.textContent('#startseite .kopf')).includes('⭐'),
+    'Kein Punktestand in den Kopfzeilen (zählt nur still mit)');
   ok(await page.evaluate(() => window.wuerfelSpiel.sterne) >= 55, 'Richtige Zahl: 60 Sterne fliegen');
   ok(await gleichung(page) === `${k}+${8 - k}=8`, `Lösung steht da: ${k} + ${8 - k} = 8`);
   await page.waitForTimeout(450);                    // Lösung ploppt 0,35 s lang auf

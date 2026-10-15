@@ -55,8 +55,6 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   text-decoration: underline dotted; text-underline-offset: 3px;
 }
 .stand { font-size: 14px; font-weight: 700; color: var(--leise); white-space: nowrap; }
-.sterne { font-size: 20px; font-weight: 800; white-space: nowrap; }
-.sterne.hops { animation: hops .5s ease; }
 .ton, .zurueck, .tiere-schalter { width: 44px; height: 44px; flex: none; border-radius: 12px; background: var(--wahl); font-size: 22px; }
 .tiere-schalter[aria-pressed="false"] { filter: grayscale(1); opacity: .45; }
 
@@ -194,7 +192,6 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   60% { transform: translateX(-6px); } 80% { transform: translateX(6px); }
 }
 @keyframes pop { 0% { transform: scale(.3); opacity: 0; } 70% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(1); } }
-@keyframes hops { 0%, 100% { transform: none; } 40% { transform: scale(1.35); } }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition: none !important; }
   /* Farbwechsel ist keine Bewegung: der Hinweis „Tippe auf den Würfel!“ darf weiter leuchten */
@@ -229,7 +226,6 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 <main class="seite" id="startseite">
   <header class="kopf">
     <h1>Würfel <span class="version" id="version"></span></h1>
-    <div class="sterne" aria-label="Richtige Antworten"></div>
     <button class="tiere-schalter" id="tiere-schalter" aria-label="Tiere an oder aus" aria-pressed="true">🐾</button>
     <button class="ton" aria-label="Ton an oder aus"></button>
   </header>
@@ -244,7 +240,6 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   <header class="kopf">
     <button class="zurueck" id="zurueck" aria-label="Andere Zahl wählen">‹</button>
     <h1 class="titel">Zerlegen: <span class="ganz" id="titel-n"></span> <span class="stand" id="stand"></span></h1>
-    <div class="sterne" aria-label="Richtige Antworten"></div>
     <button class="ton" aria-label="Ton an oder aus"></button>
   </header>
   <section class="buehne">
@@ -270,7 +265,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 </main>
 
 <script>
-const APP_VERSION = '0.25';          // bei JEDER Änderung hochzählen
+const APP_VERSION = '0.26';          // bei JEDER Änderung hochzählen
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
@@ -726,7 +721,6 @@ function zeigeGleichung(k, rest) {
   const b = rest == null ? '<span class="luecke">?</span>' : `<span class="rest">${rest}</span>`;
   gleichungEl.innerHTML = `${a}<span>+</span>${b}<span>=</span><span class="ganz">${stand.n}</span>`;
 }
-function zeigeSterne() { $$('.sterne').forEach(s => { s.textContent = '⭐ ' + stand.sterne; }); }
 function zeigeTiere() {
   document.body.classList.toggle('mit-tieren', stand.tiere);
   $('#tiere-schalter').setAttribute('aria-pressed', String(stand.tiere));
@@ -808,10 +802,8 @@ function antwort(k, btn) {
     return;
   }
   phase = 'geloest';
-  stand.sterne++;
+  stand.sterne++;                   // zählt still mit, wird nicht angezeigt: Üben ohne Punktestand und Druck
   speichereAlles();
-  zeigeSterne();
-  $$('.sterne').forEach(s => nochmal(s, 'hops'));
   geschafft++;
   zeigeStand();
   btn.classList.add('richtig');
@@ -891,7 +883,6 @@ $$('.ton').forEach(b => b.addEventListener('click', () => {
 
 $('#version').textContent = 'v' + APP_VERSION;
 stelle(RUHE.x, RUHE.y);
-zeigeSterne();
 zeigeTon();
 zeigeTiere();
 zeigeStart();

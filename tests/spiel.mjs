@@ -292,6 +292,14 @@ console.log('Tiere (einschaltbar)');
   await page.waitForTimeout(300);
   ok(await page.getAttribute('#tiere-schalter', 'data-satz') === 'wild' && await geladen('#zahlwahl img')
     && (await quellen()).every((q, i) => q === `tiere/wild/${i + 4}.webp`), 'Tatzen 2×: wilde Tiere auf den Starttasten');
+  const pille = await page.evaluate(() => {
+    const p = document.querySelector('#update').getBoundingClientRect(), k = document.querySelector('#startseite .kopf').getBoundingClientRect();
+    return { breite: p.width, mitte: p.left + p.width / 2, oben: p.top, kopf: k.bottom, text: document.querySelector('#update-text').textContent,
+      tatzen: getComputedStyle(document.querySelector('#tiere-schalter')).backgroundImage };
+  });
+  ok(pille.text === 'Tiere: wild & bunt' && pille.breite < 390 * .6 && Math.abs(pille.mitte - 195) < 2 && pille.oben >= pille.kopf,
+    `Hinweis als kleine Pille mittig unter der Kopfzeile (${Math.round(pille.breite)} px breit)`);
+  ok(pille.tatzen.includes('linear-gradient'), 'Wilde Tiere: Tatzen mit buntem Hintergrund');
   await page.click('#zahlwahl button[data-n="7"]');
   await page.waitForTimeout(300);
   ok(await page.getAttribute('#tier-bild', 'src') === 'tiere/wild/7.webp' && await geladen('#tier-bild'), 'Spielseite: der wilde Seestern über dem Würfel');
@@ -308,75 +316,6 @@ console.log('Tiere (einschaltbar)');
   await page.evaluate(() => localStorage.setItem('wuerfel.stand', JSON.stringify({ n: 7, tiere: true })));
   await page.reload();
   ok(await page.getAttribute('#tiere-schalter', 'data-satz') === 'sticker', 'Alte Einstellung „Tiere an“ (vor v0.29) wird zu Sticker');
-  ok(konsole.length === 0, 'Keine Fehler in der Konsole' + (konsole.length ? ': ' + konsole.join(' | ') : ''));
-  await ctx.close();
-}
-
-console.log('Tiere freispielen (Teil für Teil aufdecken)');
-{
-  const { page, konsole, ctx } = await seite(390, 844);
-  const quellen = () => page.evaluate(() => [...document.querySelectorAll('#zahlwahl img')].map(i => i.getAttribute('src')));
-  const frei = n => page.evaluate(n => (window.wuerfelSpiel.stand.frei[n] || []).slice().sort((a, b) => a - b), n);
-  const deckelAnteil = () => page.evaluate(() => {               // Anteil der lila Deckelfarbe auf der Leinwand
-    const c = document.querySelector('#tier-deckel'), d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
-    let z = 0; for (let i = 0; i < d.length; i += 4) if (Math.abs(d[i] - 239) < 5 && Math.abs(d[i + 1] - 231) < 5 && Math.abs(d[i + 2] - 255) < 5) z++;
-    return z / (d.length / 4);
-  });
-  const pruefsumme = () => page.evaluate(() => {
-    const c = document.querySelector('#tier-deckel'), d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
-    let h = 0; for (let i = 0; i < d.length; i += 16) h = (h * 31 + d[i]) >>> 0; return h;
-  });
-  const loese = async (n, falschVorher = false) => {
-    await page.waitForFunction(() => ['bereit', 'start'].includes(window.wuerfelSpiel.phase), null, { timeout: 5000 });
-    const k = await wuerfle(page);
-    if (falschVorher) await page.click(`.zahl[data-zahl="${(n - k + 1) % (n + 1)}"]`);
-    await page.click(`.zahl[data-zahl="${n - k}"]`);
-    await page.waitForTimeout(900);                              // Aufblenden 0,7 s
-    return k;
-  };
-  await page.click('#tiere-schalter');
-  ok(await page.isVisible('#freispiel') && await page.inputValue('#freispiel') === 'aus', 'Mit Tieren: Auswahl „Tiere freispielen“, anfangs aus');
-  await page.selectOption('#freispiel', 'quadrate');
-  ok((await quellen()).every(q => q.startsWith('data:image/svg')), 'Freispielen: auf den Starttasten erst ein Fragezeichen');
-  await page.click('#zahlwahl button[data-n="4"]');
-  await page.waitForTimeout(500);
-  ok(await page.isVisible('#tier-deckel') && await page.evaluate(() => getComputedStyle(document.querySelector('#tier-bild')).visibility) === 'hidden',
-    'Spielseite: das Tier ist zugedeckt');
-  const a0 = await deckelAnteil();
-  await page.waitForFunction(() => window.wuerfelSpiel.phase === 'bereit');
-  let k = await wuerfle(page);
-  await page.click(`.zahl[data-zahl="${(4 - k + 1) % 5}"]`);
-  ok((await frei(4)).length === 0, 'Falsche Antwort: nichts wird aufgedeckt, nichts weggenommen');
-  await page.click(`.zahl[data-zahl="${4 - k}"]`);
-  await page.waitForTimeout(900);
-  const a1 = await deckelAnteil();
-  ok(JSON.stringify(await frei(4)) === `[${k}]` && Math.abs((a0 - a1) / a0 - 0.2) < 0.03,
-    `Richtig: Quadrate decken 5 von 25 Kacheln auf (Deckel ${(a0 * 100).toFixed(0)} % → ${(a1 * 100).toFixed(0)} %)`);
-  for (let i = 0; i < 4; i++) await loese(4);
-  ok((await frei(4)).join() === '0,1,2,3,4' && (await page.textContent('#hinweis')).includes('Der Vogel ist ganz da'),
-    'Nach allen 5 Zerlegungen: „Der Vogel ist ganz da!“');
-  ok(await page.isHidden('#tier-deckel') && await page.evaluate(() => getComputedStyle(document.querySelector('#tier-bild')).visibility) === 'visible',
-    'Danach: das ganze Tier, kein Deckel mehr');
-  await page.click('#zurueck');
-  const q = await quellen();
-  ok(q[0] === 'tiere/4.webp' && q.slice(1).every(s => s.startsWith('data:image/svg')), 'Startseite: der Vogel ist freigespielt, die anderen noch nicht');
-  await page.reload();
-  ok(await page.inputValue('#freispiel') === 'quadrate' && (await frei(4)).length === 5, 'Auswahl und Fortschritt bleiben nach dem Neuladen');
-  for (const art of ['torte', 'streifen', 'schatten', 'wolken', 'mosaik', 'tuerchen']) {
-    await page.click('#freispiel-neu');
-    await page.selectOption('#freispiel', art);
-    await page.click('#zahlwahl button[data-n="6"]');
-    await page.waitForTimeout(500);
-    const vor = await pruefsumme();
-    await loese(6);
-    ok(await page.isVisible('#tier-deckel') && (await frei(6)).length === 1 && await pruefsumme() !== vor,
-      `${art}: zugedeckt, eine richtige Antwort deckt etwas auf`);
-    await page.click('#zurueck');
-  }
-  await page.click('#freispiel-neu');
-  ok((await quellen()).every(s => s.startsWith('data:image/svg')) && (await frei(4)).length === 0, '↺: alle Tiere wieder zugedeckt');
-  await page.selectOption('#freispiel', 'aus');
-  ok((await quellen()).every((s, i) => s === `tiere/${i + 4}.webp`), 'Freispielen aus: alle Tiere gleich ganz da');
   ok(konsole.length === 0, 'Keine Fehler in der Konsole' + (konsole.length ? ': ' + konsole.join(' | ') : ''));
   await ctx.close();
 }

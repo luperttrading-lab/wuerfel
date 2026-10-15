@@ -57,8 +57,10 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 .stand { font-size: 14px; font-weight: 700; color: var(--leise); white-space: nowrap; }
 .ton, .zurueck, .tiere-schalter { width: 44px; height: 44px; flex: none; border-radius: 12px; background: var(--wahl); font-size: 22px; }
 .tiere-schalter[aria-pressed="false"] { filter: grayscale(1); opacity: .45; }
+.tiere-schalter[data-satz="wild"] { background: linear-gradient(135deg, #ffc6e4, #c8ecff 50%, #fff1a8); }   /* wilde, bunte Tiere */
 
-/* Tiere: jede Zahl hat ihr Tier (Vogel 4 … Zebra 10) – Anker „wir sind bei der 7, beim Seestern“ */
+/* Tiere: jede Zahl hat ihr Tier (Vogel 4 … Zebra 10) – Anker „wir sind bei der 7, beim Seestern“.
+   Zwei Sätze: Sticker (tiere/) und wild & bunt (tiere/wild/), Schalter 🐾 auf der Startseite. */
 /* Das Tier nimmt den freien Platz über dem Würfel: so groß, wie die Seite hergibt, höchstens 46 % der Breite
    bzw. 210 px. Auf dem kleinen iPhone wird es kleiner, statt etwas aus dem Bild zu schieben. */
 .tier { position: relative; flex: 1 1 0; width: 100%; min-height: 70px; max-height: min(46vw, 210px);
@@ -211,6 +213,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 .update.an { opacity: 1; pointer-events: auto; }
 .update[hidden] { display: none; }
 .update.info { background: #2d2d33; color: #f2f2f7; font-weight: 500; }
+.update.info.an { pointer-events: none; }   /* nur Hinweis, kein Knopf: Tipps gehen durch (z. B. 🐾 mehrmals) */
 .update.unten { top: auto; bottom: max(env(safe-area-inset-bottom), 12px); }
 .update .btn { padding: 8px 14px; border-radius: 10px; font-size: 15px; font-weight: 700; background: #06240e; color: #fff; }
 </style>
@@ -265,7 +268,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 </main>
 
 <script>
-const APP_VERSION = '0.28';          // bei JEDER Änderung hochzählen
+const APP_VERSION = '0.29';          // bei JEDER Änderung hochzählen
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
@@ -274,14 +277,16 @@ const $$ = s => document.querySelectorAll(s);
 const ZAHLEN = [4, 5, 6, 7, 8, 9, 10];
 const TIERE = { 4: 'Vogel', 5: 'Frosch', 6: 'Seepferdchen', 7: 'Seestern', 8: 'Oktopus', 9: 'Nashorn', 10: 'Zebra' };
 const SPEICHER = 'wuerfel.stand';
-const stand = { n: 10, ton: true, sterne: 0, tiere: false };   // Tiere zuerst aus, einschalten über 🐾
+const stand = { n: 10, ton: true, sterne: 0, tiere: 'aus' };   // Tiere zuerst aus; 🐾 schaltet: aus → Sticker → wild
+const TIERSAETZE = { aus: 'Ohne Tiere', sticker: 'Tiere: Sticker', wild: 'Tiere: wild & bunt' };
 const STAUB = 4;                    // Staubmenge (Faktor), am Gerät ausprobiert: Maximum
 const STERNE = 60;                  // Sterne bei richtiger Antwort (nach einer ganzen Runde 2,2-mal so viele)
 try {
   const s = JSON.parse(localStorage.getItem(SPEICHER)) || {};
   if (ZAHLEN.includes(s.n)) stand.n = s.n;
   if (s.ton === false) stand.ton = false;
-  if (typeof s.tiere === 'boolean') stand.tiere = s.tiere;
+  if (s.tiere in TIERSAETZE) stand.tiere = s.tiere;
+  else if (s.tiere === true) stand.tiere = 'sticker';           // gespeichert vor v0.29: an/aus
   if (Number.isInteger(s.sterne) && s.sterne >= 0) stand.sterne = s.sterne;
 } catch (_) {}
 function speichereAlles() { try { localStorage.setItem(SPEICHER, JSON.stringify(stand)); } catch (_) {} }
@@ -721,10 +726,16 @@ function zeigeGleichung(k, rest) {
   const b = rest == null ? '<span class="luecke">?</span>' : `<span class="rest">${rest}</span>`;
   gleichungEl.innerHTML = `${a}<span>+</span>${b}<span>=</span><span class="ganz">${stand.n}</span>`;
 }
+const mitTieren = () => stand.tiere !== 'aus';
+const tierBild = n => (stand.tiere === 'wild' ? 'tiere/wild/' : 'tiere/') + n + '.webp';
 function zeigeTiere() {
-  document.body.classList.toggle('mit-tieren', stand.tiere);
-  $('#tiere-schalter').setAttribute('aria-pressed', String(stand.tiere));
-  $('#tier').hidden = !stand.tiere;
+  const knopf = $('#tiere-schalter');
+  document.body.classList.toggle('mit-tieren', mitTieren());
+  knopf.setAttribute('aria-pressed', String(mitTieren()));
+  knopf.dataset.satz = stand.tiere;
+  knopf.setAttribute('aria-label', TIERSAETZE[stand.tiere] + ' – antippen zum Wechseln');
+  $('#tier').hidden = !mitTieren();
+  if (mitTieren()) $$('#zahlwahl button').forEach(b => { b.querySelector('img').src = tierBild(b.dataset.n); });
 }
 function zeigeTon() { $$('.ton').forEach(b => { b.textContent = stand.ton ? '🔊' : '🔇'; }); }
 function zeigeStand() { $('#stand').textContent = geschafft + '/' + (stand.n + 1); }
@@ -765,7 +776,7 @@ function starteSpiel(n) {
   speichereAlles();
   audio();                                       // iOS: Ton im Rahmen eines Tipps freischalten
   $('#titel-n').textContent = n;
-  $('#tier-bild').src = `tiere/${n}.webp`;
+  if (mitTieren()) $('#tier-bild').src = tierBild(n);
   $('#tier-bild').alt = TIERE[n];
   $('#tier-zahl').textContent = n;
   zeigeTiere();
@@ -814,13 +825,13 @@ function antwort(k, btn) {
   sterneAus(gleichungEl.querySelector('.rest'), Math.round(STERNE * (rundeFertig ? 2.2 : 1)));
   if (rundeFertig) {
     klang.runde();
-    if (stand.tiere) nochmal($('#tier'), 'tanzt');
+    if (mitTieren()) nochmal($('#tier'), 'tanzt');
     hinweisEl.textContent = 'Alle Zerlegungen der ' + stand.n + ' geschafft!';
     beutel = neuerBeutel(stand.n, zahl);
     geschafft = 0;
   } else {
     klang.richtig();
-    if (stand.tiere) nochmal($('#tier'), 'hops');
+    if (mitTieren()) nochmal($('#tier'), 'hops');
     hinweisEl.textContent = LOB[zufall(LOB.length)];
   }
   // Danach zeigt der Würfel wieder die ganze Zahl; die gelöste Gleichung bleibt zum Einprägen stehen.
@@ -836,7 +847,7 @@ document.addEventListener('touchmove', e => e.preventDefault(), { passive: false
 for (const n of ZAHLEN) {
   const b = document.createElement('button');
   b.dataset.n = n;
-  b.innerHTML = `<img src="tiere/${n}.webp" alt=""><span>${n}</span>`;
+  b.innerHTML = `<img alt=""><span>${n}</span>`;
   b.setAttribute('aria-label', `${n} – ${TIERE[n]}`);
   b.addEventListener('click', () => starteSpiel(n));
   $('#zahlwahl').append(b);
@@ -875,7 +886,12 @@ zahlenEl.addEventListener('click', e => {                                    // 
   if (b && e.detail === 0) antwort(+b.dataset.zahl, b);
 });
 $('#zurueck').addEventListener('click', zeigeStart);
-$('#tiere-schalter').addEventListener('click', () => { stand.tiere = !stand.tiere; speichereAlles(); zeigeTiere(); });
+$('#tiere-schalter').addEventListener('click', e => {
+  const reihe = Object.keys(TIERSAETZE);
+  stand.tiere = reihe[(reihe.indexOf(stand.tiere) + 1) % reihe.length];
+  speichereAlles(); zeigeTiere();
+  showInfo(TIERSAETZE[stand.tiere], 1.6, e.currentTarget);
+});
 $$('.ton').forEach(b => b.addEventListener('click', () => {
   stand.ton = !stand.ton; speichereAlles(); zeigeTon();
   if (stand.ton) ton(783.99, 0, 0.15);

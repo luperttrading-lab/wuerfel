@@ -239,17 +239,20 @@ console.log('Tiere (einschaltbar)');
   await page.click('#zahlwahl button[data-n="7"]');
   ok(await page.isHidden('#tier'), 'Beim ersten Laden: kein Tier auf der Spielseite');
   await page.click('#zurueck');
+  const quellen = () => page.evaluate(() => [...document.querySelectorAll('#zahlwahl img')].map(i => i.getAttribute('src')));
   await page.click('#tiere-schalter');
-  ok(await page.getAttribute('#tiere-schalter', 'aria-pressed') === 'true', 'Tatzen antippen: Tiere sind an');
+  ok(await page.getAttribute('#tiere-schalter', 'aria-pressed') === 'true' && await page.getAttribute('#tiere-schalter', 'data-satz') === 'sticker',
+    'Tatzen 1×: Sticker-Tiere');
   await page.waitForTimeout(300);
-  ok(await geladen('#zahlwahl img'), 'Startseite: auf jeder Zahlentaste sitzt ihr Tier');
+  ok(await geladen('#zahlwahl img') && (await quellen()).every((q, i) => q === `tiere/${i + 4}.webp`), 'Startseite: auf jeder Zahlentaste sitzt ihr Sticker');
   await page.click('#zahlwahl button[data-n="7"]');
   await page.waitForTimeout(300);
   const tier = await page.evaluate(() => ({ alt: document.querySelector('#tier-bild').alt, zahl: document.querySelector('#tier-zahl').textContent,
     sichtbar: !document.querySelector('#tier').hidden }));
   ok(tier.sichtbar && tier.alt === 'Seestern' && tier.zahl === '7' && await geladen('#tier-bild'), 'Spielseite: Seestern mit der 7 über dem Würfel');
-  for (const w of [320, 390]) {
+  for (const [w, satz] of [[320, 'sticker'], [390, 'sticker'], [320, 'wild'], [390, 'wild']]) {
     await page.setViewportSize({ width: w, height: 844 });
+    await page.evaluate(satz => { window.wuerfelSpiel.stand.tiere = satz; }, satz);
     const zugedeckt = [];
     for (const n of [4, 5, 6, 7, 8, 9, 10]) {
       await page.evaluate(n => window.wuerfelSpiel.starteSpiel(n), n);
@@ -268,9 +271,9 @@ console.log('Tiere (einschaltbar)');
       });
       if (verdeckt) zugedeckt.push(`${n}: ${verdeckt} Bildpunkte`);
     }
-    ok(!zugedeckt.length, `${w} px: Zahlplakette verdeckt bei keinem der 7 Tiere etwas` + (zugedeckt.length ? ' – ' + zugedeckt.join(', ') : ''));
+    ok(!zugedeckt.length, `${w} px, ${satz}: Zahlplakette verdeckt bei keinem der 7 Tiere etwas` + (zugedeckt.length ? ' – ' + zugedeckt.join(', ') : ''));
   }
-  await page.evaluate(() => window.wuerfelSpiel.starteSpiel(7));
+  await page.evaluate(() => { window.wuerfelSpiel.stand.tiere = 'sticker'; window.wuerfelSpiel.starteSpiel(7); });
   for (const [w, h, min] of [[320, 568, 100], [375, 667, 160], [390, 844, 170], [430, 932, 190]]) {
     await page.setViewportSize({ width: w, height: h });
     const m = await page.evaluate(() => {
@@ -286,14 +289,25 @@ console.log('Tiere (einschaltbar)');
   ok(await page.evaluate(() => document.querySelector('#tier').classList.contains('hops')), 'Richtige Antwort: das Tier hüpft vor Freude');
   await page.click('#zurueck');
   await page.click('#tiere-schalter');
-  ok(await page.getAttribute('#tiere-schalter', 'aria-pressed') === 'false' && await page.isHidden('#zahlwahl img'), 'Schalter aus: Starttasten ohne Tiere');
+  await page.waitForTimeout(300);
+  ok(await page.getAttribute('#tiere-schalter', 'data-satz') === 'wild' && await geladen('#zahlwahl img')
+    && (await quellen()).every((q, i) => q === `tiere/wild/${i + 4}.webp`), 'Tatzen 2×: wilde Tiere auf den Starttasten');
   await page.click('#zahlwahl button[data-n="7"]');
-  ok(await page.isHidden('#tier'), 'Schalter aus: kein Tier auf der Spielseite – wie bisher');
+  await page.waitForTimeout(300);
+  ok(await page.getAttribute('#tier-bild', 'src') === 'tiere/wild/7.webp' && await geladen('#tier-bild'), 'Spielseite: der wilde Seestern über dem Würfel');
   await page.click('#zurueck');
-  await page.click('#tiere-schalter');
   await page.reload();
-  ok(await page.getAttribute('#tiere-schalter', 'aria-pressed') === 'true' && await page.isVisible('#zahlwahl img'),
-    'Eingeschaltete Tiere bleiben nach dem Neuladen an');
+  ok(await page.getAttribute('#tiere-schalter', 'data-satz') === 'wild', 'Die Wahl (wild) bleibt nach dem Neuladen');
+  await page.click('#tiere-schalter');
+  ok(await page.getAttribute('#tiere-schalter', 'aria-pressed') === 'false' && await page.isHidden('#zahlwahl img'), 'Tatzen 3×: wieder ohne Tiere');
+  await page.click('#zahlwahl button[data-n="7"]');
+  ok(await page.isHidden('#tier'), 'Ohne Tiere: kein Tier auf der Spielseite');
+  await page.click('#zurueck');
+  await page.click('#tiere-schalter'); await page.click('#tiere-schalter'); await page.click('#tiere-schalter');
+  ok(await page.getAttribute('#tiere-schalter', 'data-satz') === 'aus', 'Dreimal schnell hintereinander: einmal rundherum (Hinweis fängt keine Tipps ab)');
+  await page.evaluate(() => localStorage.setItem('wuerfel.stand', JSON.stringify({ n: 7, tiere: true })));
+  await page.reload();
+  ok(await page.getAttribute('#tiere-schalter', 'data-satz') === 'sticker', 'Alte Einstellung „Tiere an“ (vor v0.29) wird zu Sticker');
   ok(konsole.length === 0, 'Keine Fehler in der Konsole' + (konsole.length ? ': ' + konsole.join(' | ') : ''));
   await ctx.close();
 }

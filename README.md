@@ -42,16 +42,17 @@ nach oben: 3 + 1 + 3), 8 Oktopus (Ausnahme: *okto* = acht, 8 Arme als 4 + 4), 9 
 Breite bzw. 210 px), die Zahl als Plakette rechts unten daneben („wir sind beim Oktopus, bei der 8“).
 Es hüpft bei jeder richtigen Antwort, nach einer ganzen Runde zweimal. Schalter aus = ohne Tiere.
 
-Die Bilder sind Sticker aus einem Bildgenerator, je Tier eine Vorlage (`tiere/quelle/4.jpg` …
-`10.jpg`, ~800–1000 px, aus Bildschirmfotos ausgeschnitten – der Chat-Upload verkleinert breite Bilder,
-Einzelbilder kommen in voller Größe an). `python3 tools/sticker.py` macht den Grund durchsichtig und
-schreibt `tiere/*.webp` (640 px, nur verkleinert, also scharf). Es nimmt auch einen Streifen
-`sticker.jpg` mit allen sieben; Einzelbilder gehen vor. Offene Punkte: Der Frosch zeigt 4 Beine (bei
-der 5 lädt das zum falschen Zählen ein), das Seepferdchen liegt waagerecht statt als 6. Die frühere
-gezeichnete Fassung (SVG mit Papierstruktur, `tools/tiere.mjs`) liegt in der Git-Historie (bis v0.23).
+Die Sticker kommen aus einem Bildgenerator, je Tier eine Vorlage (`tiere/quelle/4.jpg` … `10.jpg`,
+~800–1000 px, aus Bildschirmfotos ausgeschnitten – der Chat-Upload verkleinert breite Bilder,
+Einzelbilder kommen in voller Größe an). `python3 tools/sticker.py` stellt sie **ohne den weißen
+Stickerrand** frei („Farbe zu Transparenz“ gegen Weiß, `tools/freistellen.py`): Weißes im Tier (Augen,
+Zebrastreifen) bleibt, weil es innerhalb des Umrisses liegt; der Schattenhauch des früheren Randes
+geht mit. Ergebnis `tiere/*.webp` (640 px, nur verkleinert, also scharf). Offene Punkte: Der Frosch
+zeigt 4 Beine (bei der 5 lädt das zum falschen Zählen ein), das Seepferdchen liegt waagerecht statt
+als 6. Die frühere gezeichnete Fassung (SVG mit Papierstruktur) liegt in der Git-Historie (bis v0.23).
 
 Zweiter Satz **wild & bunt**: Aquarell-Tiere mit Farbspritzern (`tiere/quelle/wild/4.jpg` … `10.jpg`,
-1024 px). `python3 tools/wild.py` rechnet den grauen Grund pro Pixel heraus („Farbe zu Transparenz“),
+1024 px). `python3 tools/wild.py` rechnet den grauen Grund pro Pixel heraus (dasselbe `tools/freistellen.py`),
 damit die weichen Aquarellränder und Spritzer bleiben; was innen liegt (grauer Nashornkörper, weiße
 Zebrastreifen) bleibt voll deckend. Ergebnis `tiere/wild/*.webp` (560 px, je ~70–110 KB; wird erst
 geladen, wenn der Satz gewählt ist). Auch hier: Oktopus genau 8 Arme (4 + 4), Seestern genau 7.

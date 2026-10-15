@@ -57,7 +57,26 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 .stand { font-size: 14px; font-weight: 700; color: var(--leise); white-space: nowrap; }
 .sterne { font-size: 20px; font-weight: 800; white-space: nowrap; }
 .sterne.hops { animation: hops .5s ease; }
-.ton, .zurueck { width: 44px; height: 44px; flex: none; border-radius: 12px; background: var(--wahl); font-size: 22px; }
+.ton, .zurueck, .tiere-schalter { width: 44px; height: 44px; flex: none; border-radius: 12px; background: var(--wahl); font-size: 22px; }
+.tiere-schalter[aria-pressed="false"] { filter: grayscale(1); opacity: .45; }
+
+/* Tiere: jede Zahl hat ihr Tier (Frosch 4 … Rakete 10) – Anker „wir sind bei der 7, beim Löwen“ */
+.tier { position: relative; width: clamp(70px, 21vw, 108px); aspect-ratio: 1; flex: none; }
+.tier img { width: 100%; height: 100%; display: block; filter: drop-shadow(0 4px 8px rgba(43, 33, 64, .22)); }
+.tier-zahl {
+  position: absolute; right: -8px; bottom: -4px; min-width: 38px; height: 38px; padding: 0 7px; border-radius: 19px;
+  display: grid; place-items: center; background: var(--ganz); color: #fff; font-size: 21px; font-weight: 900;
+  border: 3px solid #fff; box-shadow: 0 2px 6px rgba(43, 33, 64, .2);
+}
+.tier.hops { animation: tierHops .7s ease; }
+.tier.tanzt { animation: tierHops .7s ease 2; }
+@keyframes tierHops {
+  0%, 100% { transform: none; } 25% { transform: translateY(-16px) scale(1.08) rotate(-6deg); }
+  50% { transform: none; } 75% { transform: translateY(-7px) rotate(5deg); }
+}
+.zahlwahl img { display: none; }
+.mit-tieren .zahlwahl button { height: auto; padding: 6px 0 8px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.mit-tieren .zahlwahl img { display: block; width: 86%; aspect-ratio: 1; }
 .zurueck { font-size: 28px; font-weight: 800; color: var(--ganz); line-height: 1; }
 
 /* Startseite */
@@ -205,6 +224,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   <header class="kopf">
     <h1>Würfel <span class="version" id="version"></span></h1>
     <div class="sterne" aria-label="Richtige Antworten"></div>
+    <button class="tiere-schalter" id="tiere-schalter" aria-label="Tiere an oder aus" aria-pressed="true">🐾</button>
     <button class="ton" aria-label="Ton an oder aus"></button>
   </header>
   <section class="start">
@@ -222,6 +242,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
     <button class="ton" aria-label="Ton an oder aus"></button>
   </header>
   <section class="buehne">
+    <div class="tier" id="tier" hidden><img id="tier-bild" alt=""><span class="tier-zahl" id="tier-zahl"></span></div>
     <div class="sockel">
       <canvas class="staub" id="staub" aria-hidden="true"></canvas>
       <button class="wuerfel" id="wuerfel" aria-label="Würfeln">
@@ -243,21 +264,23 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 </main>
 
 <script>
-const APP_VERSION = '0.18';          // bei JEDER Änderung hochzählen
+const APP_VERSION = '0.19';          // bei JEDER Änderung hochzählen
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 
 /* ---------- Zustand ---------- */
 const ZAHLEN = [4, 5, 6, 7, 8, 9, 10];
+const TIERE = { 4: 'Frosch', 5: 'Bär', 6: 'Elefant', 7: 'Löwe', 8: 'Affe', 9: 'Eule', 10: 'Rakete' };
 const SPEICHER = 'wuerfel.stand';
-const stand = { n: 10, ton: true, sterne: 0 };
+const stand = { n: 10, ton: true, sterne: 0, tiere: true };
 const STAUB = 4;                    // Staubmenge (Faktor), am Gerät ausprobiert: Maximum
 const STERNE = 60;                  // Sterne bei richtiger Antwort (nach einer ganzen Runde 2,2-mal so viele)
 try {
   const s = JSON.parse(localStorage.getItem(SPEICHER)) || {};
   if (ZAHLEN.includes(s.n)) stand.n = s.n;
   if (s.ton === false) stand.ton = false;
+  if (s.tiere === false) stand.tiere = false;
   if (Number.isInteger(s.sterne) && s.sterne >= 0) stand.sterne = s.sterne;
 } catch (_) {}
 function speichereAlles() { try { localStorage.setItem(SPEICHER, JSON.stringify(stand)); } catch (_) {} }
@@ -698,6 +721,11 @@ function zeigeGleichung(k, rest) {
   gleichungEl.innerHTML = `${a}<span>+</span>${b}<span>=</span><span class="ganz">${stand.n}</span>`;
 }
 function zeigeSterne() { $$('.sterne').forEach(s => { s.textContent = '⭐ ' + stand.sterne; }); }
+function zeigeTiere() {
+  document.body.classList.toggle('mit-tieren', stand.tiere);
+  $('#tiere-schalter').setAttribute('aria-pressed', String(stand.tiere));
+  $('#tier').hidden = !stand.tiere;
+}
 function zeigeTon() { $$('.ton').forEach(b => { b.textContent = stand.ton ? '🔊' : '🔇'; }); }
 function zeigeStand() { $('#stand').textContent = geschafft + '/' + (stand.n + 1); }
 function nochmal(el, klasse) { el.classList.remove(klasse); void el.offsetWidth; el.classList.add(klasse); }
@@ -737,6 +765,10 @@ function starteSpiel(n) {
   speichereAlles();
   audio();                                       // iOS: Ton im Rahmen eines Tipps freischalten
   $('#titel-n').textContent = n;
+  $('#tier-bild').src = `tiere/${n}.webp`;
+  $('#tier-bild').alt = TIERE[n];
+  $('#tier-zahl').textContent = n;
+  zeigeTiere();
   baueZahlen();
   beutel = neuerBeutel(n, null);
   geschafft = 0;
@@ -784,11 +816,13 @@ function antwort(k, btn) {
   sterneAus(gleichungEl.querySelector('.rest'), Math.round(STERNE * (rundeFertig ? 2.2 : 1)));
   if (rundeFertig) {
     klang.runde();
+    if (stand.tiere) nochmal($('#tier'), 'tanzt');
     hinweisEl.textContent = 'Alle Zerlegungen der ' + stand.n + ' geschafft!';
     beutel = neuerBeutel(stand.n, zahl);
     geschafft = 0;
   } else {
     klang.richtig();
+    if (stand.tiere) nochmal($('#tier'), 'hops');
     hinweisEl.textContent = LOB[zufall(LOB.length)];
   }
   // Danach zeigt der Würfel wieder die ganze Zahl; die gelöste Gleichung bleibt zum Einprägen stehen.
@@ -804,7 +838,8 @@ document.addEventListener('touchmove', e => e.preventDefault(), { passive: false
 for (const n of ZAHLEN) {
   const b = document.createElement('button');
   b.dataset.n = n;
-  b.textContent = n;
+  b.innerHTML = `<img src="tiere/${n}.webp" alt=""><span>${n}</span>`;
+  b.setAttribute('aria-label', `${n} – ${TIERE[n]}`);
   b.addEventListener('click', () => starteSpiel(n));
   $('#zahlwahl').append(b);
 }
@@ -842,6 +877,7 @@ zahlenEl.addEventListener('click', e => {                                    // 
   if (b && e.detail === 0) antwort(+b.dataset.zahl, b);
 });
 $('#zurueck').addEventListener('click', zeigeStart);
+$('#tiere-schalter').addEventListener('click', () => { stand.tiere = !stand.tiere; speichereAlles(); zeigeTiere(); });
 $$('.ton').forEach(b => b.addEventListener('click', () => {
   stand.ton = !stand.ton; speichereAlles(); zeigeTon();
   if (stand.ton) ton(783.99, 0, 0.15);
@@ -851,6 +887,7 @@ $('#version').textContent = 'v' + APP_VERSION;
 stelle(RUHE.x, RUHE.y);
 zeigeSterne();
 zeigeTon();
+zeigeTiere();
 zeigeStart();
 
 /* ---------- Updates (Bausteine 0–4, Skill app-update-iphone) ---------- */

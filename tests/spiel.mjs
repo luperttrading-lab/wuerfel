@@ -10,7 +10,7 @@ catch { pw = await import('/opt/node22/lib/node_modules/playwright/index.mjs'); 
 
 const wurzel = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const bilder = process.argv[2];
-const typen = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.png': 'image/png', '.webmanifest': 'application/manifest+json' };
+const typen = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.png': 'image/png', '.webp': 'image/webp', '.webmanifest': 'application/manifest+json' };
 const server = http.createServer((req, res) => {
   const p = path.join(wurzel, decodeURIComponent(new URL(req.url, 'http://x').pathname).replace(/\/$/, '/index.html'));
   if (!p.startsWith(wurzel) || !fs.existsSync(p)) { res.writeHead(404); return res.end(); }
@@ -224,6 +224,33 @@ console.log('Startseite');
   const nach = await page.evaluate(() => [document.querySelector('#zahlwahl').getBoundingClientRect().top, document.documentElement.scrollHeight]);
   ok(vor[0] === nach[0] && vor[1] === nach[1], 'Banner verschiebt den Inhalt nicht');
 
+  ok(konsole.length === 0, 'Keine Fehler in der Konsole' + (konsole.length ? ': ' + konsole.join(' | ') : ''));
+  await ctx.close();
+}
+
+console.log('Tiere (einschaltbar)');
+{
+  const { page, konsole, ctx } = await seite(390, 844);
+  const geladen = sel => page.evaluate(sel => [...document.querySelectorAll(sel)].every(i => i.complete && i.naturalWidth > 0 && i.offsetWidth > 0), sel);
+  ok(await page.getAttribute('#tiere-schalter', 'aria-pressed') === 'true', 'Tiere sind anfangs an');
+  await page.waitForTimeout(300);
+  ok(await geladen('#zahlwahl img'), 'Startseite: auf jeder Zahlentaste sitzt ihr Tier');
+  await page.click('#zahlwahl button[data-n="7"]');
+  await page.waitForTimeout(300);
+  const tier = await page.evaluate(() => ({ alt: document.querySelector('#tier-bild').alt, zahl: document.querySelector('#tier-zahl').textContent,
+    sichtbar: !document.querySelector('#tier').hidden }));
+  ok(tier.sichtbar && tier.alt === 'Löwe' && tier.zahl === '7' && await geladen('#tier-bild'), 'Spielseite: Löwe mit der 7 über dem Würfel');
+  const k = await wuerfle(page);
+  await page.click(`.zahl[data-zahl="${7 - k}"]`);
+  ok(await page.evaluate(() => document.querySelector('#tier').classList.contains('hops')), 'Richtige Antwort: das Tier hüpft vor Freude');
+  await page.click('#zurueck');
+  await page.click('#tiere-schalter');
+  ok(await page.getAttribute('#tiere-schalter', 'aria-pressed') === 'false' && await page.isHidden('#zahlwahl img'), 'Schalter aus: Starttasten ohne Tiere');
+  await page.click('#zahlwahl button[data-n="7"]');
+  ok(await page.isHidden('#tier'), 'Schalter aus: kein Tier auf der Spielseite – wie bisher');
+  await page.reload();
+  ok(await page.getAttribute('#tiere-schalter', 'aria-pressed') === 'false', 'Die Wahl bleibt nach dem Neuladen');
+  await page.click('#tiere-schalter');
   ok(konsole.length === 0, 'Keine Fehler in der Konsole' + (konsole.length ? ': ' + konsole.join(' | ') : ''));
   await ctx.close();
 }

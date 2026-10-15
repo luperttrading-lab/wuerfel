@@ -33,6 +33,12 @@ Lernspiel fürs Handy, damit sich die Zerlegungen der Zahlen 4 bis 10 als **Ziff
    Wird 2 s lang nicht getippt, wechselt dieser Hinweis sanft die Farbe (Schwarz ↔ Lila der Würfelzahl,
    alle 1,8 s) – auch bei „Bewegung reduzieren“, denn Farbe ist keine Bewegung.
 
+**Tiere** (Schalter 🐾 auf der Startseite, Start: an): jede Zahl hat ihr Tier – 4 Frosch, 5 Bär,
+6 Elefant, 7 Löwe, 8 Affe, 9 Eule, 10 Rakete (Countdown). Auf der Spielseite sitzt es mit seiner Zahl
+über dem Würfel („wir sind beim Löwen, bei der 7“) und hüpft bei jeder richtigen Antwort, nach einer
+ganzen Runde zweimal. Die runden Plaketten (`tiere/*.webp`, je ~10 KB) sind aus der Illustration des
+Auftraggebers geschnitten. Schalter aus = die Fassung ohne Tiere.
+
 **Effekte** (am Gerät mit Reglern ausprobiert, dann fest eingestellt): Staub 4× (`STAUB`), 60 Sterne
 bei jeder richtigen Antwort, 132 nach einer ganzen Runde (`STERNE`).
 
@@ -48,5 +54,6 @@ der vorigen.
 | `index.html` | ganze App (HTML, CSS, JS); `APP_VERSION` bei jeder Änderung hochzählen |
 | `sw.js` | Service Worker, Netz zuerst (Updates kommen an, offline läuft es weiter) |
 | `manifest.webmanifest`, `*.png` | Home-Bildschirm-Symbol |
+| `tiere/4.webp` … `tiere/10.webp` | Tier-Plaketten je Zahl |
 | `tests/spiel.mjs` | Browser-Test: `node tests/spiel.mjs [bildordner]` |
 | `tools/kosten.py` | Kostenzeile für Claude-Sitzungen |

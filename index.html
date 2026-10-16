@@ -235,10 +235,18 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   background: rgba(43, 33, 64, .86); color: #fff; font-size: 15px; font-weight: 700; box-shadow: 0 4px 14px rgba(43, 33, 64, .25); }
 .update.info.an { pointer-events: none; }   /* nur Hinweis, kein Knopf: Tipps gehen durch (z. B. 🐾 mehrmals) */
 .update.unten { top: auto; bottom: max(env(safe-area-inset-bottom), 12px); }
-/* Prüfansicht (Adresse mit ?zaehlen): zählt, was vorn landet, und testet den Zufall dieses Geräts */
-.zaehler { position: fixed; left: 8px; right: 8px; bottom: max(env(safe-area-inset-bottom), 8px); z-index: 20;
-  padding: 8px 10px; border-radius: 12px; background: rgba(10, 20, 45, .78); color: #fff;
-  font: 600 12px/1.45 ui-monospace, Menlo, monospace; white-space: pre; overflow: hidden; pointer-events: none; }
+/* Statistik: 3 s auf „Zerlegen: 9“ (oder die runde Zahl am Tier) drücken – unten erscheint, welche Zahl wie oft vorn lag */
+.titel, .tier-zahl { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.zaehler {              /* Teil der Seite (kein Overlay): eingeblendet rückt alles zusammen, der Würfel bleibt frei */
+  flex: none; margin: 0 calc(8px - var(--rand)); padding: 8px 12px 10px; border-radius: 14px;
+  background: rgba(10, 20, 45, .72); color: #fff; }
+.zaehler-kopf { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; font-size: 14px; font-weight: 800; }
+.zaehler-kopf small { font-size: 12px; font-weight: 600; color: var(--leise); white-space: nowrap; }
+.zaehler-tafel { display: grid; grid-template-columns: 1fr 1fr; column-gap: 18px; row-gap: 1px;
+  font: 600 13px/1.45 ui-monospace, Menlo, monospace; font-variant-numeric: tabular-nums; }
+.zaehler-tafel span { display: flex; justify-content: space-between; gap: 6px; white-space: pre; }
+.zaehler-tafel b { color: var(--rest-hell); }
+.zaehler button { flex: none; padding: 5px 10px; border-radius: 9px; background: rgba(255, 255, 255, .16); color: #fff; font-size: 12px; font-weight: 700; }
 .update .btn { padding: 8px 14px; border-radius: 10px; font-size: 15px; font-weight: 700; background: #06240e; color: #fff; }
 </style>
 </head>
@@ -249,7 +257,6 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 </div>
 
 <canvas class="funken" id="funken" aria-hidden="true"></canvas>
-<div class="zaehler" id="zaehler" hidden></div>
 
 <main class="seite" id="startseite">
   <header class="kopf">
@@ -289,12 +296,17 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
     <p class="gleichung" id="gleichung" aria-live="polite"></p>
     <p class="hinweis" id="hinweis"></p>
   </section>
+  <div class="zaehler" id="zaehler" hidden aria-live="polite">
+    <div class="zaehler-kopf"><span><span id="zaehler-titel"></span> <small id="zaehler-soll"></small></span>
+      <button type="button" id="zaehler-neu">Neu zählen</button></div>
+    <div class="zaehler-tafel" id="zaehler-tafel"></div>
+  </div>
   <section class="zahlen ruht" id="zahlen" aria-label="Antwort antippen"></section>
   <div class="lupe" id="lupe" hidden aria-hidden="true"></div>
 </main>
 
 <script>
-const APP_VERSION = '0.40';          // bei JEDER Änderung hochzählen
+const APP_VERSION = '0.41';          // bei JEDER Änderung hochzählen
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
@@ -305,9 +317,9 @@ const TIERE = { 4: 'Vogel', 5: 'Frosch', 6: 'Seepferdchen', 7: 'Seestern', 8: 'O
 const SPEICHER = 'wuerfel.stand';
 const SAGEN = !new URLSearchParams(location.search).has('tippen');   // Standard: Antwort laut sagen; ?tippen: Zahlenleiste
 document.body.classList.toggle('sagen', SAGEN);
-const ZAEHLEN = new URLSearchParams(location.search).has('zaehlen');   // Prüfansicht: Häufigkeiten auf dem Gerät
+const ZAEHLEN = new URLSearchParams(location.search).has('zaehlen');   // Statistik gleich beim Spielstart zeigen
 if (SAGEN) document.querySelector('.erklaerung').textContent = 'Tippe auf den Würfel. Sag laut, was bis zur gewählten Zahl fehlt – dann tippe wieder.';
-const stand = { n: 10, ton: true, sterne: 0, tiere: 'aus', staub: true };   // staub: bunter Staub beim Würfeln (💨)   // Tiere zuerst aus; 🐾 schaltet: aus → Sticker → wild
+const stand = { n: 10, ton: true, sterne: 0, tiere: 'aus', staub: true, statistik: {} };   // statistik[n]: wie oft lag 0 … n vorn   // staub: bunter Staub beim Würfeln (💨)   // Tiere zuerst aus; 🐾 schaltet: aus → Sticker → wild
 const TIERSAETZE = { aus: 'Ohne Tiere', sticker: 'Tiere: Sticker', wild: 'Tiere: wild & bunt' };
 const STAUB = 4;                    // Staubmenge (Faktor), am Gerät ausprobiert: Maximum
 const STERNE = 60;                  // Sterne bei richtiger Antwort (nach einer ganzen Runde 2,2-mal so viele)
@@ -319,6 +331,10 @@ try {
   if (Object.prototype.hasOwnProperty.call(TIERSAETZE, s.tiere)) stand.tiere = s.tiere;
   else if (s.tiere === true) stand.tiere = 'sticker';           // gespeichert vor v0.29: an/aus
   if (Number.isInteger(s.sterne) && s.sterne >= 0) stand.sterne = s.sterne;
+  for (const n of ZAHLEN) {
+    const a = s.statistik?.[n];
+    if (Array.isArray(a) && a.length === n + 1 && a.every(x => Number.isInteger(x) && x >= 0)) stand.statistik[n] = a;
+  }
 } catch (_) {}
 function speichereAlles() { try { localStorage.setItem(SPEICHER, JSON.stringify(stand)); } catch (_) {} }
 
@@ -750,9 +766,9 @@ function wuerfeln() {
 function landen() {
   cancelAnimationFrame(rafId);
   zahl = lauf.ziel;
-  if (ZAEHLEN && $('#augenzahl').textContent !== String(zahl)) zaehlung.umgesprungen++;   // wurde die Zahl nicht verdeckt aufgemalt?
+  if ($('#augenzahl').textContent !== String(zahl)) umgesprungen++;   // wurde die Zahl nicht verdeckt aufgemalt? (Test)
   zeigeZiffer(zahl);
-  if (ZAEHLEN) { zaehlung.wuerfe[+$('#augenzahl').textContent]++; zeigeZaehler(); }       // gezählt wird, was vorn steht                                                // war schon da – nur zur Sicherheit
+  zaehle(+$('#augenzahl').textContent);                           // Statistik: gezählt wird, was vorn steht
   stelle(RUHE.x, RUHE.y);
   sockelEl.style.setProperty('--sprung', 0);
   wuerfelEl.classList.remove('rollt');
@@ -823,28 +839,34 @@ function zeigeStart() {
   spielEl.hidden = true;
   startEl.hidden = false;
 }
-// Prüfansicht: was landet vorn, und wie verteilt der Zufall dieses Geräts 100 000 Würfe?
-const zaehlung = { wuerfe: [], test: [], umgesprungen: 0 };
-function zeigeZaehler() {
-  const n = stand.n, w = zaehlung.wuerfe, summe = w.reduce((a, b) => a + b, 0);
-  const zeile = (titel, h, gesamt) => titel + '\n' + h.map((x, k) => `${String(k).padStart(2)}: ${String(x).padStart(gesamt > 999 ? 6 : 3)}`
-    + (gesamt > 999 ? ` = ${(100 * x / gesamt).toFixed(1).padStart(4)} %` : '')).reduce((a, t, i) => a + t + (i % 2 ? '\n' : '   '), '');
-  $('#zaehler').textContent = zeile(`Gewürfelt bei ${n}: ${summe} Würfe (vorn abgelesen, ${zaehlung.umgesprungen}× umgesprungen)`, w, summe).trimEnd()
-    + '\n\n' + zeile(`Zufall dieses Geräts, ${zaehlung.test.reduce((a, b) => a + b, 0).toLocaleString('de-DE')} Würfe (Soll je ${(100 / (n + 1)).toFixed(1)} %)`,
-      zaehlung.test, 1e5).trimEnd();
+// Statistik: wie oft lag jede Zahl vorn – je gewählter Zahl gespeichert, auch über Tage
+let umgesprungen = 0;
+function zaehle(k) {
+  const a = stand.statistik[stand.n] ||= Array(stand.n + 1).fill(0);
+  a[k]++;
+  speichereAlles();
+  if (!$('#zaehler').hidden) zeigeZaehler();
 }
-function starteZaehler(n) {
-  zaehlung.wuerfe = Array(n + 1).fill(0);
-  zaehlung.test = Array(n + 1).fill(0);
-  zaehlung.umgesprungen = 0;
-  for (let i = 0; i < 1e5; i++) zaehlung.test[wurfZiel()]++;
-  $('#zaehler').hidden = false;
-  zeigeZaehler();
+function zeigeZaehler() {
+  const n = stand.n, a = stand.statistik[n] || Array(n + 1).fill(0), summe = a.reduce((x, y) => x + y, 0);
+  const prozent = x => summe ? (100 * x / summe).toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' %' : '–';
+  $('#zaehler-titel').textContent = `Statistik bei ${n}: ${summe} ${summe === 1 ? 'Wurf' : 'Würfe'}`;
+  $('#zaehler-soll').textContent = `· Soll je ${(100 / (n + 1)).toLocaleString('de-DE', { maximumFractionDigits: 1 })} %`;
+  // zwei Spalten, von oben nach unten gelesen: links 0 … Mitte, rechts der Rest
+  const halb = Math.ceil((n + 1) / 2), zellen = [];
+  for (let r = 0; r < halb; r++) for (const k of [r, r + halb]) {
+    zellen.push(k <= n ? `<span><b>${String(k).padStart(2)}</b>${String(a[k]).padStart(5)}  ${prozent(a[k]).padStart(6)}</span>` : '<span></span>');
+  }
+  $('#zaehler-tafel').innerHTML = zellen.join('');
+}
+function schalteZaehler(an = $('#zaehler').hidden) {
+  $('#zaehler').hidden = !an;
+  if (an) zeigeZaehler();
 }
 function starteSpiel(n) {
   stand.n = n;
   speichereAlles();
-  if (ZAEHLEN) starteZaehler(n);
+  if (ZAEHLEN) schalteZaehler(true);
   audio();                                       // iOS: Ton im Rahmen eines Tipps freischalten
   $('#titel-n').textContent = n;
   if (mitTieren()) $('#tier-bild').src = tierBild(n);
@@ -960,7 +982,18 @@ zahlenEl.addEventListener('click', e => {                                    // 
   const b = e.target.closest('.zahl');
   if (b && e.detail === 0) antwort(+b.dataset.zahl, b);
 });
-$('#zurueck').addEventListener('click', () => { $('#zaehler').hidden = true; zeigeStart(); });
+$('#zurueck').addEventListener('click', () => { schalteZaehler(false); zeigeStart(); });
+// 3 s gedrückt halten (auf „Zerlegen: 9“ oder die runde Zahl am Tier): Statistik ein- und ausblenden
+for (const el of [$('#spielseite .titel'), $('#tier-zahl')]) {
+  let halte = null;
+  el.addEventListener('pointerdown', () => {
+    clearTimeout(halte);
+    halte = setTimeout(() => { schalteZaehler(); showInfo($('#zaehler').hidden ? 'Statistik aus' : 'Statistik an', 1.6); }, 3000);
+  });
+  for (const ende of ['pointerup', 'pointercancel', 'pointerleave']) el.addEventListener(ende, () => clearTimeout(halte));
+  el.addEventListener('contextmenu', e => e.preventDefault());
+}
+$('#zaehler-neu').addEventListener('click', () => { stand.statistik[stand.n] = Array(stand.n + 1).fill(0); speichereAlles(); zeigeZaehler(); });
 $('#tiere-schalter').addEventListener('click', e => {
   const reihe = Object.keys(TIERSAETZE);
   stand.tiere = reihe[(reihe.indexOf(stand.tiere) + 1) % reihe.length];
@@ -1065,7 +1098,7 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
 window.wuerfelSpiel = {
   zufall, neuerBeutel, wurfZiel, stand, starteSpiel,
   get zahl() { return zahl; }, get phase() { return phase; }, get beutel() { return beutel.slice(); },
-  get staub() { return koerner.length; }, bewegung, ROLLZEIT, AUFPRALL,
+  get staub() { return koerner.length; }, bewegung, ROLLZEIT, AUFPRALL, get umgesprungen() { return umgesprungen; },
   get sterne() { return funken.length; },
   get seiten() { return Object.fromEntries(Object.keys(seiten).map(k => [k, seiten[k].el.textContent])); },
 };

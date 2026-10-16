@@ -69,9 +69,11 @@ damit die weichen Aquarellränder und Spritzer bleiben; was innen liegt (grauer 
 Zebrastreifen) bleibt voll deckend. Ergebnis `tiere/wild/*.webp` (eng zugeschnitten, längere Seite 700 px, je ~110–180 KB; wird erst
 geladen, wenn der Satz gewählt ist). Auch hier: Oktopus genau 8 Arme (4 + 4), Seestern genau 7.
 
-**Prüfansicht** (Adresse mit `?zaehlen`, z. B. https://luperttrading-lab.github.io/wuerfel/?zaehlen):
-unten eine Tafel mit dem, was nach jedem Wurf vorn steht (und wie oft die Zahl sichtbar umgesprungen ist),
-dazu ein Zufallstest mit 100 000 Würfen auf dem Gerät selbst – so lässt sich der Zufall im echten Safari prüfen.
+**Statistik**: 3 Sekunden auf „Zerlegen: 9“ drücken (mit Tieren auch auf die runde Zahl am Tier) – unter dem
+Würfel erscheint, wie oft jede Zahl vorn lag, als Anzahl und in Prozent, dazu das Soll (bei 9: je 10 %).
+Gezählt wird, was tatsächlich vorn steht; gespeichert je gewählter Zahl, auch über Tage; „Neu zählen“
+setzt auf 0. Noch einmal 3 s drücken blendet sie aus. Die Tafel ist Teil der Seite: eingeblendet rückt
+alles zusammen, nichts wird verdeckt. Mit `?zaehlen` in der Adresse ist sie gleich beim Start da.
 
 **Hintergrund**: helles Tiefblau mit Licht in der Mitte (`--grund`); der weiße Würfel hebt sich mit
 gut 4 : 1 ab (vorher Creme: 1,1 : 1). Schrift auf dem Grund ist hell, Zahlfarben auf dem Grund haben

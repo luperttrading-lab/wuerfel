@@ -444,30 +444,72 @@ console.log('Staub: bunt oder aus (💨)');
   await ctx.close();
 }
 
-console.log('Prüfansicht ?zaehlen (auf dem Gerät selbst)');
+console.log('Statistik: 3 s auf „Zerlegen: 9“ drücken');
 {
-  const { page, konsole, ctx } = await seite(390, 844, false, '?zaehlen');
+  const { page, konsole, ctx } = await seite(390, 844, false, '');
   await page.click('#zahlwahl button[data-n="9"]');
   await page.waitForTimeout(300);
-  const test = await page.evaluate(() => {
-    const t = document.querySelector('#zaehler').textContent;
-    return { sichtbar: !document.querySelector('#zaehler').hidden, prozente: [...t.matchAll(/=\s*([\d.]+) %/g)].map(m => +m[1]) };
-  });
-  ok(test.sichtbar && test.prozente.length === 10 && test.prozente.every(x => x > 9 && x < 11),
-    `Zufallstest auf dem Gerät: 100 000 Würfe, jede Zahl 0–9 zwischen 9 und 11 % (${test.prozente.join(' / ')})`);
-  for (let i = 0; i < 25; i++) { await page.click('#wuerfel', { force: true }); await page.waitForFunction(() => window.wuerfelSpiel.phase === 'frage', null, { timeout: 5000 }); }
-  const kopf = (await page.textContent('#zaehler')).split('\n')[0];
-  ok(/25 Würfe/.test(kopf) && /0× umgesprungen/.test(kopf), `25 echte Würfe gezählt, Zahl nie sichtbar umgesprungen („${kopf}“)`);
+  const halten = async (sel, ms) => {
+    const r = await page.locator(sel).boundingBox();
+    await page.mouse.move(r.x + r.width / 2, r.y + r.height / 2); await page.mouse.down();
+    await page.waitForTimeout(ms); await page.mouse.up(); await page.waitForTimeout(100);
+  };
+  await halten('#spielseite .titel', 1200);
+  ok(await page.isHidden('#zaehler'), 'Kurz drücken (1,2 s): keine Statistik');
+  await halten('#spielseite .titel', 3200);
+  ok(await page.isVisible('#zaehler') && (await page.textContent('#zaehler-titel')) === 'Statistik bei 9: 0 Würfe'
+    && (await page.textContent('#zaehler-soll')) === '· Soll je 10 %', '3 s drücken: Statistik erscheint („Statistik bei 9: 0 Würfe“, Soll je 10 %)');
+  const gezogen = [];
+  for (let i = 0; i < 25; i++) {
+    await page.click('#wuerfel', { force: true });
+    await page.waitForFunction(() => window.wuerfelSpiel.phase === 'frage', null, { timeout: 5000 });
+    gezogen.push(await page.evaluate(() => window.wuerfelSpiel.zahl));
+  }
+  const tafel = await page.evaluate(() => [...document.querySelectorAll('#zaehler-tafel span')].map(s => s.textContent.trim()).filter(Boolean));
+  const erwartet = Array.from({ length: 10 }, (_, k) => gezogen.filter(x => x === k).length);
+  const gelesen = Array.from({ length: 10 }, (_, k) => { const z = tafel.find(t => t.startsWith(String(k) + ' ')); return z ? +z.split(/\s+/)[1] : NaN; });
+  ok((await page.textContent('#zaehler-titel')) === 'Statistik bei 9: 25 Würfe' && gelesen.join() === erwartet.join(),
+    `Zählt jede Zahl, die vorn lag (${gelesen.join(' ')})`);
+  const k0 = tafel.find(t => t.startsWith('0 ')), p0 = erwartet[0] ? (100 * erwartet[0] / 25).toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' %' : '0,0 %';
+  ok(k0 && k0.endsWith(p0), `Mit Prozent und Komma („${k0}“)`);
+  ok(await page.evaluate(() => window.wuerfelSpiel.umgesprungen) === 0, 'Die Zahl ist bei keinem der 25 Würfe sichtbar umgesprungen');
+  await page.reload();
+  await page.click('#zahlwahl button[data-n="9"]');
+  await halten('#spielseite .titel', 3200);
+  ok((await page.textContent('#zaehler-titel')) === 'Statistik bei 9: 25 Würfe', 'Bleibt gespeichert (nach dem Neuladen weiter 25 Würfe)');
+  await page.click('#zaehler-neu');
+  ok((await page.textContent('#zaehler-titel')) === 'Statistik bei 9: 0 Würfe', '„Neu zählen“ setzt auf 0');
+  await halten('#spielseite .titel', 3200);
+  ok(await page.isHidden('#zaehler'), 'Noch einmal 3 s drücken: Statistik weg');
   await page.click('#zurueck');
-  ok(await page.isHidden('#zaehler'), 'Zurück zur Startseite: Prüfansicht weg');
+  await page.click('#tiere-schalter');
+  await page.click('#zahlwahl button[data-n="9"]');
+  await page.waitForTimeout(300);
+  await halten('#tier-zahl', 3200);
+  ok(await page.isVisible('#zaehler'), 'Auch über die runde 9 am Tier');
+  for (const [w, h] of [[390, 844], [375, 667], [320, 568]]) {
+    await page.setViewportSize({ width: w, height: h }); await page.waitForTimeout(200);
+    const m = await page.evaluate(() => { let u = 0; for (const f of document.querySelectorAll('#koerper > *')) u = Math.max(u, f.getBoundingClientRect().bottom);
+      const z = document.querySelector('#zaehler').getBoundingClientRect(), t = document.querySelector('#tier-bild').getBoundingClientRect();
+      return { wuerfel: u, tafel: z.top, unten: z.bottom, tier: t.height, scroll: document.scrollingElement.scrollHeight > innerHeight + 1 }; });
+    ok(m.tafel >= m.wuerfel && m.unten <= h && !m.scroll && m.tier >= 60,
+      `${w}×${h} mit Tier: Statistik unter dem Würfel, nichts verdeckt, kein Scrollen (Tier ${Math.round(m.tier)} px)`);
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
   ok(konsole.length === 0, 'Keine Fehler in der Konsole' + (konsole.length ? ': ' + konsole.join(' | ') : ''));
   await ctx.close();
 }
 {
-  const { page, ctx } = await seite(390, 844, false, '');
+  const { page, ctx } = await seite(390, 844, false, '?zaehlen');
   await page.click('#zahlwahl button[data-n="9"]');
-  ok(await page.isHidden('#zaehler'), 'Ohne ?zaehlen: keine Prüfansicht');
+  ok(await page.isVisible('#zaehler'), '?zaehlen: Statistik gleich beim Start');
   await ctx.close();
+  const t = await seite(390, 844);                        // ?tippen
+  await t.page.evaluate(() => window.wuerfelSpiel.starteSpiel(9));
+  await t.page.evaluate(() => { document.querySelector('#zaehler').hidden = false; });
+  const lage = await t.page.evaluate(() => ({ z: document.querySelector('#zaehler').getBoundingClientRect().bottom, l: document.querySelector('#zahlen').getBoundingClientRect().top }));
+  ok(lage.z <= lage.l, `?tippen: Statistik über der Zahlenleiste, die bleibt frei (${Math.round(lage.z)} ≤ ${Math.round(lage.l)} px)`);
+  await t.ctx.close();
 }
 
 console.log('Ganze Runden (jede Zerlegung genau einmal)');

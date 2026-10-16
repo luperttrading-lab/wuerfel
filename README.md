@@ -18,8 +18,10 @@ Lernspiel fürs Handy, damit sich die Zerlegungen der Zahlen 4 bis 10 als **Ziff
    und verweht bis etwa 0,85 s. Bei 0,44 s schlägt er auf: „Bumm“, er staucht sich kurz (91 % hoch),
    ein Staubwölkchen am Boden. Die Ziffern wirken eingeprägt. Bei jedem
    Überschlag klickt es. Seiten, die gerade nach hinten zeigen, bekommen neue Zahlen;
-   die Vorderseite bekommt die ausgeloste Zahl, solange sie verdeckt ist (0,25–0,33 s), und liegt
-   ab 0,43 s vorn (blau). Darunter steht `3 + ? = 8`. Die sichtbaren Nebenseiten zeigen nie die
+   die Vorderseite bekommt die ausgeloste Zahl, während sie hochkant oder verdeckt ist (0,20–0,34 s,
+   mehr als 81° weggedreht), und liegt ab 0,43 s vorn (blau). Die Animation rückt pro Bild höchstens
+   40 ms vor: ruckelt das Gerät, rollt er einen Hauch länger, statt dieses Fenster zu überspringen –
+   die Zahl springt nie sichtbar um. Darunter steht `3 + ? = 8`. Die sichtbaren Nebenseiten zeigen nie die
    gewürfelte Zahl oder die Lösung.
    Der Würfel dreht sich auch, wenn am iPhone „Bewegung reduzieren“ eingeschaltet ist – das
    Drehen ist hier der Kern des Spiels.
@@ -66,6 +68,10 @@ Zweiter Satz **wild & bunt**: Aquarell-Tiere mit Farbspritzern (`tiere/quelle/wi
 damit die weichen Aquarellränder und Spritzer bleiben; was innen liegt (grauer Nashornkörper, weiße
 Zebrastreifen) bleibt voll deckend. Ergebnis `tiere/wild/*.webp` (eng zugeschnitten, längere Seite 700 px, je ~110–180 KB; wird erst
 geladen, wenn der Satz gewählt ist). Auch hier: Oktopus genau 8 Arme (4 + 4), Seestern genau 7.
+
+**Prüfansicht** (Adresse mit `?zaehlen`, z. B. https://luperttrading-lab.github.io/wuerfel/?zaehlen):
+unten eine Tafel mit dem, was nach jedem Wurf vorn steht (und wie oft die Zahl sichtbar umgesprungen ist),
+dazu ein Zufallstest mit 100 000 Würfen auf dem Gerät selbst – so lässt sich der Zufall im echten Safari prüfen.
 
 **Hintergrund**: helles Tiefblau mit Licht in der Mitte (`--grund`); der weiße Würfel hebt sich mit
 gut 4 : 1 ab (vorher Creme: 1,1 : 1). Schrift auf dem Grund ist hell, Zahlfarben auf dem Grund haben

@@ -108,8 +108,9 @@ console.log('Startseite');
   ok(!(await page.evaluate(() => document.querySelector('#hinweis').classList.contains('lockt'))), 'Beim Würfeln hört der Hinweis auf');
   // Im Browser Bild für Bild mitschreiben – kurze Momente wie das Stauchen (≈ 0,1 s) entgehen sonst der Abtastung
   await page.evaluate(() => {
-    const w = window.__messung = { lagen: [], staub: 0, seiten: [] };
-    const f = () => {
+    const w = window.__messung = { lagen: [], staub: 0, seiten: [], zeiten: [] };
+    const f = t => {
+      w.zeiten.push(t);
       w.lagen.push(document.querySelector('#koerper').style.transform);
       w.staub = Math.max(w.staub, window.wuerfelSpiel.staub);
       w.seiten.push(JSON.stringify(window.wuerfelSpiel.seiten));
@@ -159,18 +160,22 @@ console.log('Startseite');
     for (let ms = 0; ms <= ROLLZEIT; ms++) {
       const p = ms / ROLLZEIT, f = 1 - (1 - p) ** 2, ax = RUHE.x + DREH.x * f, ay = RUHE.y + DREH.y * f;
       const z = drehe(NORMALE.vorne, ax, ay)[2];
-      if (p > 0.5 && z < -0.1) { verdeckt++; letzteVerdeckt = ms; }
+      if (p > 0.4 && z < 0.15) { verdeckt++; letzteVerdeckt = ms; }   // so schreibt die App die Zahl auf
       if (letzteVerdeckt !== null && ms > letzteVerdeckt && z > 0.9 && vorn === null) vorn = ms;
       if (vorher !== null) schnellste = Math.max(schnellste, Math.abs(ax - vorher) * 1000 / 60);
       vorher = ax;
     }
     return { verdeckt, vorn, aufprall: AUFPRALL * ROLLZEIT, schnellste, ueberschlaege: DREH.x / 360 };
   });
-  ok(drehung.verdeckt >= 50 && drehung.vorn !== null && drehung.vorn <= drehung.aufprall,
-    `Gewürfelte Zahl kommt verdeckt auf die Vorderseite (${drehung.verdeckt} ms verdeckt), vorn ab ${drehung.vorn} ms, vor dem „Bumm“ (${drehung.aufprall} ms)`);
+  ok(drehung.verdeckt >= 100 && drehung.vorn !== null && drehung.vorn <= drehung.aufprall,
+    `Gewürfelte Zahl kommt hochkant/verdeckt auf die Vorderseite (Fenster ${drehung.verdeckt} ms – auch bei 12 Bildern/s sicher), vorn ab ${drehung.vorn} ms, vor dem „Bumm“ (${drehung.aufprall} ms)`);
   ok(drehung.ueberschlaege >= 2 && drehung.schnellste <= 55,
     `${drehung.ueberschlaege} Überschläge, höchstens ${drehung.schnellste.toFixed(0)}° pro Bild bei 60 Bildern/s (ab ~60° flimmert es)`);
-  ok(dauer >= 450 && dauer <= 1000, `Rollen dauert ${dauer} ms (Soll 0,5 s)`);
+  // Bei flüssiger Darstellung genau 0,5 s. Ruckelt es (hier im Testbrowser oft), rückt die Animation pro Bild
+  // höchstens 40 ms vor und dauert um die Aussetzer länger – das wird aus den gemessenen Bildabständen nachgerechnet.
+  const zeiten = messung.zeiten, verlaengerung = zeiten.slice(1).reduce((s, t, i) => s + Math.max(0, t - zeiten[i] - 40), 0);
+  ok(dauer >= 450 && dauer <= 500 + verlaengerung + 450,
+    `Rollen dauert ${dauer} ms (Soll 0,5 s + ${Math.round(verlaengerung)} ms Verlängerung durch Ruckler des Testbrowsers)`);
   let k = await page.evaluate(() => window.wuerfelSpiel.zahl);
   ok(await page.textContent('#augenzahl') === String(k), `Würfel zeigt die gezogene Zahl ${k}`);
   ok(await lage(page) === RUHELAGE, 'Würfel liegt danach wieder in Ruhelage');
@@ -436,6 +441,32 @@ console.log('Staub: bunt oder aus (💨)');
   ok(await page.evaluate(() => { const k = document.querySelector('#startseite .kopf'); return k.scrollWidth <= k.clientWidth + 1 && document.scrollingElement.scrollWidth <= innerWidth; }),
     '320 px: Kopfzeile mit drei Knöpfen passt');
   ok(konsole.length === 0, 'Keine Fehler in der Konsole' + (konsole.length ? ': ' + konsole.join(' | ') : ''));
+  await ctx.close();
+}
+
+console.log('Prüfansicht ?zaehlen (auf dem Gerät selbst)');
+{
+  const { page, konsole, ctx } = await seite(390, 844, false, '?zaehlen');
+  await page.click('#zahlwahl button[data-n="9"]');
+  await page.waitForTimeout(300);
+  const test = await page.evaluate(() => {
+    const t = document.querySelector('#zaehler').textContent;
+    return { sichtbar: !document.querySelector('#zaehler').hidden, prozente: [...t.matchAll(/=\s*([\d.]+) %/g)].map(m => +m[1]) };
+  });
+  ok(test.sichtbar && test.prozente.length === 10 && test.prozente.every(x => x > 9 && x < 11),
+    `Zufallstest auf dem Gerät: 100 000 Würfe, jede Zahl 0–9 zwischen 9 und 11 % (${test.prozente.join(' / ')})`);
+  for (let i = 0; i < 25; i++) { await page.click('#wuerfel', { force: true }); await page.waitForFunction(() => window.wuerfelSpiel.phase === 'frage', null, { timeout: 5000 }); }
+  const kopf = (await page.textContent('#zaehler')).split('\n')[0];
+  ok(/25 Würfe/.test(kopf) && /0× umgesprungen/.test(kopf), `25 echte Würfe gezählt, Zahl nie sichtbar umgesprungen („${kopf}“)`);
+  await page.click('#zurueck');
+  ok(await page.isHidden('#zaehler'), 'Zurück zur Startseite: Prüfansicht weg');
+  ok(konsole.length === 0, 'Keine Fehler in der Konsole' + (konsole.length ? ': ' + konsole.join(' | ') : ''));
+  await ctx.close();
+}
+{
+  const { page, ctx } = await seite(390, 844, false, '');
+  await page.click('#zahlwahl button[data-n="9"]');
+  ok(await page.isHidden('#zaehler'), 'Ohne ?zaehlen: keine Prüfansicht');
   await ctx.close();
 }
 

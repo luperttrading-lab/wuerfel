@@ -235,6 +235,10 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   background: rgba(43, 33, 64, .86); color: #fff; font-size: 15px; font-weight: 700; box-shadow: 0 4px 14px rgba(43, 33, 64, .25); }
 .update.info.an { pointer-events: none; }   /* nur Hinweis, kein Knopf: Tipps gehen durch (z. B. 🐾 mehrmals) */
 .update.unten { top: auto; bottom: max(env(safe-area-inset-bottom), 12px); }
+/* Prüfansicht (Adresse mit ?zaehlen): zählt, was vorn landet, und testet den Zufall dieses Geräts */
+.zaehler { position: fixed; left: 8px; right: 8px; bottom: max(env(safe-area-inset-bottom), 8px); z-index: 20;
+  padding: 8px 10px; border-radius: 12px; background: rgba(10, 20, 45, .78); color: #fff;
+  font: 600 12px/1.45 ui-monospace, Menlo, monospace; white-space: pre; overflow: hidden; pointer-events: none; }
 .update .btn { padding: 8px 14px; border-radius: 10px; font-size: 15px; font-weight: 700; background: #06240e; color: #fff; }
 </style>
 </head>
@@ -245,6 +249,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 </div>
 
 <canvas class="funken" id="funken" aria-hidden="true"></canvas>
+<div class="zaehler" id="zaehler" hidden></div>
 
 <main class="seite" id="startseite">
   <header class="kopf">
@@ -289,7 +294,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 </main>
 
 <script>
-const APP_VERSION = '0.39';          // bei JEDER Änderung hochzählen
+const APP_VERSION = '0.40';          // bei JEDER Änderung hochzählen
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
@@ -300,6 +305,7 @@ const TIERE = { 4: 'Vogel', 5: 'Frosch', 6: 'Seepferdchen', 7: 'Seestern', 8: 'O
 const SPEICHER = 'wuerfel.stand';
 const SAGEN = !new URLSearchParams(location.search).has('tippen');   // Standard: Antwort laut sagen; ?tippen: Zahlenleiste
 document.body.classList.toggle('sagen', SAGEN);
+const ZAEHLEN = new URLSearchParams(location.search).has('zaehlen');   // Prüfansicht: Häufigkeiten auf dem Gerät
 if (SAGEN) document.querySelector('.erklaerung').textContent = 'Tippe auf den Würfel. Sag laut, was bis zur gewählten Zahl fehlt – dann tippe wieder.';
 const stand = { n: 10, ton: true, sterne: 0, tiere: 'aus', staub: true };   // staub: bunter Staub beim Würfeln (💨)   // Tiere zuerst aus; 🐾 schaltet: aus → Sticker → wild
 const TIERSAETZE = { aus: 'Ohne Tiere', sticker: 'Tiere: Sticker', wild: 'Tiere: wild & bunt' };
@@ -535,8 +541,8 @@ funkenLeinwand();
 // mehr Überschläge in der Zeit würden flimmern, einer allein ließe keine Zeit, die Zahl verdeckt aufzumalen.
 // Dabei wird er kleiner (bis 70 %) und wieder groß; bei 0,44 s ist er zurück, staucht sich kurz (Aufprall)
 // und es macht „Bumm“. Dabei fliegt Staub, der gleich verweht. Seiten, die nach hinten zeigen, bekommen
-// neue Zahlen; die Vorderseite bekommt die ausgeloste Zahl, solange sie verdeckt ist (0,25–0,33 s), und
-// liegt ab 0,43 s vorn. Zeiten gerechnet für Bremsen mit 1 − (1 − p)².
+// neue Zahlen; die Vorderseite bekommt die ausgeloste Zahl, während sie hochkant oder verdeckt ist
+// (0,20–0,34 s), und liegt ab 0,43 s vorn. Zeiten gerechnet für Bremsen mit 1 − (1 − p)².
 const ROLLZEIT = 500;                                   // ms (bis v0.34: 2000, v0.35: 1000)
 const RUHE = { x: -10, y: -12 };                        // Grad
 const DREH = { x: 720, y: -360, z: 360 };               // nur Vielfache von 360°: endet wieder in Ruhelage
@@ -665,16 +671,23 @@ function bewegung(p) {
   return { weg, groesse: 1 - (1 - KLEINSTE) * weg, breit, flach };
 }
 function schritt(t) {
-  const p = Math.min(1, (t - lauf.t0) / ROLLZEIT);
+  // Animationszeit rückt pro Bild höchstens 40 ms vor: ruckelt das Gerät, rollt der Würfel einen Hauch
+  // länger, statt Lagen zu überspringen – so wird das Fenster für die Vorderseite (142 ms) nie verpasst.
+  lauf.zeit += Math.min(40, Math.max(0, t - (lauf.tLetzt ?? lauf.t0)));
+  lauf.tLetzt = t;
+  const p = Math.min(1, lauf.zeit / ROLLZEIT);
   const f = 1 - (1 - p) ** 2;                                       // gleichmäßig abbremsen
   const ax = RUHE.x + DREH.x * f, ay = RUHE.y + DREH.y * f, az = DREH.z * f;
   let vorn = null, best = -2;
   for (const k in seiten) {
     const s = seiten[k], z = drehe(NORMALE[k], ax, ay)[2];
     if (z > best) { best = z; vorn = k; }
+    // Vorderseite: die gewürfelte Zahl kommt drauf, sobald sie im letzten Überschlag fast hochkant oder
+    // dahinter steht (z < 0,15 – mehr als 81° weggedreht). Das Fenster ist 142 ms lang: auch bei
+    // ruckelnder Darstellung (12 Bilder/s) wird es getroffen, die Zahl springt nie sichtbar um.
+    if (k === 'vorne' && p > 0.4 && z < 0.15 && !lauf.gesetzt) { beschrifte(k, lauf.ziel); lauf.gesetzt = true; }
     if (z < -0.1) {                                                 // zeigt nach hinten: umschreiben
-      if (k === 'vorne' && p > 0.5) { if (!lauf.gesetzt) { beschrifte(k, lauf.ziel); lauf.gesetzt = true; } }
-      else if (!s.weg) beschrifte(k, zufallsZahl(lauf.ziel, k));
+      if (!(k === 'vorne' && lauf.gesetzt) && !s.weg) beschrifte(k, zufallsZahl(lauf.ziel, k));
       s.weg = true;
     } else if (z > 0) s.weg = false;
   }
@@ -716,7 +729,7 @@ function lockeNicht() { clearTimeout(lockTimer); hinweisEl.classList.remove('loc
 function wuerfeln() {
   clearTimeout(weiterTimer);
   lockeNicht();
-  lauf = { ziel: wurfZiel(), t0: performance.now(), gesetzt: false, vorn: 'vorne', aufgeschlagen: false, staub: 0 };
+  lauf = { ziel: wurfZiel(), t0: performance.now(), zeit: 0, tLetzt: null, gesetzt: false, vorn: 'vorne', aufgeschlagen: false, staub: 0 };
   for (const k in seiten) seiten[k].weg = false;
   phase = 'rollt';
   zahl = null;
@@ -737,7 +750,9 @@ function wuerfeln() {
 function landen() {
   cancelAnimationFrame(rafId);
   zahl = lauf.ziel;
-  zeigeZiffer(zahl);                                                // war schon da – nur zur Sicherheit
+  if (ZAEHLEN && $('#augenzahl').textContent !== String(zahl)) zaehlung.umgesprungen++;   // wurde die Zahl nicht verdeckt aufgemalt?
+  zeigeZiffer(zahl);
+  if (ZAEHLEN) { zaehlung.wuerfe[+$('#augenzahl').textContent]++; zeigeZaehler(); }       // gezählt wird, was vorn steht                                                // war schon da – nur zur Sicherheit
   stelle(RUHE.x, RUHE.y);
   sockelEl.style.setProperty('--sprung', 0);
   wuerfelEl.classList.remove('rollt');
@@ -808,9 +823,28 @@ function zeigeStart() {
   spielEl.hidden = true;
   startEl.hidden = false;
 }
+// Prüfansicht: was landet vorn, und wie verteilt der Zufall dieses Geräts 100 000 Würfe?
+const zaehlung = { wuerfe: [], test: [], umgesprungen: 0 };
+function zeigeZaehler() {
+  const n = stand.n, w = zaehlung.wuerfe, summe = w.reduce((a, b) => a + b, 0);
+  const zeile = (titel, h, gesamt) => titel + '\n' + h.map((x, k) => `${String(k).padStart(2)}: ${String(x).padStart(gesamt > 999 ? 6 : 3)}`
+    + (gesamt > 999 ? ` = ${(100 * x / gesamt).toFixed(1).padStart(4)} %` : '')).reduce((a, t, i) => a + t + (i % 2 ? '\n' : '   '), '');
+  $('#zaehler').textContent = zeile(`Gewürfelt bei ${n}: ${summe} Würfe (vorn abgelesen, ${zaehlung.umgesprungen}× umgesprungen)`, w, summe).trimEnd()
+    + '\n\n' + zeile(`Zufall dieses Geräts, ${zaehlung.test.reduce((a, b) => a + b, 0).toLocaleString('de-DE')} Würfe (Soll je ${(100 / (n + 1)).toFixed(1)} %)`,
+      zaehlung.test, 1e5).trimEnd();
+}
+function starteZaehler(n) {
+  zaehlung.wuerfe = Array(n + 1).fill(0);
+  zaehlung.test = Array(n + 1).fill(0);
+  zaehlung.umgesprungen = 0;
+  for (let i = 0; i < 1e5; i++) zaehlung.test[wurfZiel()]++;
+  $('#zaehler').hidden = false;
+  zeigeZaehler();
+}
 function starteSpiel(n) {
   stand.n = n;
   speichereAlles();
+  if (ZAEHLEN) starteZaehler(n);
   audio();                                       // iOS: Ton im Rahmen eines Tipps freischalten
   $('#titel-n').textContent = n;
   if (mitTieren()) $('#tier-bild').src = tierBild(n);
@@ -926,7 +960,7 @@ zahlenEl.addEventListener('click', e => {                                    // 
   const b = e.target.closest('.zahl');
   if (b && e.detail === 0) antwort(+b.dataset.zahl, b);
 });
-$('#zurueck').addEventListener('click', zeigeStart);
+$('#zurueck').addEventListener('click', () => { $('#zaehler').hidden = true; zeigeStart(); });
 $('#tiere-schalter').addEventListener('click', e => {
   const reihe = Object.keys(TIERSAETZE);
   stand.tiere = reihe[(reihe.indexOf(stand.tiere) + 1) % reihe.length];

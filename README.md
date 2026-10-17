@@ -40,6 +40,7 @@ Lernspiel fürs Handy, damit sich die Zerlegungen der Zahlen 4 bis 10 als **Ziff
    alle 1,8 s) – auch bei „Bewegung reduzieren“, denn Farbe ist keine Bewegung.
 
 **Zwei Fassungen.** Standard ist **Sagen**: nur der Würfel (ohne Text, Zähler, Zahlenleiste und Gleichung).
+Unter dem Würfel „Bereit?“ und **Start**: ab dann laufen genau 2 Minuten, der erste Wurf rollt gleich mit.
 Antippen würfelt, das Kind sagt laut, was bis n fehlt, Antippen würfelt weiter. Gewürfelt wird wie mit einem
 echten Würfel: jede Zahl 0 … n gleich wahrscheinlich, unabhängig vom vorigen Wurf – Doppelte kommen vor
 (bei n = 9 jeder zehnte Wurf), und eine Zerlegung kann auch länger ausbleiben. Die Fassung **Antippen**
@@ -69,19 +70,25 @@ damit die weichen Aquarellränder und Spritzer bleiben; was innen liegt (grauer 
 Zebrastreifen) bleibt voll deckend. Ergebnis `tiere/wild/*.webp` (eng zugeschnitten, längere Seite 700 px, je ~110–180 KB; wird erst
 geladen, wenn der Satz gewählt ist). Auch hier: Oktopus genau 8 Arme (4 + 4), Seestern genau 7.
 
-**Statistik**: 3 Sekunden auf „Zerlegen: 9“ drücken (mit Tieren auch auf die runde Zahl am Tier) – unter dem
-Würfel erscheint, wie oft jede Zahl vorn lag, als Anzahl und in Prozent, dazu das Soll (bei 9: je 10 %).
-Gezählt wird, was tatsächlich vorn steht; gespeichert je gewählter Zahl, auch über Tage; „Neu zählen“
-setzt auf 0. Noch einmal 3 s drücken blendet sie aus. Die Tafel ist Teil der Seite: eingeblendet rückt
-alles zusammen, nichts wird verdeckt. Mit `?zaehlen` in der Adresse ist sie gleich beim Start da.
+**2 Minuten**: gemessen an der Uhrzeit des Geräts (`Date.now()`, `DAUER` = 120 000 ms) – sie läuft auch weiter,
+wenn das iPhone zwischendurch gesperrt ist. Bei genau 2:00,0 ist Schluss: Fanfare, Sterne, „Die Zeit ist um!“
+und **Nochmal** (neue 2 Minuten). Rollt der Würfel gerade, landet er noch auf seiner Zahl. Danach würfelt er
+nicht mehr; hat ein Timer verschlafen, merkt es der nächste Tipp. Zurück zur Startseite bricht ab.
+Versteckt für Erwachsene: 3 Sekunden auf „Zerlegen: 9“ drücken (mit Tieren auch auf die runde Zahl am Tier) –
+unten erscheint die laufende Uhr mit den Versuchen, z. B. `1:23,4 · 17 Versuche`; ein Versuch ist ein Wurf
+(„Start“ zählt als erster). Noch einmal 3 s drücken blendet sie aus. Geprüft wird die Zeit zweimal: mit
+vorgespulter Browser-Uhr auf die Millisekunde (119 999 ms läuft, 120 000 ms Schluss) und einmal echt
+2 Minuten lang, von außen gemessen (bisher 119 997 … 120 033 ms, die Spanne ist die Dauer des Klicks).
+Die Fassung `?tippen` hat keinen Start und keine Uhr. (Die Zähl-Statistik aus v0.41 ist wieder raus.)
 
 **Hintergrund**: helles Tiefblau mit Licht in der Mitte (`--grund`); der weiße Würfel hebt sich mit
 gut 4 : 1 ab (vorher Creme: 1,1 : 1). Schrift auf dem Grund ist hell, Zahlfarben auf dem Grund haben
 helle Varianten (`--teil-hell`, `--ganz-hell`, `--rest-hell`); auf dem Würfel bleiben die kräftigen.
 Statusleiste am iPhone durchscheinend mit weißer Schrift.
 
-**Staub** (Schalter 💨 auf der Startseite, Start: an): bunt – Tupfer in sechs kräftigen Farben, die beim
-Wirbeln aus dem Würfel stieben; ausgeschaltet fliegt kein einziges Korn. Die Wahl wird gespeichert.
+**Staub** nur mit Tieren (Schalter 💨 auf der Startseite, erscheint mit den Tieren, Start: an): bunt – Tupfer
+in sechs kräftigen Farben, die beim Wirbeln aus dem Würfel stieben. Ohne Tiere oder mit 💨 aus fliegt kein
+einziges Korn. Die Wahl wird gespeichert.
 
 **Effekte** (am Gerät mit Reglern ausprobiert, dann fest eingestellt): Staub 4× (`STAUB`), 60 Sterne
 bei jeder richtigen Antwort, 132 nach einer ganzen Runde (`STERNE`).

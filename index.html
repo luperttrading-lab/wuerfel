@@ -97,6 +97,19 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
    Die Fassung zum Antippen bleibt in der Hinterhand: Adresse mit ?tippen */
 .sagen .zahlen, .sagen .lupe, .sagen .gleichung, .sagen .hinweis, .sagen .stand { display: none; }   /* nur der Würfel */
 .sagen .sockel { --s: clamp(140px, 44vw, 240px); }
+/* Unter dem Würfel: „Start“ – dann laufen genau 2 Minuten; danach „Die Zeit ist um!“ und „Nochmal“.
+   Während der 2 Minuten unsichtbar, behält aber seinen Platz: der Würfel springt nicht. */
+.los-feld { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+body:not(.sagen) .los-feld { display: none; }
+.los-feld.weg { visibility: hidden; }
+.los-text { margin: 0; min-height: 1.3em; text-align: center; font-size: clamp(18px, 5vw, 24px); font-weight: 800; }
+.los {
+  min-width: 168px; height: 58px; padding: 0 28px; border-radius: 16px; color: var(--ink);
+  background-color: #ffb547; background-image: linear-gradient(#ffcb6e, #ffb03b);   /* wie die Zahltasten */
+  font-size: 26px; font-weight: 900; box-shadow: 0 5px 0 #d98a12, 0 8px 14px rgba(160, 90, 0, .18);
+}
+.los:active { transform: translateY(3px); box-shadow: 0 2px 0 #d98a12; }
+.los.stups { animation: wackeln .4s ease; }
 .zahlwahl img { display: none; }
 .mit-tieren .zahlwahl button { height: auto; padding: 6px 0 8px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .mit-tieren .zahlwahl img { display: block; width: 86%; aspect-ratio: 1; object-fit: contain; }
@@ -235,18 +248,12 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   background: rgba(43, 33, 64, .86); color: #fff; font-size: 15px; font-weight: 700; box-shadow: 0 4px 14px rgba(43, 33, 64, .25); }
 .update.info.an { pointer-events: none; }   /* nur Hinweis, kein Knopf: Tipps gehen durch (z. B. 🐾 mehrmals) */
 .update.unten { top: auto; bottom: max(env(safe-area-inset-bottom), 12px); }
-/* Statistik: 3 s auf „Zerlegen: 9“ (oder die runde Zahl am Tier) drücken – unten erscheint, welche Zahl wie oft vorn lag */
+/* Uhr: 3 s auf „Zerlegen: 9“ (oder die runde Zahl am Tier) drücken – unten erscheinen die laufende Zeit
+   und die Zahl der Versuche (für Erwachsene; das Kind sieht keine Uhr) */
 .titel, .tier-zahl { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
-.zaehler {              /* Teil der Seite (kein Overlay): eingeblendet rückt alles zusammen, der Würfel bleibt frei */
-  flex: none; margin: 0 calc(8px - var(--rand)); padding: 8px 12px 10px; border-radius: 14px;
-  background: rgba(10, 20, 45, .72); color: #fff; }
-.zaehler-kopf { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; font-size: 14px; font-weight: 800; }
-.zaehler-kopf small { font-size: 12px; font-weight: 600; color: var(--leise); white-space: nowrap; }
-.zaehler-tafel { display: grid; grid-template-columns: 1fr 1fr; column-gap: 18px; row-gap: 1px;
-  font: 600 13px/1.45 ui-monospace, Menlo, monospace; font-variant-numeric: tabular-nums; }
-.zaehler-tafel span { display: flex; justify-content: space-between; gap: 6px; white-space: pre; }
-.zaehler-tafel b { color: var(--rest-hell); }
-.zaehler button { flex: none; padding: 5px 10px; border-radius: 9px; background: rgba(255, 255, 255, .16); color: #fff; font-size: 12px; font-weight: 700; }
+.uhr {                  /* Teil der Seite (kein Overlay): eingeblendet rückt alles zusammen, der Würfel bleibt frei */
+  flex: none; align-self: center; margin: 0; padding: 5px 14px; border-radius: 999px;
+  background: rgba(10, 20, 45, .72); color: #fff; font: 700 15px/1.3 ui-monospace, Menlo, monospace; font-variant-numeric: tabular-nums; }
 .update .btn { padding: 8px 14px; border-radius: 10px; font-size: 15px; font-weight: 700; background: #06240e; color: #fff; }
 </style>
 </head>
@@ -295,18 +302,15 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
     </div>
     <p class="gleichung" id="gleichung" aria-live="polite"></p>
     <p class="hinweis" id="hinweis"></p>
+    <div class="los-feld" id="los-feld"><p class="los-text" id="los-text" aria-live="polite"></p><button class="los" id="los">Start</button></div>
   </section>
-  <div class="zaehler" id="zaehler" hidden aria-live="polite">
-    <div class="zaehler-kopf"><span><span id="zaehler-titel"></span> <small id="zaehler-soll"></small></span>
-      <button type="button" id="zaehler-neu">Neu zählen</button></div>
-    <div class="zaehler-tafel" id="zaehler-tafel"></div>
-  </div>
+  <p class="uhr" id="uhr" hidden></p>
   <section class="zahlen ruht" id="zahlen" aria-label="Antwort antippen"></section>
   <div class="lupe" id="lupe" hidden aria-hidden="true"></div>
 </main>
 
 <script>
-const APP_VERSION = '0.41';          // bei JEDER Änderung hochzählen
+const APP_VERSION = '0.42';          // bei JEDER Änderung hochzählen
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
@@ -317,9 +321,8 @@ const TIERE = { 4: 'Vogel', 5: 'Frosch', 6: 'Seepferdchen', 7: 'Seestern', 8: 'O
 const SPEICHER = 'wuerfel.stand';
 const SAGEN = !new URLSearchParams(location.search).has('tippen');   // Standard: Antwort laut sagen; ?tippen: Zahlenleiste
 document.body.classList.toggle('sagen', SAGEN);
-const ZAEHLEN = new URLSearchParams(location.search).has('zaehlen');   // Statistik gleich beim Spielstart zeigen
-if (SAGEN) document.querySelector('.erklaerung').textContent = 'Tippe auf den Würfel. Sag laut, was bis zur gewählten Zahl fehlt – dann tippe wieder.';
-const stand = { n: 10, ton: true, sterne: 0, tiere: 'aus', staub: true, statistik: {} };   // statistik[n]: wie oft lag 0 … n vorn   // staub: bunter Staub beim Würfeln (💨)   // Tiere zuerst aus; 🐾 schaltet: aus → Sticker → wild
+if (SAGEN) document.querySelector('.erklaerung').textContent = 'Drück „Start“ und sag laut, was bis zur gewählten Zahl fehlt – dann tippe auf den Würfel.';
+const stand = { n: 10, ton: true, sterne: 0, tiere: 'aus', staub: true };   // staub: bunter Staub beim Würfeln (💨, nur mit Tieren)   // Tiere zuerst aus; 🐾 schaltet: aus → Sticker → wild
 const TIERSAETZE = { aus: 'Ohne Tiere', sticker: 'Tiere: Sticker', wild: 'Tiere: wild & bunt' };
 const STAUB = 4;                    // Staubmenge (Faktor), am Gerät ausprobiert: Maximum
 const STERNE = 60;                  // Sterne bei richtiger Antwort (nach einer ganzen Runde 2,2-mal so viele)
@@ -331,10 +334,6 @@ try {
   if (Object.prototype.hasOwnProperty.call(TIERSAETZE, s.tiere)) stand.tiere = s.tiere;
   else if (s.tiere === true) stand.tiere = 'sticker';           // gespeichert vor v0.29: an/aus
   if (Number.isInteger(s.sterne) && s.sterne >= 0) stand.sterne = s.sterne;
-  for (const n of ZAHLEN) {
-    const a = s.statistik?.[n];
-    if (Array.isArray(a) && a.length === n + 1 && a.every(x => Number.isInteger(x) && x >= 0)) stand.statistik[n] = a;
-  }
 } catch (_) {}
 function speichereAlles() { try { localStorage.setItem(SPEICHER, JSON.stringify(stand)); } catch (_) {} }
 
@@ -343,9 +342,10 @@ const wuerfelEl = $('#wuerfel'), koerperEl = $('#koerper'), gleichungEl = $('#gl
 const hinweisEl = $('#hinweis'), zahlenEl = $('#zahlen');
 const LOB = ['Richtig!', 'Super!', 'Toll!', 'Prima!', 'Klasse!'];
 
-let phase = 'start';                // 'start' | 'bereit' | 'rollt' | 'frage' | 'geloest'
+let phase = 'start';                // 'start' | 'warten' | 'bereit' | 'rollt' | 'frage' | 'geloest' | 'aus'
 let zahl = null;                    // gewürfelte Zahl
 let beutel = [], geschafft = 0, weiterTimer = null, lockTimer = null;
+let umgesprungen = 0;               // Würfe, bei denen die Zahl nicht verdeckt aufgemalt wurde (Test: muss 0 bleiben)
 
 /* ---------- Zufall ---------- */
 // Gleichverteilt 0..m-1 – Verwerfungsmethode, damit kein Modulo-Überhang bleibt
@@ -460,7 +460,7 @@ const kornBilder = STAUBFARBEN.map(([r, g, b]) => {
 });
 const staubMenge = n => Math.round(n * STAUB);
 function korn(x, y, vx, vy, groesse, dauer) {
-  if (!stand.staub) return;                                                  // 💨 aus: kein Staub
+  if (!stand.staub || !mitTieren()) return;                                  // 💨 aus oder ohne Tiere: kein Staub
   groesse *= 1 + 0.12 * (STAUB - 1);                                         // viel Staub: auch etwas dicker
   koerner.push({ x, y, vx, vy, r: groesse, geburt: performance.now(), leben: 0, dauer, alpha: 0.6 + Math.random() * 0.35,
     farbe: Math.floor(Math.random() * kornBilder.length) });
@@ -746,6 +746,7 @@ function wuerfeln() {
   clearTimeout(weiterTimer);
   lockeNicht();
   lauf = { ziel: wurfZiel(), t0: performance.now(), zeit: 0, tLetzt: null, gesetzt: false, vorn: 'vorne', aufgeschlagen: false, staub: 0 };
+  if (uhr.laeuft) { uhr.versuche++; zeigeUhr(); }
   for (const k in seiten) seiten[k].weg = false;
   phase = 'rollt';
   zahl = null;
@@ -768,7 +769,6 @@ function landen() {
   zahl = lauf.ziel;
   if ($('#augenzahl').textContent !== String(zahl)) umgesprungen++;   // wurde die Zahl nicht verdeckt aufgemalt? (Test)
   zeigeZiffer(zahl);
-  zaehle(+$('#augenzahl').textContent);                           // Statistik: gezählt wird, was vorn steht
   stelle(RUHE.x, RUHE.y);
   sockelEl.style.setProperty('--sprung', 0);
   wuerfelEl.classList.remove('rollt');
@@ -780,6 +780,7 @@ function landen() {
   zeigeGleichung(zahl, null);
   gleichungEl.classList.remove('weg');
   hinweisEl.textContent = 'Welche Zahl fehlt?';
+  if (uhr.um) schluss();                                         // die 2 Minuten liefen ab, während er rollte
 }
 function stoppeWuerfel() {
   cancelAnimationFrame(rafId); clearTimeout(weiterTimer);
@@ -803,6 +804,7 @@ function zeigeTiere() {
   knopf.dataset.satz = stand.tiere;
   knopf.setAttribute('aria-label', TIERSAETZE[stand.tiere] + ' – antippen zum Wechseln');
   $('#tier').hidden = !mitTieren();
+  $('#staub-schalter').hidden = !mitTieren();                     // ohne Tiere kein Staub, also auch kein Schalter
   if (mitTieren()) $$('#zahlwahl button').forEach(b => { b.querySelector('img').src = tierBild(b.dataset.n); });
 }
 function zeigeTon() { $$('.ton').forEach(b => { b.textContent = stand.ton ? '🔊' : '🔇'; }); }
@@ -832,6 +834,7 @@ function baueZahlen() {
 /* ---------- Ablauf ---------- */
 function zeigeStart() {
   stoppeWuerfel();
+  stoppeUhr();
   lockeNicht();
   phase = 'start';
   document.body.classList.remove('gut', 'falsch');
@@ -839,34 +842,60 @@ function zeigeStart() {
   spielEl.hidden = true;
   startEl.hidden = false;
 }
-// Statistik: wie oft lag jede Zahl vorn – je gewählter Zahl gespeichert, auch über Tage
-let umgesprungen = 0;
-function zaehle(k) {
-  const a = stand.statistik[stand.n] ||= Array(stand.n + 1).fill(0);
-  a[k]++;
-  speichereAlles();
-  if (!$('#zaehler').hidden) zeigeZaehler();
+// Übungszeit: „Start“ unter dem Würfel – ab dann genau 2 Minuten, gemessen an der Uhrzeit des Geräts
+// (Date.now(): läuft auch weiter, wenn das iPhone kurz gesperrt ist). Der Start würfelt gleich das erste Mal.
+// Rollt der Würfel, wenn die Zeit um ist, landet er noch; danach „Die Zeit ist um!“ und „Nochmal“.
+const DAUER = 120000;                                           // ms
+const losFeld = $('#los-feld'), losText = $('#los-text'), losKnopf = $('#los'), uhrEl = $('#uhr');
+let uhr = { start: 0, versuche: 0, laeuft: false, um: false }, uhrTimer = 0, uhrTakt = 0;
+const vergangen = () => Math.min(DAUER, uhr.laeuft ? Date.now() - uhr.start : uhr.um ? DAUER : 0);
+function zeigeLos(text, knopf) {                                // knopf leer: Feld unsichtbar, Platz bleibt
+  losText.textContent = text;
+  losKnopf.textContent = knopf;
+  losFeld.classList.toggle('weg', !knopf);
 }
-function zeigeZaehler() {
-  const n = stand.n, a = stand.statistik[n] || Array(n + 1).fill(0), summe = a.reduce((x, y) => x + y, 0);
-  const prozent = x => summe ? (100 * x / summe).toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' %' : '–';
-  $('#zaehler-titel').textContent = `Statistik bei ${n}: ${summe} ${summe === 1 ? 'Wurf' : 'Würfe'}`;
-  $('#zaehler-soll').textContent = `· Soll je ${(100 / (n + 1)).toLocaleString('de-DE', { maximumFractionDigits: 1 })} %`;
-  // zwei Spalten, von oben nach unten gelesen: links 0 … Mitte, rechts der Rest
-  const halb = Math.ceil((n + 1) / 2), zellen = [];
-  for (let r = 0; r < halb; r++) for (const k of [r, r + halb]) {
-    zellen.push(k <= n ? `<span><b>${String(k).padStart(2)}</b>${String(a[k]).padStart(5)}  ${prozent(a[k]).padStart(6)}</span>` : '<span></span>');
-  }
-  $('#zaehler-tafel').innerHTML = zellen.join('');
+function zeigeUhr() {                                           // versteckte Anzeige: 1:23,4 · 17 Versuche
+  if (uhrEl.hidden) return;
+  const z = Math.floor(vergangen() / 100), v = uhr.versuche;
+  uhrEl.textContent = `${Math.floor(z / 600)}:${String(Math.floor(z / 10) % 60).padStart(2, '0')},${z % 10} · ${v} ${v === 1 ? 'Versuch' : 'Versuche'}`;
 }
-function schalteZaehler(an = $('#zaehler').hidden) {
-  $('#zaehler').hidden = !an;
-  if (an) zeigeZaehler();
+function stoppeUhr() { clearTimeout(uhrTimer); clearInterval(uhrTakt); uhr.laeuft = false; }
+function warte() {                                              // vor dem Start: der Würfel zeigt die ganze Zahl
+  stoppeUhr();
+  bereit();
+  phase = 'warten';
+  uhr = { start: 0, versuche: 0, laeuft: false, um: false };
+  zeigeLos('Bereit?', 'Start');
+  zeigeUhr();
+}
+function losgehen() {                                           // „Start“ und „Nochmal“
+  stoppeUhr();
+  uhr = { start: Date.now(), versuche: 0, laeuft: true, um: false };
+  uhrTimer = setTimeout(zeitUm, DAUER);
+  uhrTakt = setInterval(zeigeUhr, 100);
+  zeigeLos('', '');
+  wuerfeln();
+}
+function zeitUm() {
+  clearTimeout(uhrTimer);
+  if (!uhr.laeuft) return;
+  const rest = DAUER - (Date.now() - uhr.start);
+  if (rest > 0) { uhrTimer = setTimeout(zeitUm, rest); return; }   // zu früh geweckt: auf die Millisekunde nachlegen
+  stoppeUhr();
+  uhr.um = true;
+  zeigeUhr();
+  if (phase !== 'rollt') schluss();                             // rollt er noch, kommt der Schluss nach dem Landen
+}
+function schluss() {
+  phase = 'aus';
+  wuerfelEl.setAttribute('aria-label', 'Die Zeit ist um');
+  zeigeLos('Die Zeit ist um!', 'Nochmal');
+  klang.runde();
+  sterneAus(losText, Math.round(STERNE * 2.2));
 }
 function starteSpiel(n) {
   stand.n = n;
   speichereAlles();
-  if (ZAEHLEN) schalteZaehler(true);
   audio();                                       // iOS: Ton im Rahmen eines Tipps freischalten
   $('#titel-n').textContent = n;
   if (mitTieren()) $('#tier-bild').src = tierBild(n);
@@ -885,10 +914,12 @@ function starteSpiel(n) {
   zeigeGleichung(0, null);                        // unsichtbar, hält aber ihren Platz – nichts springt
   for (const k in seiten) if (k !== 'vorne') beschrifte(k, zufallsZahl(n, k));
   gleichungEl.classList.add('weg');               // vor der ersten Aufgabe keine Gleichung
-  bereit();
+  if (SAGEN) warte(); else bereit();              // „Sagen“: erst „Start“, dann 2 Minuten
 }
 
 function tippeWuerfel() {
+  if (phase === 'warten' || phase === 'aus') { nochmal(wuerfelEl, 'stups'); nochmal(losKnopf, 'stups'); return; }   // erst „Start“
+  if (uhr.laeuft && Date.now() - uhr.start >= DAUER) { zeitUm(); return; }   // Zeit um, auch wenn der Timer noch nicht dran war
   if (phase === 'bereit' || phase === 'geloest') wuerfeln();
   else if (phase === 'frage' && SAGEN) wuerfeln();             // „Sagen“: Antwort war laut, weiter würfeln
   else if (phase === 'frage') { nochmal(wuerfelEl, 'stups'); hinweisEl.textContent = 'Tippe unten die Zahl an!'; }
@@ -982,18 +1013,18 @@ zahlenEl.addEventListener('click', e => {                                    // 
   const b = e.target.closest('.zahl');
   if (b && e.detail === 0) antwort(+b.dataset.zahl, b);
 });
-$('#zurueck').addEventListener('click', () => { schalteZaehler(false); zeigeStart(); });
-// 3 s gedrückt halten (auf „Zerlegen: 9“ oder die runde Zahl am Tier): Statistik ein- und ausblenden
+$('#zurueck').addEventListener('click', () => { uhrEl.hidden = true; zeigeStart(); });
+losKnopf.addEventListener('click', losgehen);
+// 3 s gedrückt halten (auf „Zerlegen: 9“ oder die runde Zahl am Tier): Uhr und Versuche ein- und ausblenden
 for (const el of [$('#spielseite .titel'), $('#tier-zahl')]) {
   let halte = null;
   el.addEventListener('pointerdown', () => {
     clearTimeout(halte);
-    halte = setTimeout(() => { schalteZaehler(); showInfo($('#zaehler').hidden ? 'Statistik aus' : 'Statistik an', 1.6); }, 3000);
+    halte = setTimeout(() => { uhrEl.hidden = !uhrEl.hidden; zeigeUhr(); showInfo(uhrEl.hidden ? 'Uhr aus' : 'Uhr an', 1.6); }, 3000);
   });
   for (const ende of ['pointerup', 'pointercancel', 'pointerleave']) el.addEventListener(ende, () => clearTimeout(halte));
   el.addEventListener('contextmenu', e => e.preventDefault());
 }
-$('#zaehler-neu').addEventListener('click', () => { stand.statistik[stand.n] = Array(stand.n + 1).fill(0); speichereAlles(); zeigeZaehler(); });
 $('#tiere-schalter').addEventListener('click', e => {
   const reihe = Object.keys(TIERSAETZE);
   stand.tiere = reihe[(reihe.indexOf(stand.tiere) + 1) % reihe.length];
@@ -1074,7 +1105,8 @@ function announceUpdate(v, manual) {
   announced = v;
   speichereAlles();
   zeigeBanner('Neue Version ' + v + ' ist da');
-  setTimeout(() => location.reload(), manual ? 1500 : 3000);   // kein Textfeld – Neuladen stört nichts
+  // kein Textfeld – Neuladen stört nichts; nur laufende 2 Minuten nicht abbrechen
+  setTimeout(function laden() { if (uhr.laeuft) setTimeout(laden, 1000); else location.reload(); }, manual ? 1500 : 3000);
 }
 window.addEventListener('pageshow', () => setTimeout(checkForUpdate, 800));
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkForUpdate(); });
@@ -1099,6 +1131,7 @@ window.wuerfelSpiel = {
   zufall, neuerBeutel, wurfZiel, stand, starteSpiel,
   get zahl() { return zahl; }, get phase() { return phase; }, get beutel() { return beutel.slice(); },
   get staub() { return koerner.length; }, bewegung, ROLLZEIT, AUFPRALL, get umgesprungen() { return umgesprungen; },
+  DAUER, get uhr() { return { ...uhr, vergangen: vergangen() }; },
   get sterne() { return funken.length; },
   get seiten() { return Object.fromEntries(Object.keys(seiten).map(k => [k, seiten[k].el.textContent])); },
 };

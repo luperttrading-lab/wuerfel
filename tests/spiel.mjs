@@ -23,7 +23,7 @@ let fehler = 0;
 const ok = (bed, text) => { console.log((bed ? '  ok   ' : '  FEHLER ') + text); if (!bed) fehler++; };
 const browser = await pw.chromium.launch();
 
-async function seite(breite, hoehe, ruhig = false, adresse = '?tippen') {   // ?tippen: Fassung mit Zahlenleiste
+async function seite(breite, hoehe, ruhig = false, adresse = '?tippen', vorher = null) {   // ?tippen: Fassung mit Zahlenleiste
   const ctx = await browser.newContext({
     viewport: { width: breite, height: hoehe }, deviceScaleFactor: 2, hasTouch: true, isMobile: true,
     reducedMotion: ruhig ? 'reduce' : 'no-preference',
@@ -32,6 +32,7 @@ async function seite(breite, hoehe, ruhig = false, adresse = '?tippen') {   // ?
   const konsole = [];
   page.on('pageerror', e => konsole.push(e.message));
   page.on('console', m => { if (m.type() === 'error') konsole.push(m.text()); });
+  if (vorher) await vorher(page);
   await page.goto(url + adresse);
   return { page, konsole, ctx };
 }
@@ -55,12 +56,43 @@ const abstaende = async page => {
 };
 const gleichmaessig = a => Math.max(...a) - Math.min(...a) <= 1.5;
 const sichtbar = (page, sel) => page.evaluate(sel => getComputedStyle(document.querySelector(sel)).visibility === 'visible', sel);
+// „Sagen“: vor dem ersten Wurf (und nach Ablauf der 2 Minuten) „Start“ bzw. „Nochmal“, sonst den Würfel
+const tippe = async page => page.click(['warten', 'aus'].includes(await phase(page)) ? '#los' : '#wuerfel', { force: true });
 // Würfel antippen und warten, bis er liegt (rollt 2 s); force, weil Playwright sonst auf Stillstand wartet
 async function wuerfle(page) {
   await page.click('#wuerfel', { force: true });
   await page.waitForFunction(() => window.wuerfelSpiel.phase === 'frage', null, { timeout: 4000 });
   return page.evaluate(() => window.wuerfelSpiel.zahl);
 }
+
+// Echtzeit: läuft parallel zu allen anderen Tests volle 2 Minuten mit der echten Uhr. Gemessen wird von außen
+// (Uhr von Node, nicht die der App): vom Tipp auf „Start“ bis „Die Zeit ist um!“ auf dem Bildschirm steht.
+async function echtzeit() {
+  const { page, konsole, ctx } = await seite(390, 844, false, '');
+  let gemeldet = null;
+  await page.exposeFunction('zeitUmGemeldet', () => { gemeldet ??= performance.now(); });
+  await page.click('#zahlwahl button[data-n="9"]');
+  await page.evaluate(() => new MutationObserver(() => {
+    if (document.querySelector('#los-text').textContent === 'Die Zeit ist um!') window.zeitUmGemeldet();
+  }).observe(document.querySelector('#los-text'), { childList: true, characterData: true, subtree: true }));
+  await page.waitForTimeout(500);
+  const vor = performance.now();
+  await page.click('#los');
+  const nach = performance.now();
+  for (let i = 1; i <= 11; i++) {                         // alle 10 s ein Wurf: mit „Start“ 12 Versuche
+    await new Promise(r => setTimeout(r, Math.max(0, vor + i * 10000 - performance.now())));
+    await page.click('#wuerfel', { force: true });
+  }
+  await page.waitForFunction(() => window.wuerfelSpiel.phase === 'aus', null, { timeout: 130000 });
+  const uhr = await page.evaluate(() => window.wuerfelSpiel.uhr);
+  const r = await page.locator('#spielseite .titel').boundingBox();
+  await page.mouse.move(r.x + 20, r.y + 10); await page.mouse.down(); await page.waitForTimeout(3200); await page.mouse.up();
+  const anzeige = await page.textContent('#uhr');
+  if (bilder) { await page.waitForTimeout(1800); await page.screenshot({ path: `${bilder}/zeit-um.png` }); }
+  await ctx.close();
+  return { von: gemeldet - nach, bis: gemeldet - vor, uhr, anzeige, konsole };
+}
+const echt = echtzeit();
 
 console.log('Startseite');
 {
@@ -149,7 +181,7 @@ console.log('Startseite');
   const kante = await page.evaluate(() => document.querySelector('#koerper').offsetWidth);
   ok(verschoben < kante * 0.06, `Er bleibt dabei auf der Stelle (höchstens ${verschoben.toFixed(1)} px beim Stauchen)`);
   ok(gestaucht < 0.94, `Beim Aufprall staucht er sich (flach auf ${Math.round(gestaucht * 100)} %)`);
-  ok(staubMax >= 150, `Beim Wirbeln fliegt viel Staub (bis ${staubMax} Körner gleichzeitig)`);
+  ok(staubMax === 0, 'Ohne Tiere fliegt kein Staub');
   // Was der Testbrowser sieht, hängt an seiner Bildrate (ohne Bildschirm oft nur ~12 Bilder/s) – darum
   // nur: jedes Bild eine neue Lage, Nebenseiten wechseln. Die Drehung selbst wird unten genau nachgerechnet.
   ok(messung.lagen.length >= 4 && lagenRollen.size >= messung.lagen.length - 2 && wechsel >= 2,
@@ -361,15 +393,21 @@ console.log('Sagen (Standard): nur würfeln, die Antwort laut sagen');
   ok(await page.isHidden('#zahlen') && await page.isHidden('#gleichung') && await page.isHidden('#hinweis') && await page.isHidden('#stand'),
     'Nur der Würfel: keine Zahlenleiste, keine Gleichung, kein Text darunter, kein Zähler');
   ok(await page.isHidden('#tier'), 'Ohne Tiere: nichts über dem Würfel');
+  ok(await page.isVisible('#los') && (await page.textContent('#los')) === 'Start' && (await page.textContent('#los-text')) === 'Bereit?',
+    'Unter dem Würfel: „Bereit?“ und der Knopf „Start“');
+  await page.click('#wuerfel', { force: true }); await page.waitForTimeout(300);
+  ok(await phase(page) === 'warten', 'Vor dem Start würfelt der Würfel nicht (er wackelt nur)');
   const gesehen = [];
-  for (let i = 0; i < 6; i++) {
-    await page.click('#wuerfel', { force: true });
+  for (let i = 0; i < 25; i++) {
+    await tippe(page);
     await page.waitForFunction(() => window.wuerfelSpiel.phase === 'frage', null, { timeout: 5000 });
     const k = await page.evaluate(() => window.wuerfelSpiel.zahl);
     if (await page.textContent('#augenzahl') !== String(k)) gesehen.push('FALSCH');
     gesehen.push(k);
   }
-  ok(gesehen.every(k => Number.isInteger(k) && k >= 0 && k <= 4), `Antippen würfelt immer weiter, Würfel zeigt 0 … 4 (${gesehen.join(' ')})`);
+  ok(gesehen.every(k => Number.isInteger(k) && k >= 0 && k <= 4), `„Start“ würfelt, danach würfelt Antippen immer weiter, Würfel zeigt 0 … 4 (${gesehen.join(' ')})`);
+  ok(await page.evaluate(() => window.wuerfelSpiel.umgesprungen) === 0, 'Die Zahl ist bei keinem der 25 Würfe sichtbar umgesprungen');
+  ok(await page.isHidden('#los') && await page.isHidden('#uhr'), 'Während der 2 Minuten: kein Knopf, keine Uhr zu sehen');
   // Echter Würfel: gleichverteilt und ohne Gedächtnis – Doppelte kommen so oft vor wie beim echten Würfeln
   const wurf = await page.evaluate(() => {
     const N = 60000, m = 5, h = new Array(m).fill(0), paar = new Array(m * m).fill(0); let doppelt = 0, vorher = null;
@@ -399,16 +437,16 @@ console.log('Sagen (Standard): nur würfeln, die Antwort laut sagen');
   await ctx.close();
 }
 
-console.log('Staub: bunt oder aus (💨)');
+console.log('Staub: nur mit Tieren, dann bunt oder aus (💨)');
 {
   const { page, konsole, ctx } = await seite(390, 844, false, '');
-  ok(await page.getAttribute('#staub-schalter', 'aria-pressed') === 'true', 'Anfangs an');
-  await page.click('#zahlwahl button[data-n="6"]');
-  await page.waitForTimeout(300);
+  ok(await page.isHidden('#staub-schalter'), 'Ohne Tiere: kein 💨-Schalter');
   const farbenBeimRollen = async () => {
-    await page.click('#wuerfel', { force: true });
+    await page.click('#zahlwahl button[data-n="6"]');
+    await page.waitForTimeout(300);
+    await tippe(page);
     await page.waitForTimeout(220);                       // mitten im Wirbeln, viel Staub in der Luft
-    return page.evaluate(() => {
+    const m = await page.evaluate(() => {
       const c = document.querySelector('#staub'), d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
       const toene = new Set(); let koerner = 0;
       for (let i = 0; i < d.length; i += 4 * 7) {
@@ -421,20 +459,21 @@ console.log('Staub: bunt oder aus (💨)');
       }
       return { koerner, toene: toene.size, anzahl: window.wuerfelSpiel.staub };
     });
+    await page.waitForFunction(() => window.wuerfelSpiel.phase === 'frage', null, { timeout: 5000 });
+    await page.waitForTimeout(900);                        // Aufprallwölkchen verweht
+    await page.click('#zurueck');
+    return m;
   };
+  const ohne = await farbenBeimRollen();
+  ok(ohne.anzahl === 0 && ohne.koerner === 0, 'Ohne Tiere: kein einziges Korn beim Würfeln (auch beim Aufprall nicht)');
+  await page.click('#tiere-schalter');
+  ok(await page.isVisible('#staub-schalter') && await page.getAttribute('#staub-schalter', 'aria-pressed') === 'true', 'Mit Tieren: 💨 da und an');
   const an = await farbenBeimRollen();
-  ok(an.anzahl > 50 && an.toene >= 4, `Staub an: bunt (${an.toene} von 6 Farbbereichen, ${an.anzahl} Körner)`);
-  await page.waitForFunction(() => window.wuerfelSpiel.phase === 'frage', null, { timeout: 5000 });
-  await page.waitForTimeout(900);
-  await page.click('#zurueck');
+  ok(an.anzahl >= 150 && an.toene >= 4, `Mit Tieren: viel bunter Staub (${an.anzahl} Körner gleichzeitig, ${an.toene} von 6 Farbbereichen)`);
   await page.click('#staub-schalter');
   ok(await page.getAttribute('#staub-schalter', 'aria-pressed') === 'false', '💨 antippen: Staub aus');
-  await page.click('#zahlwahl button[data-n="6"]');
-  await page.waitForTimeout(300);
   const aus = await farbenBeimRollen();
-  ok(aus.anzahl === 0 && aus.koerner === 0, 'Staub aus: kein einziges Korn beim Würfeln');
-  await page.waitForFunction(() => window.wuerfelSpiel.phase === 'frage', null, { timeout: 5000 });
-  await page.click('#zurueck');
+  ok(aus.anzahl === 0 && aus.koerner === 0, 'Mit Tieren, 💨 aus: kein einziges Korn');
   await page.reload();
   ok(await page.getAttribute('#staub-schalter', 'aria-pressed') === 'false', 'Die Wahl bleibt nach dem Neuladen');
   await page.setViewportSize({ width: 320, height: 568 });
@@ -444,71 +483,104 @@ console.log('Staub: bunt oder aus (💨)');
   await ctx.close();
 }
 
-console.log('Statistik: 3 s auf „Zerlegen: 9“ drücken');
+console.log('Start und genau 2 Minuten (Uhr des Browsers vorgespult)');
 {
-  const { page, konsole, ctx } = await seite(390, 844, false, '');
-  await page.click('#zahlwahl button[data-n="9"]');
-  await page.waitForTimeout(300);
+  // Playwright ersetzt Date, setTimeout, setInterval und requestAnimationFrame: die Zeit läuft nur, wenn der Test sie
+  // vorspult (runFor) – so lässt sich jede Millisekunde prüfen, ohne 2 Minuten zu warten.
+  const T0 = new Date('2026-10-17T10:00:00Z').getTime();
+  const { page, konsole, ctx } = await seite(390, 844, false, '', p => p.clock.install({ time: T0 }));
+  await page.clock.pauseAt(T0 + 5000);
+  const uhr = () => page.evaluate(() => window.wuerfelSpiel.uhr);
   const halten = async (sel, ms) => {
     const r = await page.locator(sel).boundingBox();
     await page.mouse.move(r.x + r.width / 2, r.y + r.height / 2); await page.mouse.down();
-    await page.waitForTimeout(ms); await page.mouse.up(); await page.waitForTimeout(100);
+    await page.clock.runFor(ms); await page.mouse.up(); await page.clock.runFor(100);
   };
-  await halten('#spielseite .titel', 1200);
-  ok(await page.isHidden('#zaehler'), 'Kurz drücken (1,2 s): keine Statistik');
-  await halten('#spielseite .titel', 3200);
-  ok(await page.isVisible('#zaehler') && (await page.textContent('#zaehler-titel')) === 'Statistik bei 9: 0 Würfe'
-    && (await page.textContent('#zaehler-soll')) === '· Soll je 10 %', '3 s drücken: Statistik erscheint („Statistik bei 9: 0 Würfe“, Soll je 10 %)');
-  const gezogen = [];
-  for (let i = 0; i < 25; i++) {
-    await page.click('#wuerfel', { force: true });
-    await page.waitForFunction(() => window.wuerfelSpiel.phase === 'frage', null, { timeout: 5000 });
-    gezogen.push(await page.evaluate(() => window.wuerfelSpiel.zahl));
-  }
-  const tafel = await page.evaluate(() => [...document.querySelectorAll('#zaehler-tafel span')].map(s => s.textContent.trim()).filter(Boolean));
-  const erwartet = Array.from({ length: 10 }, (_, k) => gezogen.filter(x => x === k).length);
-  const gelesen = Array.from({ length: 10 }, (_, k) => { const z = tafel.find(t => t.startsWith(String(k) + ' ')); return z ? +z.split(/\s+/)[1] : NaN; });
-  ok((await page.textContent('#zaehler-titel')) === 'Statistik bei 9: 25 Würfe' && gelesen.join() === erwartet.join(),
-    `Zählt jede Zahl, die vorn lag (${gelesen.join(' ')})`);
-  const k0 = tafel.find(t => t.startsWith('0 ')), p0 = erwartet[0] ? (100 * erwartet[0] / 25).toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' %' : '0,0 %';
-  ok(k0 && k0.endsWith(p0), `Mit Prozent und Komma („${k0}“)`);
-  ok(await page.evaluate(() => window.wuerfelSpiel.umgesprungen) === 0, 'Die Zahl ist bei keinem der 25 Würfe sichtbar umgesprungen');
-  await page.reload();
+  const lageWuerfel = () => page.evaluate(() => Math.round(document.querySelector('#wuerfel').getBoundingClientRect().top));
   await page.click('#zahlwahl button[data-n="9"]');
+  await page.clock.runFor(300);
+  await halten('#spielseite .titel', 1200);
+  ok(await page.isHidden('#uhr'), 'Kurz drücken (1,2 s): keine Uhr');
   await halten('#spielseite .titel', 3200);
-  ok((await page.textContent('#zaehler-titel')) === 'Statistik bei 9: 25 Würfe', 'Bleibt gespeichert (nach dem Neuladen weiter 25 Würfe)');
-  await page.click('#zaehler-neu');
-  ok((await page.textContent('#zaehler-titel')) === 'Statistik bei 9: 0 Würfe', '„Neu zählen“ setzt auf 0');
+  ok(await page.isVisible('#uhr') && (await page.textContent('#uhr')) === '0:00,0 · 0 Versuche', '3 s auf „Zerlegen: 9“ drücken: Uhr erscheint („0:00,0 · 0 Versuche“)');
+  const vorStart = await lageWuerfel();
+  await page.click('#wuerfel', { force: true }); await page.clock.runFor(1000);
+  ok(await phase(page) === 'warten' && (await uhr()).versuche === 0 && (await page.textContent('#uhr')) === '0:00,0 · 0 Versuche',
+    'Würfel vor dem Start antippen: nichts läuft, die Uhr steht');
+  const start = await page.evaluate(() => Date.now());
+  await page.click('#los');
+  ok((await uhr()).start === start && (await uhr()).versuche === 1 && await phase(page) === 'rollt', '„Start“: die Uhr läuft ab diesem Moment, der erste Wurf rollt schon (1 Versuch)');
+  await page.clock.runFor(1000);
+  ok(await page.isHidden('#los') && await lageWuerfel() === vorStart, 'Knopf weg, der Würfel bleibt, wo er war (nichts springt)');
+  let wuerfe = 1;
+  while ((await uhr()).vergangen + 5000 < 119000) { await page.click('#wuerfel', { force: true }); wuerfe++; await page.clock.runFor(5000); }
+  await page.clock.runFor(119000 - (await uhr()).vergangen);
+  await page.click('#wuerfel', { force: true }); wuerfe++;          // Wurf bei 1:59,0
+  await page.clock.runFor(119999 - (await uhr()).vergangen);
+  const kurzVor = await uhr();
+  ok(kurzVor.laeuft && kurzVor.vergangen === 119999 && await phase(page) === 'frage' && (await page.textContent('#uhr')) === `1:59,9 · ${wuerfe} Versuche`,
+    `Bei 119 999 ms läuft sie noch („1:59,9 · ${wuerfe} Versuche“)`);
+  await page.clock.runFor(1);
+  const um = await uhr();
+  ok(!um.laeuft && um.um && await phase(page) === 'aus' && await page.evaluate(() => Date.now()) - start === 120000,
+    'Bei genau 120 000 ms ist Schluss');
+  ok((await page.textContent('#los-text')) === 'Die Zeit ist um!' && (await page.textContent('#los')) === 'Nochmal' && await page.isVisible('#los'),
+    'Dann: „Die Zeit ist um!“ und „Nochmal“');
+  ok((await page.textContent('#uhr')) === `2:00,0 · ${wuerfe} Versuche` && um.versuche === wuerfe, `Uhr: „2:00,0 · ${wuerfe} Versuche“ – jeder Wurf gezählt`);
+  await page.click('#wuerfel', { force: true }); await page.clock.runFor(1000);
+  ok(await phase(page) === 'aus' && (await uhr()).versuche === wuerfe, 'Danach würfelt der Würfel nicht mehr');
+  // Rollt er, wenn die Zeit um ist: er landet noch, dann kommt der Schluss
+  await page.click('#los');
+  ok((await uhr()).versuche === 1 && (await page.textContent('#uhr')).startsWith('0:00,0 · 1 Versuch'), '„Nochmal“: neue 2 Minuten, Zähler von vorn (1 Versuch)');
+  await page.clock.runFor(119800);
+  await page.click('#wuerfel', { force: true });                    // Wurf bei 1:59,8
+  await page.clock.runFor(200);
+  const mitten = await uhr();
+  ok(mitten.um && await phase(page) === 'rollt' && mitten.versuche === 2, 'Wurf bei 1:59,8: um 2:00,0 ist die Zeit um, der Würfel rollt noch');
+  await page.clock.runFor(500);
+  const zahl = await page.evaluate(() => window.wuerfelSpiel.zahl);
+  ok(await phase(page) === 'aus' && (await page.textContent('#augenzahl')) === String(zahl) && (await page.textContent('#los-text')) === 'Die Zeit ist um!',
+    `… landet auf seiner Zahl (${zahl}), dann „Die Zeit ist um!“`);
+  // iPhone gesperrt: Timer schlafen, die Uhrzeit läuft weiter – der nächste Tipp merkt, dass die Zeit um ist
+  await page.click('#los');
+  await page.clock.runFor(1000);
+  const start3 = await page.evaluate(() => Date.now()) - 1000;
+  await page.clock.setSystemTime(start3 + 125000);                  // Uhrzeit springt, ohne dass ein Timer feuert
+  await page.click('#wuerfel', { force: true });
+  ok(await phase(page) === 'aus' && (await uhr()).versuche === 1 && (await page.textContent('#uhr')) === '2:00,0 · 1 Versuch',
+    'Timer verschlafen (gesperrtes iPhone): der nächste Tipp würfelt nicht mehr, die Zeit ist um');
+  // Zurück: die Übung bricht ab, beim nächsten Mal wieder „Start“ und die Uhr versteckt
+  await page.click('#los'); await page.clock.runFor(3000);
+  await page.click('#zurueck');
+  await page.click('#zahlwahl button[data-n="9"]'); await page.clock.runFor(300);
+  ok(await phase(page) === 'warten' && (await uhr()).versuche === 0 && !(await uhr()).laeuft && await page.isHidden('#uhr')
+    && (await page.textContent('#los')) === 'Start', 'Zurück und wieder rein: wieder „Start“, nichts läuft, Uhr versteckt');
   await halten('#spielseite .titel', 3200);
-  ok(await page.isHidden('#zaehler'), 'Noch einmal 3 s drücken: Statistik weg');
+  await halten('#spielseite .titel', 3200);
+  ok(await page.isHidden('#uhr'), 'Noch einmal 3 s drücken: Uhr weg');
   await page.click('#zurueck');
   await page.click('#tiere-schalter');
   await page.click('#zahlwahl button[data-n="9"]');
-  await page.waitForTimeout(300);
+  await page.clock.runFor(300);
+  await page.waitForFunction(() => { const i = document.querySelector('#tier-bild'); return i.complete && i.naturalWidth > 0; });
   await halten('#tier-zahl', 3200);
-  ok(await page.isVisible('#zaehler'), 'Auch über die runde 9 am Tier');
+  ok(await page.isVisible('#uhr'), 'Auch über die runde 9 am Tier');
   for (const [w, h] of [[390, 844], [375, 667], [320, 568]]) {
-    await page.setViewportSize({ width: w, height: h }); await page.waitForTimeout(200);
+    await page.setViewportSize({ width: w, height: h }); await page.clock.runFor(200);
     const m = await page.evaluate(() => { let u = 0; for (const f of document.querySelectorAll('#koerper > *')) u = Math.max(u, f.getBoundingClientRect().bottom);
-      const z = document.querySelector('#zaehler').getBoundingClientRect(), t = document.querySelector('#tier-bild').getBoundingClientRect();
-      return { wuerfel: u, tafel: z.top, unten: z.bottom, tier: t.height, scroll: document.scrollingElement.scrollHeight > innerHeight + 1 }; });
-    ok(m.tafel >= m.wuerfel && m.unten <= h && !m.scroll && m.tier >= 60,
-      `${w}×${h} mit Tier: Statistik unter dem Würfel, nichts verdeckt, kein Scrollen (Tier ${Math.round(m.tier)} px)`);
+      const k = document.querySelector('#los').getBoundingClientRect(), z = document.querySelector('#uhr').getBoundingClientRect(), t = document.querySelector('#tier-bild').getBoundingClientRect();
+      return { wuerfel: u, knopfOben: k.top, knopfUnten: k.bottom, uhr: z.top, unten: z.bottom, tier: t.height, scroll: document.scrollingElement.scrollHeight > innerHeight + 1 }; });
+    ok(m.knopfOben >= m.wuerfel && m.uhr >= m.knopfUnten && m.unten <= h && !m.scroll && m.tier >= 60,
+      `${w}×${h} mit Tier: Würfel, Start, Uhr untereinander, nichts verdeckt, kein Scrollen (Tier ${Math.round(m.tier)} px)`);
+    if (bilder && w === 390) await page.screenshot({ path: `${bilder}/start-tier.png` });
   }
-  await page.setViewportSize({ width: 390, height: 844 });
   ok(konsole.length === 0, 'Keine Fehler in der Konsole' + (konsole.length ? ': ' + konsole.join(' | ') : ''));
   await ctx.close();
 }
 {
-  const { page, ctx } = await seite(390, 844, false, '?zaehlen');
-  await page.click('#zahlwahl button[data-n="9"]');
-  ok(await page.isVisible('#zaehler'), '?zaehlen: Statistik gleich beim Start');
-  await ctx.close();
-  const t = await seite(390, 844);                        // ?tippen
-  await t.page.evaluate(() => window.wuerfelSpiel.starteSpiel(9));
-  await t.page.evaluate(() => { document.querySelector('#zaehler').hidden = false; });
-  const lage = await t.page.evaluate(() => ({ z: document.querySelector('#zaehler').getBoundingClientRect().bottom, l: document.querySelector('#zahlen').getBoundingClientRect().top }));
-  ok(lage.z <= lage.l, `?tippen: Statistik über der Zahlenleiste, die bleibt frei (${Math.round(lage.z)} ≤ ${Math.round(lage.l)} px)`);
+  const t = await seite(390, 844);                        // ?tippen: ohne Start und ohne Uhr, wie bisher
+  await t.page.click('#zahlwahl button[data-n="9"]');
+  ok(await t.page.isHidden('#los-feld') && await phase(t.page) === 'bereit', '?tippen: kein „Start“, der Würfel ist gleich bereit');
   await t.ctx.close();
 }
 
@@ -628,6 +700,15 @@ console.log('Zufall (χ²-Test, α = 0,001)');
   });
   ok(r < 29.588, `Erste Zahl einer Runde gleichverteilt: χ² = ${r.toFixed(1)} < 29.588 (df 10)`);
   await ctx.close();
+}
+
+console.log('Echtzeit: 2 Minuten mit der echten Uhr (lief parallel zu allem anderen)');
+{
+  const e = await echt;
+  const ms = x => Math.round(x).toLocaleString('de-DE');
+  ok(e.von >= 119950 && e.bis <= 120300, `Von „Start“ bis „Die Zeit ist um!“: ${ms(e.von)} … ${ms(e.bis)} ms von außen gemessen (Soll 120.000)`);
+  ok(e.uhr.versuche === 12 && e.anzeige === '2:00,0 · 12 Versuche', `12 Würfe gezählt, Uhr zeigt „${e.anzeige}“`);
+  ok(e.konsole.length === 0, 'Keine Fehler in der Konsole' + (e.konsole.length ? ': ' + e.konsole.join(' | ') : ''));
 }
 
 await browser.close();

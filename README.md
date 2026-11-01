@@ -118,7 +118,8 @@ offen auch, wie laut die Würfelgeräusche bei eingeschaltetem Mikrofon sind.
 
 **Antwort antippen** („mit Zahlen unten“, seit v0.54): Nach jeder Antwort würfelt er von selbst weiter, statt wieder
 die ganze Zahl zu zeigen und auf einen Tipp zu warten. Richtig → grün, Sterne, Lob, nach 0,35 s rollt er schon wieder,
-während die Sterne fliegen; die Lösung bleibt stehen, bis die neue Aufgabe landet. Falsch → kurz rot, nach 0,8 s weiter
+während die Sterne fliegen; die Lösung (und das Grün) bleibt stehen, bis die neue Aufgabe landet – die steht dann
+wieder auf Blau (v0.55 ließ sie noch grün, am iPhone-Video gesehen). Falsch → kurz rot, nach 0,8 s weiter
 (kein „Probier es nochmal!“ mehr). Beides zählt still mit; Uhr und Ende zeigen „· N richtig“. Der leise, farbwechselnde
 Hinweis „Tippe auf den Würfel!“ ist damit weggefallen.
 

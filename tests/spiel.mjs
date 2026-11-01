@@ -289,6 +289,8 @@ console.log('Startseite');
   const wuerfelSpaeter = await page.evaluate(() => document.querySelector('#wuerfel').getBoundingClientRect().top);
   ok(Math.abs(wuerfelSpaeter - wuerfelOben) < 1, `Würfel bleibt an seinem Platz (${wuerfelOben.toFixed(1)} → ${wuerfelSpaeter.toFixed(1)} px)`);
   ok(await gleichung(page) === `${k2}+?=8`, `Neue Aufgabe „${k2} + ? = 8“`);
+  ok(!(await page.evaluate(() => document.body.classList.contains('gut') || document.body.classList.contains('falsch'))),
+    'Die neue Aufgabe steht auf blauem Grund – das Grün endet, wenn der Würfel landet');
   ok(await page.textContent('#uhr').then(t => / · 1 richtig$/.test(t)), `Uhr zählt mit: „${await page.textContent('#uhr')}“`);
   if (bilder) await page.screenshot({ path: `${bilder}/5-naechste.png` });
 

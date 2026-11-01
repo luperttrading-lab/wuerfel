@@ -29,15 +29,12 @@ Lernspiel fürs Handy, damit sich die Zerlegungen der Zahlen 4 bis 10 als **Ziff
    Zahlenstrahl (klein links, groß rechts). Die Tasten sind schmal (bei 10: ~30 pt), deshalb wie bei der
    iPhone-Tastatur eine **Lupe** über dem Finger; man kann seitlich rutschen, es zählt die Taste beim
    Loslassen. Immer Bernstein mit dunkler Schrift (Kontrast ≈ 8,6 : 1), in jedem Zustand gleich;
-   wer vor dem Würfeln tippt, bekommt „Erst würfeln!“.
+   wer vor dem Start tippt, bringt „Start“ zum Wackeln.
    Richtig → grün, Fanfare, `3 + 5 = 8`, aus der eingesetzten Zahl steigt eine Fontäne goldener
-   Sterne (60). Falsch → rot, tiefer Ton, nochmal versuchen.
-   Kein Punktestand auf dem Bildschirm – Üben ohne Druck. Die App zählt richtige Antworten nur still
-   mit (`stand.sterne`), als Grundlage, falls später eine Auswertung dazukommt.
-5. Danach zeigt der Würfel wieder die 8; die gelöste Gleichung bleibt zum Einprägen stehen,
-   bis zum nächsten Antippen; dann „Tippe auf den Würfel!“. Vor dem ersten Wurf steht unter dem Würfel „Start“.
-   Wird 2 s lang nicht getippt, wechselt dieser Hinweis sanft die Farbe (Schwarz ↔ Lila der Würfelzahl,
-   alle 1,8 s) – auch bei „Bewegung reduzieren“, denn Farbe ist keine Bewegung.
+   Sterne (60). Falsch → rot, tiefer Ton. Kein Punktestand auf dem Bildschirm – Üben ohne Druck; gezählt
+   wird still (Uhr und Ende: „· N richtig“).
+5. Danach würfelt er von selbst weiter (richtig: nach 0,35 s, während die Sterne fliegen; falsch: nach 0,8 s);
+   die Lösung bleibt stehen, bis die neue Aufgabe landet. Vor dem ersten Wurf steht unter dem Würfel „Start“.
 
 **Zwei Fassungen.** Standard ist **Sagen**: nur der Würfel (ohne Text, Zähler, Zahlenleiste und Gleichung).
 Unter dem Würfel „Bereit?“ und **Start**: ab dann laufen genau 2 Minuten, der erste Wurf rollt gleich mit.
@@ -107,13 +104,19 @@ gerade eingestellt ist (Tiere, Staub, Versuche am Ende, Fassung). Kurz tippen ö
 
 **Sprechen** (3 s auf 🔊, gespeichert; am 🔊 sitzt dann ein kleines 🎤): Während der 2 Minuten hört die App zu. Sagt
 das Kind eine Zahl, zählt sie still richtig oder falsch und würfelt von selbst weiter – auch bei einer falschen Zahl
-(so gewünscht). „Nur Würfel“: sofort der nächste Wurf. „Mit Zahlen unten“: richtig → grün, Lösung, nach 1,5 s weiter;
-falsch → kurz rot, nach 0,9 s weiter. Uhr und Ende zeigen dann z. B. „23 Versuche · 19 richtig“. Gewertet wird nur bei
+(so gewünscht). „Nur Würfel“: sofort der nächste Wurf. „Mit Zahlen unten“: wie angetippt (siehe unten); mit Sprechen
+an gibt es dort keine Zahlenleiste – entweder sagen oder tippen. Uhr und Ende zeigen dann z. B. „23 Versuche · 19 richtig“. Gewertet wird nur bei
 offener Aufgabe (nicht beim Rollen, nicht vor „Start“, nicht nach den 2 Minuten). Mikrofon nur während der 2 Minuten;
 vorher stellt die App die Tonsitzung auf `play-and-record`, danach zurück auf `playback`. vosk.js und Modell werden
 erst geladen, wenn Sprechen an ist. Kurz auf 🔊 tippen bleibt Ton an/aus. Ohne Mikrofon (verweigert, nicht da) kommt
 ein Hinweis, das Spiel läuft normal. Am iPhone mit Erwachsenenstimme geprüft (Sprechtest 20/20), Kinderstimme offen;
 offen auch, wie laut die Würfelgeräusche bei eingeschaltetem Mikrofon sind.
+
+**Antwort antippen** („mit Zahlen unten“, seit v0.54): Nach jeder Antwort würfelt er von selbst weiter, statt wieder
+die ganze Zahl zu zeigen und auf einen Tipp zu warten. Richtig → grün, Sterne, Lob, nach 0,35 s rollt er schon wieder,
+während die Sterne fliegen; die Lösung bleibt stehen, bis die neue Aufgabe landet. Falsch → kurz rot, nach 0,8 s weiter
+(kein „Probier es nochmal!“ mehr). Beides zählt still mit; Uhr und Ende zeigen „· N richtig“. Der leise, farbwechselnde
+Hinweis „Tippe auf den Würfel!“ ist damit weggefallen.
 
 **Sprechtest** (`sprechtest.html`, Versuch; in der ⓘ-Hilfe verlinkt): Versteht das iPhone die Zahl, die das Kind
 sagt? Apples eingebaute Spracherkennung ist in Home-Bildschirm-Apps gesperrt (WebKit-Bug 225298), darum erkennt

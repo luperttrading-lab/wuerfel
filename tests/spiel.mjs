@@ -402,6 +402,45 @@ console.log('Tiere (versteckt: 3 s auf die Überschrift der Startseite)');
   await ctx.close();
 }
 
+console.log('Hilfe: 3 s auf ⓘ erklärt die geheimen Schalter');
+{
+  const { page, konsole, ctx } = await seite(390, 844, false, '');
+  ok(await page.isVisible('#info-knopf') && await page.isHidden('#hilfe'), 'ⓘ oben auf der Startseite, Hilfe zu');
+  await page.click('#info-knopf');
+  ok(await page.isHidden('#hilfe') && (await page.textContent('#update-text')) === 'Für Erwachsene: 3 Sekunden drücken', 'Kurz tippen: Hilfe bleibt zu, nur der Hinweis „3 Sekunden drücken“');
+  await page.waitForTimeout(2300);
+  await lange(page, '#info-knopf', 1200);
+  ok(await page.isHidden('#hilfe'), '1,2 s drücken: Hilfe bleibt zu');
+  await lange(page, '#info-knopf');
+  const titel = await page.evaluate(() => [...document.querySelectorAll('#hilfe h3')].map(h => h.firstChild.textContent.trim()));
+  ok(await page.isVisible('#hilfe') && ['Tiere an / aus', 'Uhr an / aus', 'Versuche am Ende an / aus', 'Zeitlinie oben', 'Diese Hilfe und Updates'].every(t => titel.includes(t)),
+    `3 s drücken: Hilfe offen (${titel.length} Punkte: ${titel.join(' · ')})`);
+  ok(await page.evaluate(() => document.querySelectorAll('#hilfe .mini').length === 6 && document.querySelectorAll('#hilfe .mini .ziel').length >= 6),
+    'Zu jedem Schalter ein Mini-Bildschirm mit Ring, wo man drückt');
+  ok((await page.textContent('#jetzt-tiere')) === 'jetzt aus' && (await page.textContent('#jetzt-ende')) === 'jetzt an' && (await page.textContent('#mini-version')) === (await page.textContent('#version')),
+    'Zeigt, was gerade eingestellt ist (Tiere aus, Versuche am Ende an) und die echte Versionsnummer');
+  ok(await page.isHidden('#tiere-schalter') && !(await page.evaluate(() => document.querySelector('#update').classList.contains('an'))),
+    'Langes Drücken auf ⓘ schaltet keine Tiere und zeigt keinen Tipp-Hinweis');
+  await page.click('#hilfe-zu');
+  ok(await page.isHidden('#hilfe'), '✕ schließt');
+  await lange(page, '#info-knopf');
+  await page.mouse.click(195, 4);
+  ok(await page.isHidden('#hilfe'), 'Daneben tippen schließt');
+  await lange(page, '#info-knopf');
+  await page.keyboard.press('Escape');
+  ok(await page.isHidden('#hilfe'), 'Esc schließt');
+  await page.setViewportSize({ width: 320, height: 568 });
+  await lange(page, '#info-knopf');
+  const m = await page.evaluate(() => { const k = document.querySelector('.hilfe-karte').getBoundingClientRect(), i = document.querySelector('.hilfe-inhalt');
+    const vorher = i.scrollHeight > i.clientHeight; i.scrollTop = i.scrollHeight;
+    const letzte = [...i.querySelectorAll('.geheim')].at(-1).getBoundingClientRect();
+    return { oben: k.top, unten: k.bottom, scrollt: vorher && i.scrollTop > 0, letzte: letzte.bottom <= k.bottom + 1, breit: document.scrollingElement.scrollWidth <= innerWidth }; });
+  ok(m.oben >= 0 && m.unten <= 568 && m.scrollt && m.letzte && m.breit, '320×568: Fenster passt auf den Bildschirm, der Inhalt lässt sich bis zum Ende scrollen');
+  if (bilder) await page.screenshot({ path: `${bilder}/hilfe-320.png` });
+  ok(konsole.length === 0, 'Keine Fehler in der Konsole' + (konsole.length ? ': ' + konsole.join(' | ') : ''));
+  await ctx.close();
+}
+
 console.log('Sagen (Standard): nur würfeln, die Antwort laut sagen');
 {
   const { page, konsole, ctx } = await seite(390, 844, false, '');
@@ -498,7 +537,7 @@ console.log('Staub: nur mit Tieren, dann bunt oder aus (💨)');
   ok(await page.isVisible('#staub-schalter') && await page.getAttribute('#staub-schalter', 'aria-pressed') === 'false', 'Tiere wieder an: 💨 bleibt aus, wie gewählt');
   await page.setViewportSize({ width: 320, height: 568 });
   ok(await page.evaluate(() => { const k = document.querySelector('#startseite .kopf'); return k.scrollWidth <= k.clientWidth + 1 && document.scrollingElement.scrollWidth <= innerWidth; }),
-    '320 px: Kopfzeile mit drei Knöpfen passt');
+    '320 px: Kopfzeile mit ⓘ und drei Knöpfen passt');
   ok(konsole.length === 0, 'Keine Fehler in der Konsole' + (konsole.length ? ': ' + konsole.join(' | ') : ''));
   await ctx.close();
 }

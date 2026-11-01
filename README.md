@@ -96,6 +96,11 @@ vorgespulter Browser-Uhr auf die Millisekunde (119 999 ms läuft, 120 000 ms Sch
 2 Minuten lang: in der Seite 120 002–120 003 ms, von außen (Uhr von Node) ein Fenster um 120 000 ms, so breit wie der Klick dauert.
 Die Fassung `?tippen` hat keinen Start und keine Uhr. (Die Zähl-Statistik aus v0.41 ist wieder raus.)
 
+**Hilfe (ⓘ)**: oben auf der Startseite ein dezentes ⓘ. 3 s drücken öffnet „Geheime Schalter“: zu jedem Schalter
+ein Mini-Bildschirm mit pulsierendem Ring, wo man drückt („3 s“ oder „tippen“), daneben die Erklärung und was
+gerade eingestellt ist (Tiere, Staub, Versuche am Ende). Kurz tippen öffnet nichts, zeigt nur „Für Erwachsene:
+3 Sekunden drücken“. Schließen mit ✕, daneben tippen oder Esc; der Inhalt scrollt (sonst ist Wischen gesperrt).
+
 **Hintergrund**: helles Tiefblau mit Licht in der Mitte (`--grund`); der weiße Würfel hebt sich mit
 gut 4 : 1 ab (vorher Creme: 1,1 : 1). Schrift auf dem Grund ist hell, Zahlfarben auf dem Grund haben
 helle Varianten (`--teil-hell`, `--ganz-hell`, `--rest-hell`); auf dem Würfel bleiben die kräftigen.

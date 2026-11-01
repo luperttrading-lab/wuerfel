@@ -263,6 +263,48 @@ body:not(.sagen) .uhr { display: none; }
 .fortschritt { position: fixed; left: 0; right: 0; top: env(safe-area-inset-top, 0px); height: 3px;
   background: var(--bg); transform: scaleX(0); transform-origin: left; pointer-events: none; z-index: 5; }
 .update .btn { padding: 8px 14px; border-radius: 10px; font-size: 15px; font-weight: 700; background: #06240e; color: #fff; }
+
+/* ⓘ auf der Startseite: 3 s drücken öffnet die Hilfe zu den geheimen Schaltern (für Erwachsene) */
+.info-knopf { flex: none; width: 34px; height: 44px; display: grid; place-items: center; }
+.info-knopf span { width: 28px; height: 28px; border-radius: 50%; border: 2px solid rgba(245, 248, 255, .7); display: grid; place-items: center;
+  font: 800 16px/1 Georgia, "Times New Roman", serif; color: var(--hell); }
+@media (max-width: 359px) {           /* kleinstes iPhone: mit Tieren stehen vier Knöpfe oben */
+  #startseite .kopf { gap: 6px; }
+  #startseite .kopf .ton, .tiere-schalter, .staub-schalter { width: 40px; }
+}
+.hilfe { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; background: rgba(8, 18, 40, .6);
+  padding: max(env(safe-area-inset-top), 12px) 12px max(env(safe-area-inset-bottom), 12px); }
+.hilfe-karte { width: 100%; max-width: 540px; max-height: 100%; display: flex; flex-direction: column; overflow: hidden;
+  background: #fff; color: var(--ink); border-radius: 20px; box-shadow: 0 16px 48px rgba(0, 0, 0, .35); }
+.hilfe-kopf { display: flex; align-items: center; gap: 10px; padding: 14px 14px 10px 18px; border-bottom: 1px solid #e8e2f3; }
+.hilfe-kopf h2 { margin: 0; flex: 1; font-size: 21px; font-weight: 900; }
+.hilfe-zu { width: 40px; height: 40px; border-radius: 12px; background: var(--wahl); color: var(--ganz); font-size: 20px; font-weight: 900; }
+.hilfe-inhalt { overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 6px 16px 18px; }
+.hilfe-regel { margin: 8px 0 4px; padding: 10px 12px; border-radius: 12px; background: #fff4dc; font-size: 15px; line-height: 1.4; }
+.geheim { display: flex; gap: 14px; align-items: flex-start; padding: 14px 0; border-bottom: 1px solid #efeaf7; }
+.geheim:last-child { border-bottom: 0; }
+.geheim h3 { margin: 0 0 4px; font-size: 17px; font-weight: 900; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.geheim p { margin: 0; font-size: 15px; line-height: 1.4; color: #4a4060; }
+.geheim p b { color: var(--ink); }
+.jetzt { font-size: 12px; font-weight: 800; padding: 2px 8px; border-radius: 999px; background: #ece6f8; color: var(--ganz); }
+/* Mini-Bildschirm: wo man drückt (pulsierender Ring, Schild „3 s“ oder „tippen“) */
+.mini { position: relative; flex: none; width: 84px; height: 150px; border-radius: 14px; overflow: hidden; border: 3px solid #1f2a44;
+  background: radial-gradient(120% 90% at 50% 42%, #4d88d2, #24508f); color: #fff; font-weight: 800; }
+.mini > * { position: absolute; }
+.mini .t { top: 8px; left: 7px; font-size: 8px; white-space: nowrap; }
+.mini .k { top: 6px; width: 13px; height: 13px; border-radius: 3px; background: var(--wahl); color: var(--ganz); font-size: 7px; display: grid; place-items: center; }
+.mini .w { left: 26px; top: 50px; width: 32px; height: 32px; border-radius: 6px; background: #fff; color: var(--teil); font-size: 19px; display: grid; place-items: center; }
+.mini .w.ganz { color: var(--ganz); }
+.mini .reihe { left: 6px; right: 6px; display: flex; gap: 2px; }
+.mini .reihe i { flex: 1; height: 11px; border-radius: 2px; background: #fff; }
+.mini .text { left: 4px; right: 4px; text-align: center; font-size: 8px; line-height: 1.15; }
+.mini .m-los { left: 20px; right: 20px; height: 11px; border-radius: 4px; background: #ffb547; color: var(--ink); font-size: 6.5px; display: grid; place-items: center; }
+.mini .u { left: 14px; right: 14px; bottom: 7px; height: 11px; border-radius: 999px; background: rgba(10, 20, 45, .45); font-size: 6.5px; display: grid; place-items: center; }
+.mini .band { left: 0; right: 0; top: 0; height: 9px; background: var(--bg); }
+.mini .strich { left: 0; top: 9px; width: 50%; height: 3px; background: var(--bg); }
+.mini .ziel { outline: 2px solid #ffcf70; outline-offset: 2px; border-radius: 4px; animation: zielPuls 1.6s ease-in-out infinite; }
+.mini .schild { padding: 1px 4px; border-radius: 999px; background: #ffcf70; color: var(--ink); font-size: 7px; font-weight: 900; white-space: nowrap; }
+@keyframes zielPuls { 0%, 100% { outline-color: #ffcf70; } 50% { outline-color: rgba(255, 207, 112, .25); } }
 </style>
 </head>
 <body>
@@ -276,6 +318,7 @@ body:not(.sagen) .uhr { display: none; }
 <main class="seite" id="startseite">
   <header class="kopf">
     <h1>Würfel <span class="version" id="version"></span></h1>
+    <button class="info-knopf" id="info-knopf" aria-label="Hilfe zu den geheimen Schaltern (3 Sekunden drücken)"><span>i</span></button>
     <button class="staub-schalter" id="staub-schalter" aria-label="Bunter Staub an oder aus" aria-pressed="true">💨</button>
     <button class="tiere-schalter" id="tiere-schalter" aria-label="Tiersatz wechseln" hidden>🐾</button>
     <button class="ton" aria-label="Ton an oder aus"></button>
@@ -318,8 +361,80 @@ body:not(.sagen) .uhr { display: none; }
   <div class="lupe" id="lupe" hidden aria-hidden="true"></div>
 </main>
 
+<div class="hilfe" id="hilfe" hidden role="dialog" aria-modal="true" aria-labelledby="hilfe-titel">
+  <div class="hilfe-karte">
+    <div class="hilfe-kopf"><h2 id="hilfe-titel">Geheime Schalter</h2><button class="hilfe-zu" id="hilfe-zu" aria-label="Schließen">✕</button></div>
+    <div class="hilfe-inhalt">
+      <p class="hilfe-regel">Für Erwachsene. Die Regel: <b>3 Sekunden gedrückt halten</b> – dort, wo es um die Sache geht.
+        Kurz tippen bewirkt nichts; so schaltet das Kind nichts aus Versehen. Ein kleiner Hinweis oben zeigt, was passiert ist.</p>
+      <section class="geheim">
+        <div class="mini" aria-hidden="true"><span class="t">Würfel</span><span class="k" style="right:6px">🔊</span>
+          <span class="text ziel" style="top:44px">Welche Zahl<br>zerlegen wir?</span>
+          <span class="reihe" style="top:72px"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+          <span class="schild" style="left:30px;top:27px">3 s</span></div>
+        <div><h3>Tiere an / aus <span class="jetzt" id="jetzt-tiere"></span></h3>
+          <p><b>Startseite:</b> 3 s auf „Welche Zahl zerlegen wir?“ drücken (oder oben links auf „Würfel“). Beim Öffnen der
+          App sind die Tiere immer aus.</p></div>
+      </section>
+      <section class="geheim">
+        <div class="mini" aria-hidden="true"><span class="k ziel" style="right:42px">💨</span>
+          <span class="k ziel" style="right:24px">🐾</span><span class="k" style="right:6px">🔊</span>
+          <span class="text" style="top:44px">Welche Zahl<br>zerlegen wir?</span>
+          <span class="reihe" style="top:72px"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+          <span class="schild" style="right:14px;top:26px">tippen</span></div>
+        <div><h3>Tierbilder und Staub <span class="jetzt" id="jetzt-staub"></span></h3>
+          <p>Nur wenn die Tiere an sind, stehen oben <b>🐾</b> und <b>💨</b>. Kurz tippen: 🐾 wechselt zwischen Sticker und
+          wild &amp; bunt, 💨 schaltet den bunten Staub an und aus.</p></div>
+      </section>
+      <section class="geheim">
+        <div class="mini" aria-hidden="true"><span class="k" style="left:6px">‹</span><span class="t ziel" style="left:24px">Zerlegen: 8</span>
+          <span class="w">3</span><span class="u">1:23,4 · 17</span>
+          <span class="schild" style="left:30px;top:26px">3 s</span></div>
+        <div><h3>Uhr an / aus</h3>
+          <p><b>Spielseite:</b> 3 s auf „Zerlegen: 8“ drücken (mit Tieren auch auf die runde Zahl am Tier). Unten stehen dann
+          die Zeit und die Zahl der Versuche, z. B. „1:23,4 · 17 Versuche“. Ein Versuch ist ein Wurf; „Start“ zählt
+          als erster. Nach „‹ Zurück“ ist die Uhr wieder aus.</p></div>
+      </section>
+      <section class="geheim">
+        <div class="mini" aria-hidden="true"><span class="k" style="left:6px">‹</span><span class="t" style="left:24px">Zerlegen: 8</span>
+          <span class="w">5</span><span class="text ziel" style="top:90px;left:9px;right:9px;font-size:6.5px">Die Zeit ist um!</span>
+          <span class="m-los ziel" style="top:104px">Nochmal</span><span class="u">2:00,0 · 23</span>
+          <span class="schild" style="right:2px;top:105px">3 s</span></div>
+        <div><h3>Versuche am Ende an / aus <span class="jetzt" id="jetzt-ende"></span></h3>
+          <p><b>Nach den 2 Minuten:</b> 3 s auf „Die Zeit ist um!“ oder auf „Nochmal“ drücken. Dann stehen am Ende Zeit und
+          Versuche (z. B. „2:00,0 · 23 Versuche“) – oder nicht. Die Wahl bleibt gespeichert. Ist die Uhr an, stehen sie
+          am Ende ohnehin da. „Nochmal“ startet nur bei einem kurzen Tipp; wer länger drückt, startet nichts.</p></div>
+      </section>
+      <section class="geheim">
+        <div class="mini" aria-hidden="true"><span class="band"></span><span class="strich ziel"></span>
+          <span class="k" style="left:6px;top:17px">‹</span><span class="t" style="left:24px;top:19px">Zerlegen: 8</span>
+          <span class="w">7</span><span class="schild" style="left:16px;top:94px">½ = 1 Min.</span></div>
+        <div><h3>Zeitlinie oben</h3>
+          <p><b>Nur zum Hinschauen:</b> Während der 2 Minuten wächst ganz oben, direkt unter dem dunklen Streifen der
+          Statusleiste, eine dünne Linie von links nach rechts. Halb = 1 Minute, ganz = Zeit um. Es sieht aus, als
+          würde der Streifen dicker – das Kind schaut auf den Würfel.</p></div>
+      </section>
+      <section class="geheim">
+        <div class="mini" aria-hidden="true"><span class="t ziel" id="mini-version" style="font-size:7px;padding:0 1px"></span>
+          <span class="k ziel" style="right:24px;border-radius:50%;background:none;border:1px solid #fff;color:#fff">i</span><span class="k" style="right:6px">🔊</span>
+          <span class="text" style="top:44px">Welche Zahl<br>zerlegen wir?</span>
+          <span class="reihe" style="top:72px"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+          <span class="schild" style="right:22px;top:26px">3 s</span><span class="schild" style="left:4px;top:26px">tippen</span></div>
+        <div><h3>Diese Hilfe und Updates</h3>
+          <p><b>ⓘ</b> 3 s drücken öffnet diese Hilfe. <b>Versionsnummer</b> neben „Würfel“ kurz antippen: prüft, ob es eine
+          neue Fassung gibt.</p></div>
+      </section>
+      <section class="geheim">
+        <div><h3>In der Hinterhand: Fassung zum Antippen</h3>
+          <p>Mit Zahlenleiste, Gleichung und richtig/falsch, ohne Start und Uhr – in Safari die Adresse
+          <b>…/wuerfel/?tippen</b> öffnen.</p></div>
+      </section>
+    </div>
+  </div>
+</div>
+
 <script>
-const APP_VERSION = '0.47';          // bei JEDER Änderung hochzählen
+const APP_VERSION = '0.48';          // bei JEDER Änderung hochzählen
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
@@ -980,7 +1095,7 @@ function antwort(k, btn) {
 /* ---------- Verdrahtung ---------- */
 // Ältere iPhones und eingebettete Browser federn trotz CSS: dort jedes Wischen abfangen.
 // Regler und Knöpfe arbeiten mit Pointer-Ereignissen und bleiben davon unberührt.
-document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+document.addEventListener('touchmove', e => { if (!e.target.closest('.hilfe-inhalt')) e.preventDefault(); }, { passive: false });   // nur die Hilfe scrollt
 for (const n of ZAHLEN) {
   const b = document.createElement('button');
   b.dataset.n = n;
@@ -1060,6 +1175,27 @@ halten([$('#startseite h1'), $('#startseite h2')], () => {
   zeigeTiere();
   showInfo(TIERSAETZE[stand.tiere], 1.6);
 });
+// ⓘ: 3 s drücken öffnet die Hilfe; ein kurzer Tipp sagt nur, wie es geht (Tastatur: öffnet gleich)
+const hilfeEl = $('#hilfe'), infoKnopf = $('#info-knopf');
+const AN_AUS = b => b ? 'jetzt an' : 'jetzt aus';
+function zeigeHilfe() {
+  $('#jetzt-tiere').textContent = AN_AUS(mitTieren());
+  $('#jetzt-staub').textContent = 'Staub ' + AN_AUS(stand.staub);
+  $('#jetzt-ende').textContent = AN_AUS(stand.ende);
+  hilfeEl.hidden = false;
+  $('.hilfe-inhalt').scrollTop = 0;
+}
+const schliesseHilfe = () => { hilfeEl.hidden = true; };
+let infoDruck = 0;
+infoKnopf.addEventListener('pointerdown', () => { infoDruck = performance.now(); });
+infoKnopf.addEventListener('click', e => {
+  if (!e.detail) return zeigeHilfe();
+  if (performance.now() - infoDruck < 1000) showInfo('Für Erwachsene: 3 Sekunden drücken', 2, e.currentTarget);
+});
+halten([infoKnopf], zeigeHilfe);
+$('#hilfe-zu').addEventListener('click', schliesseHilfe);
+hilfeEl.addEventListener('click', e => { if (e.target === hilfeEl) schliesseHilfe(); });   // daneben tippen schließt
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !hilfeEl.hidden) schliesseHilfe(); });
 $('#tiere-schalter').addEventListener('click', e => {             // nur sichtbar, wenn Tiere an: Sticker ↔ wild & bunt
   stand.tiere = stand.satz = stand.tiere === 'wild' ? 'sticker' : 'wild';
   speichereAlles(); zeigeTiere();
@@ -1075,7 +1211,7 @@ $$('.ton').forEach(b => b.addEventListener('click', () => {
   if (stand.ton) ton(783.99, 0, 0.15);
 }));
 
-$('#version').textContent = 'v' + APP_VERSION;
+$('#version').textContent = $('#mini-version').textContent = 'v' + APP_VERSION;
 stelle(RUHE.x, RUHE.y);
 zeigeTon();
 zeigeTiere();

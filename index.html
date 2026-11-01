@@ -64,6 +64,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 .ton.mikro::after {       /* Sprechen an (3 s auf 🔊): kleines Mikrofon am Knopf */
   content: "🎤"; position: absolute; right: -5px; bottom: -5px; width: 21px; height: 21px; border-radius: 50%;
   display: grid; place-items: center; font-size: 12px; background: #fff; box-shadow: 0 1px 4px rgba(6, 18, 44, .35); }
+.ton.mikro.hoert::after { background: #c9f5d5; box-shadow: 0 0 0 2.5px #2fbf55, 0 1px 4px rgba(6, 18, 44, .35); }   /* grün: Ton vom Mikrofon kommt an */
 .staub-schalter[aria-pressed="false"] { filter: grayscale(1); opacity: .45; }
 .staub-schalter[aria-pressed="true"] {   /* bunter Staub */
   background: linear-gradient(135deg, #ff6fae, #ffb347 28%, #ffe45c 46%, #5fe0a0 64%, #5ab8ff 82%, #a77bff);
@@ -448,7 +449,8 @@ body:not(.sagen) .los-feld { position: absolute; inset: 0; justify-content: cent
         <div><h3>Sprechen an / aus <span class="jetzt" id="jetzt-sprechen"></span></h3>
           <p><b>3 s auf 🔊</b> drücken (Startseite oder Spielseite). Dann hört die App während der 2 Minuten zu: Sagt das Kind
           eine Zahl, würfelt sie von selbst weiter – auch bei einer falschen. Sie zählt still mit, was richtig war; mit Uhr
-          oder am Ende steht z. B. „23 Versuche · 19 richtig“. Am 🔊 sitzt dann ein kleines 🎤. Erkannt wird auf dem iPhone,
+          oder am Ende steht z. B. „23 Versuche · 19 richtig“. Am 🔊 sitzt dann ein kleines 🎤 – grün umrandet, sobald nach
+          „Start“ wirklich Ton vom Mikrofon ankommt. Erkannt wird auf dem iPhone,
           nichts geht ins Internet; beim ersten Mal lädt ein Sprachmodell (45 MB). Kurz auf 🔊 tippen bleibt Ton an/aus.</p></div>
       </section>
       <section class="geheim">
@@ -461,7 +463,7 @@ body:not(.sagen) .los-feld { position: absolute; inset: 0; justify-content: cent
 </div>
 
 <script>
-const APP_VERSION = '0.54';          // bei JEDER Änderung hochzählen
+const APP_VERSION = '0.55';          // bei JEDER Änderung hochzählen
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
@@ -520,7 +522,9 @@ function wurfZiel() { return zufall(stand.n + 1); }
 
 /* ---------- Ton ---------- */
 // iOS spielt Web Audio sonst als „ambient“ – dann schluckt der Stummschalter alles.
-try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (_) {}
+// Mit Sprechen an gleich „play-and-record“: dann muss die Tonsitzung beim Start nicht umschalten, während der
+// Würfel klingt (dabei bekam der Erkenner am iPhone keinen Ton, v0.54).
+try { if (navigator.audioSession) navigator.audioSession.type = stand.sprechen ? 'play-and-record' : 'playback'; } catch (_) {}
 let ctx = null;
 function audio() {
   if (!stand.ton) return null;
@@ -934,6 +938,7 @@ function zeigeTon() {
   $$('.ton').forEach(b => {
     b.textContent = stand.ton ? '🔊' : '🔇';
     b.classList.toggle('mikro', stand.sprechen);
+    b.classList.toggle('hoert', sprache.hoert);
     document.body.classList.toggle('sprechen', stand.sprechen);
     b.setAttribute('aria-label', 'Ton an oder aus' + (stand.sprechen ? ' – Sprechen ist an' : ''));
   });
@@ -1105,7 +1110,7 @@ function antwort(k, btn) {
 const SPRACHMODELL = new URL('sprache/vosk-model-small-de-0.15.tar.gz', location.href).href;   // wie im Sprechtest: einmal geladen, beide nutzen es
 const ZAHLWORT = { null: 0, eins: 1, ein: 1, zwei: 2, zwo: 2, drei: 3, vier: 4, 'fünf': 5, sechs: 6, sieben: 7, acht: 8, neun: 9, zehn: 10 };
 const GRAMMATIK = JSON.stringify([...Object.keys(ZAHLWORT), '[unk]']);   // nur diese Wörter: „eins“ wird nicht zu „hans“
-const sprache = { modell: null, laden: null, ctx: null, strom: null, quelle: null, knoten: null, erkenner: null, protokoll: [] };
+const sprache = { modell: null, laden: null, ctx: null, strom: null, quelle: null, knoten: null, erkenner: null, hoert: false, wache: 0, protokoll: [] };
 const zahlAus = text => { const w = text.split(/\s+/).filter(x => x in ZAHLWORT); return w.length ? ZAHLWORT[w[w.length - 1]] : null; };
 function ladeSprache() {                          // vosk.js (5,6 MB) und Modell erst, wenn Sprechen gebraucht wird
   sprache.laden ||= new Promise((ok, fehler) => {
@@ -1122,34 +1127,48 @@ async function mikrofonAn() {
   if (!stand.sprechen || sprache.strom) return;
   tonsitzung('play-and-record');                  // mit „playback“ (Ton trotz Stummschalter) verweigert iOS die Aufnahme
   try {
-    sprache.ctx ||= new (window.AudioContext || window.webkitAudioContext)();
-    sprache.ctx.resume();                         // noch im Tipp auf „Start“
+    // Reihenfolge wie im Sprechtest (am iPhone 20 von 20): erst das Mikrofon, dann den Tonkanal zum Zuhören öffnen
     const strom = await navigator.mediaDevices.getUserMedia({ video: false,
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } });
-    if (!uhr.laeuft || !stand.sprechen) { strom.getTracks().forEach(t => t.stop()); tonsitzung('playback'); return; }   // inzwischen vorbei
+    if (!uhr.laeuft || !stand.sprechen) { strom.getTracks().forEach(t => t.stop()); return; }   // inzwischen vorbei
     sprache.strom = strom;
+    sprache.ctx ||= new (window.AudioContext || window.webkitAudioContext)();
+    if (sprache.ctx.state !== 'running') await sprache.ctx.resume();
+    if (ctx && ctx.state !== 'running') ctx.resume();   // Würfelgeräusche: iOS hält sie beim Einschalten des Mikrofons an
     await ladeSprache();
     if (sprache.strom !== strom) return;          // inzwischen ausgeschaltet
     const erkenner = sprache.erkenner = new sprache.modell.KaldiRecognizer(sprache.ctx.sampleRate, GRAMMATIK);
     erkenner.on('result', m => { const z = zahlAus(m.result.text || ''); if (z !== null) gesagt(z); });
     sprache.quelle = sprache.ctx.createMediaStreamSource(strom);
     sprache.knoten = sprache.ctx.createScriptProcessor(4096, 1, 1);
-    sprache.knoten.onaudioprocess = ev => { try { erkenner.acceptWaveform(ev.inputBuffer); } catch (_) {} };
+    sprache.knoten.onaudioprocess = ev => {
+      if (!sprache.hoert) { sprache.hoert = true; zeigeTon(); }   // 🎤 wird grün: Ton kommt an
+      try { erkenner.acceptWaveform(ev.inputBuffer); } catch (_) {}
+    };
     sprache.quelle.connect(sprache.knoten);
     sprache.knoten.connect(sprache.ctx.destination);   // Safari ruft onaudioprocess nur auf, wenn der Knoten angeschlossen ist
+    clearTimeout(sprache.wache);
+    sprache.wache = setTimeout(() => {            // nach 3 s noch kein Ton: sagen, woran es hängt
+      if (sprache.strom === strom && !sprache.hoert) {
+        sprache.ctx.resume();
+        showInfo(`Sprechen: kein Ton vom Mikrofon (Tonkanal ${sprache.ctx.state}, Mikrofon ${strom.getAudioTracks()[0]?.readyState})`, 8);
+      }
+    }, 3000);
   } catch (err) {
     mikrofonAus();
     document.body.classList.remove('sprechen');   // ohne Mikrofon wieder mit Zahlenleiste (bis zum nächsten Umschalten)
-    showInfo(err?.name === 'NotAllowedError' ? 'Mikrofon nicht erlaubt – Sprechen geht nicht' : 'Sprechen geht gerade nicht', SCHALTER_HINWEIS);
+    showInfo(err?.name === 'NotAllowedError' ? 'Mikrofon nicht erlaubt – Sprechen geht nicht'
+      : 'Sprechen geht nicht: ' + (err?.message || err?.name || err), 8);
   }
 }
 function mikrofonAus() {
+  clearTimeout(sprache.wache);
   sprache.strom?.getTracks().forEach(t => t.stop());
   sprache.quelle?.disconnect(); sprache.knoten?.disconnect();
   try { sprache.erkenner?.remove(); } catch (_) {}
-  const war = !!sprache.strom;
   sprache.strom = sprache.quelle = sprache.knoten = sprache.erkenner = null;
-  if (war) tonsitzung('playback');
+  if (sprache.hoert) { sprache.hoert = false; zeigeTon(); }
+  if (!stand.sprechen) tonsitzung('playback');    // Sprechen an: Tonsitzung bleibt „play-and-record“
 }
 function gesagt(k) {                              // eine Zahl wurde erkannt
   if (!uhr.laeuft || phase !== 'frage') return;   // nur bei offener Aufgabe (nicht beim Rollen, nicht nach der Zeit)
@@ -1300,6 +1319,7 @@ $$('.ton').forEach(b => {
 halten([...$$('.ton')], () => {
   stand.sprechen = !stand.sprechen; speichereAlles(); zeigeTon(); zeigeUhr();
   if (!stand.sprechen) { mikrofonAus(); showInfo('Sprechen aus', SCHALTER_HINWEIS); return; }
+  tonsitzung('play-and-record');
   const bereitText = 'Sprechen an – ab „Start“ hört die App zu';
   showInfo(sprache.modell ? bereitText : 'Sprechen an – Sprachmodell lädt …', sprache.modell ? SCHALTER_HINWEIS : 0);
   ladeSprache().then(() => { if (stand.sprechen) showInfo(bereitText, SCHALTER_HINWEIS); })
@@ -1398,7 +1418,7 @@ window.wuerfelSpiel = {
   get zahl() { return zahl; }, get phase() { return phase; },
   get staub() { return koerner.length; }, bewegung, ROLLZEIT, AUFPRALL, get umgesprungen() { return umgesprungen; },
   DAUER, get uhr() { return { ...uhr, vergangen: vergangen() }; },
-  get sprache() { return { bereit: !!sprache.modell, hoert: !!sprache.erkenner, protokoll: sprache.protokoll.slice() }; }, zahlAus, gesagt,
+  get sprache() { return { bereit: !!sprache.modell, hoert: sprache.hoert, protokoll: sprache.protokoll.slice() }; }, zahlAus, gesagt,
   get sterne() { return funken.length; },
   get seiten() { return Object.fromEntries(Object.keys(seiten).map(k => [k, seiten[k].el.textContent])); },
 };

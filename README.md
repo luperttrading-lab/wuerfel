@@ -43,11 +43,11 @@ Lernspiel fürs Handy, damit sich die Zerlegungen der Zahlen 4 bis 10 als **Ziff
 Unter dem Würfel „Bereit?“ und **Start**: ab dann laufen genau 2 Minuten, der erste Wurf rollt gleich mit.
 Antippen würfelt, das Kind sagt laut, was bis n fehlt, Antippen würfelt weiter. Gewürfelt wird wie mit einem
 echten Würfel: jede Zahl 0 … n gleich wahrscheinlich, unabhängig vom vorigen Wurf – Doppelte kommen vor
-(bei n = 9 jeder zehnte Wurf), und eine Zerlegung kann auch länger ausbleiben. Die zweite Fassung **Zahl
-antippen** (Zahlenleiste, Gleichung, Lupe, richtig/falsch) hat ebenfalls „Start“, 2 Minuten, Zeitlinie, Uhr und
+(bei n = 9 jeder zehnte Wurf), und eine Zerlegung kann auch länger ausbleiben. Die Fassungen heißen seit v0.53
+**„nur Würfel“** (vorher „laut sagen“) und **„mit Zahlen unten“** (Zahlenleiste, Gleichung, Lupe, richtig/falsch) hat ebenfalls „Start“, 2 Minuten, Zeitlinie, Uhr und
 Versuche am Ende; „Start“ und „Nochmal“ liegen dort über Gleichung und Hinweis, nichts verschiebt sich.
-**Umschalten:** 3 s auf den Erklärtext unter den Zahlen der Startseite („Fassung: Zahl antippen“ bzw. „laut
-sagen“, gespeichert); der Erklärtext zeigt, welche Fassung an ist. Die alte Adresse `…/?tippen` schaltet auch
+**Umschalten:** 3 s auf den Erklärtext unter den Zahlen der Startseite („Fassung: mit Zahlen unten“ bzw. „nur
+Würfel“, gespeichert); der Erklärtext zeigt, welche Fassung an ist. Die alte Adresse `…/?tippen` schaltet auch
 noch um. Bis v0.48 zog „Antippen“ in Runden („0/10“, jede Zerlegung genau einmal) – das ist raus.
 Ohne Tiere steht nichts über dem Würfel.
 
@@ -104,6 +104,16 @@ die Uhr reserviert; auf kleinen iPhones wird das Tier dort kleiner (375 × 667: 
 ein Mini-Bildschirm mit pulsierendem Ring, wo man drückt („3 s“ oder „tippen“), daneben die Erklärung und was
 gerade eingestellt ist (Tiere, Staub, Versuche am Ende, Fassung). Kurz tippen öffnet nichts, zeigt nur „Für Erwachsene:
 3 Sekunden drücken“. Schließen mit ✕, daneben tippen oder Esc; der Inhalt scrollt (sonst ist Wischen gesperrt).
+
+**Sprechen** (3 s auf 🔊, gespeichert; am 🔊 sitzt dann ein kleines 🎤): Während der 2 Minuten hört die App zu. Sagt
+das Kind eine Zahl, zählt sie still richtig oder falsch und würfelt von selbst weiter – auch bei einer falschen Zahl
+(so gewünscht). „Nur Würfel“: sofort der nächste Wurf. „Mit Zahlen unten“: richtig → grün, Lösung, nach 1,5 s weiter;
+falsch → kurz rot, nach 0,9 s weiter. Uhr und Ende zeigen dann z. B. „23 Versuche · 19 richtig“. Gewertet wird nur bei
+offener Aufgabe (nicht beim Rollen, nicht vor „Start“, nicht nach den 2 Minuten). Mikrofon nur während der 2 Minuten;
+vorher stellt die App die Tonsitzung auf `play-and-record`, danach zurück auf `playback`. vosk.js und Modell werden
+erst geladen, wenn Sprechen an ist. Kurz auf 🔊 tippen bleibt Ton an/aus. Ohne Mikrofon (verweigert, nicht da) kommt
+ein Hinweis, das Spiel läuft normal. Am iPhone mit Erwachsenenstimme geprüft (Sprechtest 20/20), Kinderstimme offen;
+offen auch, wie laut die Würfelgeräusche bei eingeschaltetem Mikrofon sind.
 
 **Sprechtest** (`sprechtest.html`, Versuch; in der ⓘ-Hilfe verlinkt): Versteht das iPhone die Zahl, die das Kind
 sagt? Apples eingebaute Spracherkennung ist in Home-Bildschirm-Apps gesperrt (WebKit-Bug 225298), darum erkennt

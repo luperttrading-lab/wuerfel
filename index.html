@@ -60,6 +60,10 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   text-decoration: underline dotted; text-underline-offset: 3px;
 }
 .ton, .zurueck, .tiere-schalter, .staub-schalter { width: 44px; height: 44px; flex: none; border-radius: 12px; background: var(--wahl); font-size: 22px; }
+.ton { position: relative; }
+.ton.mikro::after {       /* Sprechen an (3 s auf 🔊): kleines Mikrofon am Knopf */
+  content: "🎤"; position: absolute; right: -5px; bottom: -5px; width: 21px; height: 21px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 12px; background: #fff; box-shadow: 0 1px 4px rgba(6, 18, 44, .35); }
 .staub-schalter[aria-pressed="false"] { filter: grayscale(1); opacity: .45; }
 .staub-schalter[aria-pressed="true"] {   /* bunter Staub */
   background: linear-gradient(135deg, #ff6fae, #ffb347 28%, #ffe45c 46%, #5fe0a0 64%, #5ab8ff 82%, #a77bff);
@@ -434,16 +438,25 @@ body:not(.sagen) .los-feld { position: absolute; inset: 0; justify-content: cent
           <span class="reihe" style="top:64px"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
           <span class="text ziel" style="top:84px;left:9px;right:9px;font-size:5.5px;font-weight:600;color:#c9d8f2">Drück „Start“ und<br>sag laut, was fehlt …</span>
           <span class="schild" style="left:30px;top:106px">3 s</span></div>
-        <div><h3>Laut sagen oder Zahl antippen <span class="jetzt" id="jetzt-fassung"></span></h3>
-          <p><b>Startseite:</b> 3 s auf den kleinen Text unter den Zahlen drücken. <b>Laut sagen:</b> nur der Würfel, das Kind
-          sagt die fehlende Zahl. <b>Zahl antippen:</b> unten eine Zahlenleiste, die Gleichung steht da, die App zeigt
-          richtig oder falsch. Beide mit „Start“, 2 Minuten und Zeitlinie. Die Wahl bleibt gespeichert; der Erklärtext
-          zeigt, welche gerade an ist.</p></div>
+        <div><h3>Nur Würfel oder mit Zahlen unten <span class="jetzt" id="jetzt-fassung"></span></h3>
+          <p><b>Startseite:</b> 3 s auf den kleinen Text unter den Zahlen drücken. <b>Nur Würfel:</b> das Kind sagt die
+          fehlende Zahl laut, du hörst zu (oder die App, siehe „Sprechen“). <b>Mit Zahlen unten:</b> eine Zahlenleiste
+          zum Antippen, die Gleichung steht da, die App zeigt richtig oder falsch. Beide mit „Start“, 2 Minuten und
+          Zeitlinie. Die Wahl bleibt gespeichert; der Erklärtext zeigt, welche gerade an ist.</p></div>
       </section>
       <section class="geheim">
-        <div><h3>Versuch: Zahlen sagen statt tippen</h3>
-          <p>Kann das iPhone verstehen, welche Zahl dein Kind sagt? Der Sprechtest prüft es mit 20 Zahlen – erkannt wird
-          direkt auf dem iPhone, nichts geht ins Internet. Beim ersten Mal lädt er ein Sprachmodell (45 MB).</p>
+        <div class="mini" aria-hidden="true"><span class="k" style="left:6px">‹</span><span class="t" style="left:24px">Zerlegen: 8</span>
+          <span class="k ziel" style="right:6px">🔊</span><span class="schild" style="right:4px;top:26px">3 s</span>
+          <span class="w">3</span><span class="text" style="top:92px;font-size:7px">„fünf!“ 🎤</span></div>
+        <div><h3>Sprechen an / aus <span class="jetzt" id="jetzt-sprechen"></span></h3>
+          <p><b>3 s auf 🔊</b> drücken (Startseite oder Spielseite). Dann hört die App während der 2 Minuten zu: Sagt das Kind
+          eine Zahl, würfelt sie von selbst weiter – auch bei einer falschen. Sie zählt still mit, was richtig war; mit Uhr
+          oder am Ende steht z. B. „23 Versuche · 19 richtig“. Am 🔊 sitzt dann ein kleines 🎤. Erkannt wird auf dem iPhone,
+          nichts geht ins Internet; beim ersten Mal lädt ein Sprachmodell (45 MB). Kurz auf 🔊 tippen bleibt Ton an/aus.</p></div>
+      </section>
+      <section class="geheim">
+        <div><h3>Sprechtest</h3>
+          <p>Prüft mit 20 Zahlen, wie gut das iPhone dein Kind versteht – ohne Spiel, mit Ergebnis „x von 20“.</p>
           <a class="hilfe-link" href="sprechtest.html">Sprechtest öffnen</a></div>
       </section>
     </div>
@@ -451,7 +464,7 @@ body:not(.sagen) .los-feld { position: absolute; inset: 0; justify-content: cent
 </div>
 
 <script>
-const APP_VERSION = '0.52';          // bei JEDER Änderung hochzählen
+const APP_VERSION = '0.53';          // bei JEDER Änderung hochzählen
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
@@ -461,13 +474,13 @@ const ZAHLEN = [4, 5, 6, 7, 8, 9, 10];
 const TIERE = { 4: 'Vogel', 5: 'Frosch', 6: 'Seepferdchen', 7: 'Seestern', 8: 'Oktopus', 9: 'Nashorn', 10: 'Zebra' };
 const SPEICHER = 'wuerfel.stand';
 // Zwei Fassungen, umschalten: 3 s auf den Erklärtext der Startseite (gespeichert). Beide mit „Start“ und 2 Minuten.
-// laut sagen: nur der Würfel, das Kind sagt die fehlende Zahl. Zahl antippen: Zahlenleiste, Gleichung, richtig/falsch.
+// „nur Würfel“ (sagen): das Kind sagt die fehlende Zahl. „mit Zahlen unten“ (tippen): Zahlenleiste, Gleichung, richtig/falsch.
 const FASSUNGEN = {
-  sagen: { name: 'Fassung: laut sagen', text: 'Drück „Start“ und sag laut, was bis zur gewählten Zahl fehlt – dann tippe auf den Würfel.' },
-  tippen: { name: 'Fassung: Zahl antippen', text: 'Drück „Start“. Der Würfel zeigt eine Zahl – tippe unten die Zahl an, die bis zur gewählten Zahl fehlt.' },
+  sagen: { name: 'Fassung: nur Würfel', text: 'Drück „Start“ und sag laut, was bis zur gewählten Zahl fehlt – dann tippe auf den Würfel.' },
+  tippen: { name: 'Fassung: mit Zahlen unten', text: 'Drück „Start“. Der Würfel zeigt eine Zahl – tippe unten die Zahl an, die bis zur gewählten Zahl fehlt.' },
 };
 const sagen = () => stand.fassung === 'sagen';
-const stand = { n: 10, ton: true, sterne: 0, tiere: 'aus', satz: 'sticker', staub: true, ende: true, fassung: 'sagen' };   // ende: nach den 2 Minuten Zeit und Versuche zeigen   // staub: bunter Staub beim Würfeln (💨, nur mit Tieren)
+const stand = { n: 10, ton: true, sterne: 0, tiere: 'aus', satz: 'sticker', staub: true, ende: true, fassung: 'sagen', sprechen: false };   // sprechen: Zahl laut sagen, die App hört zu (3 s auf 🔊)   // ende: nach den 2 Minuten Zeit und Versuche zeigen   // staub: bunter Staub beim Würfeln (💨, nur mit Tieren)
 // Tiere: beim Laden immer aus. An und aus nur versteckt (3 s auf die Überschrift der Startseite); 🐾 wechselt
 // dann zwischen den Sätzen. Gemerkt wird nur der Satz (satz: 'sticker' | 'wild').
 const TIERSAETZE = { aus: 'Ohne Tiere', sticker: 'Tiere: Sticker', wild: 'Tiere: wild & bunt' };
@@ -480,6 +493,7 @@ try {
   if (s.staub === false) stand.staub = false;
   if (s.ende === false) stand.ende = false;
   if (s.fassung === 'tippen') stand.fassung = 'tippen';
+  if (s.sprechen === true) stand.sprechen = true;
   if ((s.satz ?? s.tiere) === 'wild') stand.satz = 'wild';     // bis v0.42 hieß der Satz „tiere“
   if (Number.isInteger(s.sterne) && s.sterne >= 0) stand.sterne = s.sterne;
 } catch (_) {}
@@ -943,7 +957,13 @@ function zeigeTiere() {
   $('#staub-schalter').hidden = !mitTieren();                     // ohne Tiere kein Staub, also auch kein Schalter
   if (mitTieren()) $$('#zahlwahl button').forEach(b => { b.querySelector('img').src = tierBild(b.dataset.n); });
 }
-function zeigeTon() { $$('.ton').forEach(b => { b.textContent = stand.ton ? '🔊' : '🔇'; }); }
+function zeigeTon() {
+  $$('.ton').forEach(b => {
+    b.textContent = stand.ton ? '🔊' : '🔇';
+    b.classList.toggle('mikro', stand.sprechen);
+    b.setAttribute('aria-label', 'Ton an oder aus' + (stand.sprechen ? ' – Sprechen ist an' : ''));
+  });
+}
 function nochmal(el, klasse) { el.classList.remove(klasse); void el.offsetWidth; el.classList.add(klasse); }
 let farbTimer = null;
 function faerbe(klasse, ms) {
@@ -970,6 +990,7 @@ function baueZahlen() {
 function zeigeStart() {
   stoppeWuerfel();
   stoppeUhr();
+  mikrofonAus();
   lockeNicht();
   phase = 'start';
   document.body.classList.remove('gut', 'falsch');
@@ -982,7 +1003,7 @@ function zeigeStart() {
 // Rollt der Würfel, wenn die Zeit um ist, landet er noch; danach „Die Zeit ist um!“ und „Nochmal“.
 const DAUER = 120000;                                           // ms
 const losFeld = $('#los-feld'), losText = $('#los-text'), losKnopf = $('#los'), uhrEl = $('#uhr'), linieEl = $('#fortschritt');
-let uhr = { start: 0, versuche: 0, laeuft: false, um: false }, uhrTimer = 0, uhrTakt = 0, uhrAn = false;
+let uhr = { start: 0, versuche: 0, laeuft: false, um: false, richtig: 0, falsch: 0 }, uhrTimer = 0, uhrTakt = 0, uhrAn = false;
 const vergangen = () => Math.min(DAUER, uhr.laeuft ? Date.now() - uhr.start : uhr.um ? DAUER : 0);
 function zeigeLos(text, knopf) {                                // knopf leer: Feld unsichtbar, Platz bleibt
   losText.textContent = text;
@@ -993,7 +1014,8 @@ function zeigeUhr() {                                           // versteckte An
   linieEl.style.transform = `scaleX(${(vergangen() / DAUER).toFixed(4)})`;
   uhrEl.classList.toggle('weg', !(uhrAn || uhr.um && stand.ende));   // nach den 2 Minuten: wie viele Versuche (abschaltbar)
   const z = Math.floor(vergangen() / 100), v = uhr.versuche;
-  uhrEl.textContent = `${Math.floor(z / 600)}:${String(Math.floor(z / 10) % 60).padStart(2, '0')},${z % 10} · ${v} ${v === 1 ? 'Versuch' : 'Versuche'}`;
+  uhrEl.textContent = `${Math.floor(z / 600)}:${String(Math.floor(z / 10) % 60).padStart(2, '0')},${z % 10} · ${v} ${v === 1 ? 'Versuch' : 'Versuche'}`
+    + (stand.sprechen || uhr.richtig + uhr.falsch ? ` · ${uhr.richtig} richtig` : '');   // gesagte Zahlen: die App wertet mit
 }
 function stoppeUhr() { clearTimeout(uhrTimer); clearInterval(uhrTakt); uhr.laeuft = false; }
 function warte() {                                              // vor dem Start: der Würfel zeigt die ganze Zahl
@@ -1001,16 +1023,17 @@ function warte() {                                              // vor dem Start
   bereit('');
   lockeNicht();
   phase = 'warten';
-  uhr = { start: 0, versuche: 0, laeuft: false, um: false };
+  uhr = { start: 0, versuche: 0, laeuft: false, um: false, richtig: 0, falsch: 0 };
   zeigeLos('Bereit?', 'Start');
   zeigeUhr();
 }
 function losgehen() {                                           // „Start“ und „Nochmal“
   stoppeUhr();
-  uhr = { start: Date.now(), versuche: 0, laeuft: true, um: false };
+  uhr = { start: Date.now(), versuche: 0, laeuft: true, um: false, richtig: 0, falsch: 0 };
   uhrTimer = setTimeout(zeitUm, DAUER);
   uhrTakt = setInterval(zeigeUhr, 100);
   zeigeLos('', '');
+  mikrofonAn();                                   // Sprechen an: noch im Tipp, damit iOS Ton und Mikrofon freigibt
   wuerfeln();
 }
 function zeitUm() {
@@ -1025,6 +1048,7 @@ function zeitUm() {
 }
 function schluss() {
   phase = 'aus';
+  mikrofonAus();                                  // Mikrofon nur während der 2 Minuten
   clearTimeout(weiterTimer); lockeNicht();
   gleichungEl.classList.add('weg'); hinweisEl.textContent = ''; zahlenEl.classList.add('ruht');   // „Zahl antippen“
   wuerfelEl.setAttribute('aria-label', 'Die Zeit ist um');
@@ -1050,6 +1074,7 @@ function starteSpiel(n) {
   zeigeGleichung(0, null);                        // unsichtbar, hält aber ihren Platz – nichts springt
   for (const k in seiten) if (k !== 'vorne') beschrifte(k, zufallsZahl(n, k));
   gleichungEl.classList.add('weg');               // vor der ersten Aufgabe keine Gleichung
+  if (stand.sprechen) ladeSprache().catch(() => {});   // Sprachmodell schon bereitlegen (aus dem Speicher: ~1 s)
   warte();                                        // erst „Start“, dann 2 Minuten
 }
 
@@ -1087,6 +1112,80 @@ function antwort(k, btn) {
   hinweisEl.textContent = LOB[zufall(LOB.length)];
   // Danach zeigt der Würfel wieder die ganze Zahl; die gelöste Gleichung bleibt zum Einprägen stehen.
   weiterTimer = setTimeout(() => { if (phase === 'geloest') bereit(); }, 1800);
+}
+
+/* ---------- Sprechen: Zahl laut sagen, die App hört zu (3 s auf 🔊) ---------- */
+// Erkannt wird auf dem iPhone selbst (Vosk als WebAssembly, sprache/), nur „null“ … „zehn“ – nichts geht ins Internet.
+// (Apples eingebaute Erkennung ist in Home-Bildschirm-Apps gesperrt.) Im Sprechtest am iPhone: 20 von 20, ~0,8 s.
+// Das Mikrofon läuft nur während der 2 Minuten. Jede erkannte Zahl wird still als richtig/falsch gezählt, dann
+// geht es weiter – auch bei einer falschen Zahl (so gewünscht).
+const SPRACHMODELL = new URL('sprache/vosk-model-small-de-0.15.tar.gz', location.href).href;   // wie im Sprechtest: einmal geladen, beide nutzen es
+const ZAHLWORT = { null: 0, eins: 1, ein: 1, zwei: 2, zwo: 2, drei: 3, vier: 4, 'fünf': 5, sechs: 6, sieben: 7, acht: 8, neun: 9, zehn: 10 };
+const GRAMMATIK = JSON.stringify([...Object.keys(ZAHLWORT), '[unk]']);   // nur diese Wörter: „eins“ wird nicht zu „hans“
+const sprache = { modell: null, laden: null, ctx: null, strom: null, quelle: null, knoten: null, erkenner: null, protokoll: [] };
+const zahlAus = text => { const w = text.split(/\s+/).filter(x => x in ZAHLWORT); return w.length ? ZAHLWORT[w[w.length - 1]] : null; };
+function ladeSprache() {                          // vosk.js (5,6 MB) und Modell erst, wenn Sprechen gebraucht wird
+  sprache.laden ||= new Promise((ok, fehler) => {
+    if (window.Vosk) return ok();
+    const s = document.createElement('script');
+    s.src = 'sprache/vosk.js'; s.onload = ok; s.onerror = fehler;
+    document.head.append(s);
+  }).then(() => Vosk.createModel(SPRACHMODELL)).then(m => (sprache.modell = m))
+    .catch(e => { sprache.laden = null; throw e; });
+  return sprache.laden;
+}
+const tonsitzung = typ => { try { if (navigator.audioSession) navigator.audioSession.type = typ; } catch (_) {} };
+async function mikrofonAn() {
+  if (!stand.sprechen || sprache.strom) return;
+  tonsitzung('play-and-record');                  // mit „playback“ (Ton trotz Stummschalter) verweigert iOS die Aufnahme
+  try {
+    sprache.ctx ||= new (window.AudioContext || window.webkitAudioContext)();
+    sprache.ctx.resume();                         // noch im Tipp auf „Start“
+    const strom = await navigator.mediaDevices.getUserMedia({ video: false,
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } });
+    if (!uhr.laeuft || !stand.sprechen) { strom.getTracks().forEach(t => t.stop()); tonsitzung('playback'); return; }   // inzwischen vorbei
+    sprache.strom = strom;
+    await ladeSprache();
+    if (sprache.strom !== strom) return;          // inzwischen ausgeschaltet
+    const erkenner = sprache.erkenner = new sprache.modell.KaldiRecognizer(sprache.ctx.sampleRate, GRAMMATIK);
+    erkenner.on('result', m => { const z = zahlAus(m.result.text || ''); if (z !== null) gesagt(z); });
+    sprache.quelle = sprache.ctx.createMediaStreamSource(strom);
+    sprache.knoten = sprache.ctx.createScriptProcessor(4096, 1, 1);
+    sprache.knoten.onaudioprocess = ev => { try { erkenner.acceptWaveform(ev.inputBuffer); } catch (_) {} };
+    sprache.quelle.connect(sprache.knoten);
+    sprache.knoten.connect(sprache.ctx.destination);   // Safari ruft onaudioprocess nur auf, wenn der Knoten angeschlossen ist
+  } catch (err) {
+    mikrofonAus();
+    showInfo(err?.name === 'NotAllowedError' ? 'Mikrofon nicht erlaubt – Sprechen geht nicht' : 'Sprechen geht gerade nicht', SCHALTER_HINWEIS);
+  }
+}
+function mikrofonAus() {
+  sprache.strom?.getTracks().forEach(t => t.stop());
+  sprache.quelle?.disconnect(); sprache.knoten?.disconnect();
+  try { sprache.erkenner?.remove(); } catch (_) {}
+  const war = !!sprache.strom;
+  sprache.strom = sprache.quelle = sprache.knoten = sprache.erkenner = null;
+  if (war) tonsitzung('playback');
+}
+function gesagt(k) {                              // eine Zahl wurde erkannt
+  if (!uhr.laeuft || phase !== 'frage') return;   // nur bei offener Aufgabe (nicht beim Rollen, nicht nach der Zeit)
+  if (Date.now() - uhr.start >= DAUER) { zeitUm(); return; }
+  const richtig = k === stand.n - zahl;
+  sprache.protokoll.push({ zahl, gesagt: k, richtig });
+  if (richtig) uhr.richtig++; else uhr.falsch++;
+  zeigeUhr();
+  if (sagen()) { wuerfeln(); return; }            // „laut sagen“: gleich weiter
+  const btn = zahlenEl.querySelector(`[data-zahl="${k}"]`);   // „Zahl antippen“: als wäre die Taste gedrückt
+  if (richtig) {
+    antwort(k, btn);
+    clearTimeout(weiterTimer);
+    weiterTimer = setTimeout(() => { if (phase === 'geloest' && uhr.laeuft) wuerfeln(); }, 1500);
+  } else {
+    faerbe('falsch', 700); klang.falsch();
+    if (btn) nochmal(btn, 'wackelt');
+    clearTimeout(weiterTimer);
+    weiterTimer = setTimeout(() => { if (phase === 'frage' && uhr.laeuft) wuerfeln(); }, 900);
+  }
 }
 
 /* ---------- Verdrahtung ---------- */
@@ -1189,7 +1288,8 @@ function zeigeHilfe() {
   $('#jetzt-tiere').textContent = AN_AUS(mitTieren());
   $('#jetzt-staub').textContent = 'Staub ' + AN_AUS(stand.staub);
   $('#jetzt-ende').textContent = AN_AUS(stand.ende);
-  $('#jetzt-fassung').textContent = sagen() ? 'jetzt: laut sagen' : 'jetzt: Zahl antippen';
+  $('#jetzt-fassung').textContent = sagen() ? 'jetzt: nur Würfel' : 'jetzt: mit Zahlen unten';
+  $('#jetzt-sprechen').textContent = AN_AUS(stand.sprechen);
   hilfeEl.hidden = false;
   $('.hilfe-inhalt').scrollTop = 0;
 }
@@ -1214,10 +1314,24 @@ $('#staub-schalter').addEventListener('click', e => {
   stand.staub = !stand.staub; speichereAlles(); zeigeStaub();
   showInfo(stand.staub ? 'Bunter Staub an' : 'Ohne Staub', 1.6, e.currentTarget);
 });
-$$('.ton').forEach(b => b.addEventListener('click', () => {
-  stand.ton = !stand.ton; speichereAlles(); zeigeTon();
-  if (stand.ton) ton(783.99, 0, 0.15);
-}));
+let tonDruck = 0;
+$$('.ton').forEach(b => {
+  b.addEventListener('pointerdown', () => { tonDruck = performance.now(); });
+  b.addEventListener('click', e => {
+    if (e.detail && performance.now() - tonDruck > 1000) return;   // langes Drücken war der Schalter „Sprechen“
+    stand.ton = !stand.ton; speichereAlles(); zeigeTon();
+    if (stand.ton) ton(783.99, 0, 0.15);
+  });
+});
+// 3 s auf 🔊: Sprechen an/aus. Beim ersten Mal lädt das Sprachmodell (45 MB), danach kommt es aus dem Speicher.
+halten([...$$('.ton')], () => {
+  stand.sprechen = !stand.sprechen; speichereAlles(); zeigeTon(); zeigeUhr();
+  if (!stand.sprechen) { mikrofonAus(); showInfo('Sprechen aus', SCHALTER_HINWEIS); return; }
+  const bereitText = 'Sprechen an – ab „Start“ hört die App zu';
+  showInfo(sprache.modell ? bereitText : 'Sprechen an – Sprachmodell lädt …', sprache.modell ? SCHALTER_HINWEIS : 0);
+  ladeSprache().then(() => { if (stand.sprechen) showInfo(bereitText, SCHALTER_HINWEIS); })
+    .catch(() => { stand.sprechen = false; speichereAlles(); zeigeTon(); showInfo('Sprachmodell ließ sich nicht laden – Sprechen aus', SCHALTER_HINWEIS); });
+});
 
 $('#version').textContent = $('#mini-version').textContent = 'v' + APP_VERSION;
 stelle(RUHE.x, RUHE.y);
@@ -1311,6 +1425,7 @@ window.wuerfelSpiel = {
   get zahl() { return zahl; }, get phase() { return phase; },
   get staub() { return koerner.length; }, bewegung, ROLLZEIT, AUFPRALL, get umgesprungen() { return umgesprungen; },
   DAUER, get uhr() { return { ...uhr, vergangen: vergangen() }; },
+  get sprache() { return { bereit: !!sprache.modell, hoert: !!sprache.erkenner, protokoll: sprache.protokoll.slice() }; }, zahlAus, gesagt,
   get sterne() { return funken.length; },
   get seiten() { return Object.fromEntries(Object.keys(seiten).map(k => [k, seiten[k].el.textContent])); },
 };

@@ -420,14 +420,14 @@ console.log('Hilfe: 3 s auf ⓘ erklärt die geheimen Schalter');
   ok(await page.isHidden('#hilfe'), '1,2 s drücken: Hilfe bleibt zu');
   await lange(page, '#info-knopf');
   const titel = await page.evaluate(() => [...document.querySelectorAll('#hilfe h3')].map(h => h.firstChild.textContent.trim()));
-  ok(await page.isVisible('#hilfe') && ['Tiere an / aus', 'Uhr an / aus', 'Versuche am Ende an / aus', 'Zeitlinie oben', 'Diese Hilfe und Updates', 'Laut sagen oder Zahl antippen'].every(t => titel.includes(t))
+  ok(await page.isVisible('#hilfe') && ['Tiere an / aus', 'Uhr an / aus', 'Versuche am Ende an / aus', 'Zeitlinie oben', 'Diese Hilfe und Updates', 'Nur Würfel oder mit Zahlen unten', 'Sprechen an / aus', 'Sprechtest'].every(t => titel.includes(t))
     && !(await page.textContent('#hilfe')).includes('Safari'),
     `3 s drücken: Hilfe offen (${titel.length} Punkte: ${titel.join(' · ')})`);
-  ok(await page.evaluate(() => document.querySelectorAll('#hilfe .mini').length === 7 && document.querySelectorAll('#hilfe .mini .ziel').length >= 7),
+  ok(await page.evaluate(() => document.querySelectorAll('#hilfe .mini').length === 8 && document.querySelectorAll('#hilfe .mini .ziel').length >= 8),
     'Zu jedem Schalter ein Mini-Bildschirm mit Ring, wo man drückt');
-  ok((await page.textContent('#jetzt-tiere')) === 'jetzt aus' && (await page.textContent('#jetzt-ende')) === 'jetzt an' && (await page.textContent('#jetzt-fassung')) === 'jetzt: laut sagen'
+  ok((await page.textContent('#jetzt-tiere')) === 'jetzt aus' && (await page.textContent('#jetzt-ende')) === 'jetzt an' && (await page.textContent('#jetzt-fassung')) === 'jetzt: nur Würfel' && (await page.textContent('#jetzt-sprechen')) === 'jetzt aus'
     && (await page.textContent('#mini-version')) === (await page.textContent('#version')),
-    'Zeigt, was gerade eingestellt ist (Tiere aus, Versuche am Ende an, laut sagen) und die echte Versionsnummer');
+    'Zeigt, was gerade eingestellt ist (Tiere aus, Versuche am Ende an, nur Würfel, Sprechen aus) und die echte Versionsnummer');
   ok(await page.isHidden('#tiere-schalter') && !(await page.evaluate(() => document.querySelector('#update').classList.contains('an'))),
     'Langes Drücken auf ⓘ schaltet keine Tiere und zeigt keinen Tipp-Hinweis');
   ok(await page.getAttribute('#hilfe a.hilfe-link', 'href') === 'sprechtest.html', 'Hilfe verlinkt den Sprechtest');
@@ -461,6 +461,34 @@ console.log('Sprechtest-Seite (ohne Mikrofon; die Erkennung prüft tests/sprecht
   const modell = await page.evaluate(async () => (await fetch('sprache/vosk-model-small-de-0.15.tar.gz', { method: 'HEAD' })).headers.get('content-length'));
   ok(+modell > 40e6 && +modell < 50e6, `Sprachmodell liegt bereit (${(modell / 1e6).toFixed(1)} MB)`);
   ok(await page.getAttribute('.zurueck', 'href') === './', '‹ führt zurück zum Würfel');
+  ok(konsole.length === 0, 'Keine Fehler in der Konsole' + (konsole.length ? ': ' + konsole.join(' | ') : ''));
+  await ctx.close();
+}
+
+console.log('Sprechen an/aus: 3 s auf 🔊 (ohne Mikrofon; mit Ersatz-Mikrofon prüft es tests/sprechtest.mjs)');
+{
+  const { page, konsole, ctx } = await seite(390, 844, false, '');
+  const ton = () => page.evaluate(() => window.wuerfelSpiel.stand.ton);
+  const mikro = () => page.evaluate(() => document.querySelector('#startseite .ton').classList.contains('mikro'));
+  await page.click('#startseite .ton');
+  ok(!(await ton()) && !(await mikro()), 'Kurz tippen: nur Ton aus, Sprechen bleibt aus');
+  await page.click('#startseite .ton');
+  await lange(page, '#startseite .ton');
+  ok(await ton() && await mikro() && await page.evaluate(() => window.wuerfelSpiel.stand.sprechen) && (await page.textContent('#update-text')).startsWith('Sprechen an'),
+    '3 s auf 🔊: „Sprechen an“, kleines 🎤 am Knopf, der Ton bleibt an');
+  await page.waitForFunction(() => window.wuerfelSpiel.sprache.bereit, null, { timeout: 60000 });
+  ok((await page.textContent('#update-text')) === 'Sprechen an – ab „Start“ hört die App zu', 'Sprachmodell geladen: „ab „Start“ hört die App zu“');
+  await page.reload();
+  ok(await mikro() && await page.evaluate(() => window.wuerfelSpiel.stand.sprechen), 'Bleibt nach dem Neuladen an');
+  await page.click('#zahlwahl button[data-n="6"]');
+  ok(await page.evaluate(() => document.querySelector('#spielseite .ton').classList.contains('mikro')), 'Auch auf der Spielseite das 🎤 am 🔊');
+  await page.click('#los');                              // ohne Mikrofon im Testbrowser: Hinweis, das Spiel läuft trotzdem
+  await page.waitForFunction(() => document.querySelector('#update-text').textContent.startsWith('Sprechen geht') || document.querySelector('#update-text').textContent.startsWith('Mikrofon'), null, { timeout: 10000 });
+  ok(await page.evaluate(() => window.wuerfelSpiel.uhr.laeuft) && !(await page.evaluate(() => window.wuerfelSpiel.sprache.hoert)),
+    `Kein Mikrofon da: „${await page.textContent('#update-text')}“, die 2 Minuten laufen trotzdem`);
+  await page.click('#zurueck');
+  await lange(page, '#startseite .ton');
+  ok(!(await mikro()) && (await page.textContent('#update-text')) === 'Sprechen aus', 'Noch einmal 3 s: „Sprechen aus“');
   ok(konsole.length === 0, 'Keine Fehler in der Konsole' + (konsole.length ? ': ' + konsole.join(' | ') : ''));
   await ctx.close();
 }
@@ -697,12 +725,12 @@ console.log('Fassung umschalten: 3 s auf den Erklärtext der Startseite');
 {
   const { page, konsole, ctx } = await seite(390, 844, false, '');
   const istSagen = () => page.evaluate(() => document.body.classList.contains('sagen'));
-  ok(await istSagen() && (await page.textContent('#erklaerung')).includes('sag laut'), 'Anfangs „laut sagen“ – der Erklärtext sagt es');
+  ok(await istSagen() && (await page.textContent('#erklaerung')).includes('sag laut'), 'Anfangs „nur Würfel“ – der Erklärtext sagt, was zu tun ist');
   await lange(page, '#erklaerung', 1200);
   ok(await istSagen(), 'Kurz drücken (1,2 s): bleibt');
   await lange(page, '#erklaerung');
-  ok(!(await istSagen()) && (await page.textContent('#erklaerung')).includes('tippe unten die Zahl an') && (await page.textContent('#update-text')) === 'Fassung: Zahl antippen',
-    '3 s: „Fassung: Zahl antippen“, der Erklärtext wechselt mit');
+  ok(!(await istSagen()) && (await page.textContent('#erklaerung')).includes('tippe unten die Zahl an') && (await page.textContent('#update-text')) === 'Fassung: mit Zahlen unten',
+    '3 s: „Fassung: mit Zahlen unten“, der Erklärtext wechselt mit');
   await page.click('#zahlwahl button[data-n="5"]');
   await page.waitForTimeout(300);
   ok(await page.isVisible('#zahlen') && await page.isVisible('#los') && await phase(page) === 'warten', 'Spielseite mit Zahlenleiste und „Start“');
@@ -710,7 +738,7 @@ console.log('Fassung umschalten: 3 s auf den Erklärtext der Startseite');
   await page.reload();
   ok(!(await istSagen()), 'Die Wahl bleibt nach dem Neuladen');
   await lange(page, '#erklaerung');
-  ok(await istSagen() && (await page.textContent('#update-text')) === 'Fassung: laut sagen', 'Noch einmal 3 s: wieder „laut sagen“');
+  ok(await istSagen() && (await page.textContent('#update-text')) === 'Fassung: nur Würfel', 'Noch einmal 3 s: wieder „nur Würfel“');
   ok(konsole.length === 0, 'Keine Fehler in der Konsole' + (konsole.length ? ': ' + konsole.join(' | ') : ''));
   await ctx.close();
 }
@@ -756,6 +784,49 @@ console.log('Zahl antippen: auch „Start“ und genau 2 Minuten (Uhr vorgespult
     u = document.querySelector('#uhr').getBoundingClientRect(); return { los: l.bottom, uhr: u.top, uhrUnten: u.bottom, zahlen: z.top }; });
   ok(m.los <= m.uhr && m.uhrUnten <= m.zahlen, '„Nochmal“, Uhr und Zahlenleiste untereinander, nichts überdeckt');
   if (bilder) await page.screenshot({ path: `${bilder}/tippen-ende.png` });
+  ok(konsole.length === 0, 'Keine Fehler in der Konsole' + (konsole.length ? ': ' + konsole.join(' | ') : ''));
+  await ctx.close();
+}
+
+console.log('Gesagte Zahl (nachgestellt, Uhr vorgespult): würfelt von selbst weiter');
+for (const adresse of ['', '?tippen']) {
+  const T0 = new Date('2026-10-17T10:00:00Z').getTime();
+  const { page, konsole, ctx } = await seite(390, 844, false, adresse, p => p.clock.install({ time: T0 }));
+  await page.clock.pauseAt(T0 + 5000);
+  const s = () => page.evaluate(() => ({ phase: window.wuerfelSpiel.phase, zahl: window.wuerfelSpiel.zahl, uhr: window.wuerfelSpiel.uhr,
+    gut: document.body.classList.contains('gut'), falsch: document.body.classList.contains('falsch') }));
+  const sag = k => page.evaluate(k => window.wuerfelSpiel.gesagt(k), k);
+  const name = adresse ? '„mit Zahlen unten“' : '„nur Würfel“';
+  await page.click('#zahlwahl button[data-n="8"]'); await page.clock.runFor(300);
+  await sag(3);
+  ok((await s()).phase === 'warten', `${name}: vor „Start“ zählt nichts`);
+  await page.click('#los');
+  await sag(3);
+  ok((await s()).uhr.versuche === 1 && (await s()).uhr.richtig + (await s()).uhr.falsch === 0, `${name}: während der Würfel rollt, zählt nichts`);
+  await page.clock.runFor(700);
+  let a = await s();
+  await sag(8 - a.zahl);
+  let b = await s();
+  if (!adresse) ok(b.phase === 'rollt' && b.uhr.versuche === 2 && b.uhr.richtig === 1, `${name}: richtige Zahl → zählt „richtig“ und würfelt sofort neu`);
+  else {
+    ok(b.phase === 'geloest' && b.gut && b.uhr.richtig === 1 && (await gleichung(page)) === `${a.zahl}+${8 - a.zahl}=8`, `${name}: richtige Zahl → grün, Lösung steht da`);
+    await page.clock.runFor(1600);
+    ok((await s()).uhr.versuche === 2, `${name}: … nach 1,5 s würfelt er von selbst weiter`);
+  }
+  await page.clock.runFor(700);
+  a = await s();
+  const falsch = (8 - a.zahl + 1) % 9;
+  await sag(falsch);
+  b = await s();
+  if (!adresse) ok(b.phase === 'rollt' && b.uhr.falsch === 1, `${name}: falsche Zahl → zählt „falsch“, würfelt trotzdem weiter`);
+  else {
+    ok(b.falsch && b.phase === 'frage' && b.uhr.falsch === 1, `${name}: falsche Zahl → kurz rot`);
+    await page.clock.runFor(1000);
+    ok((await s()).phase !== 'frage' || (await s()).uhr.versuche === 3, `${name}: … dann geht es trotzdem weiter`);
+  }
+  await page.clock.runFor(120000);
+  await sag(5);
+  ok((await s()).phase === 'aus' && (await s()).uhr.richtig + (await s()).uhr.falsch === 2, `${name}: nach den 2 Minuten zählt nichts mehr`);
   ok(konsole.length === 0, 'Keine Fehler in der Konsole' + (konsole.length ? ': ' + konsole.join(' | ') : ''));
   await ctx.close();
 }

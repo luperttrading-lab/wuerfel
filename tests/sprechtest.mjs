@@ -54,6 +54,29 @@ ok(await page.evaluate(() => window.sprechtest.zahlAus('[unk] fünf') === 5 && w
   'Zahlwort aus dem Text: „ähm fünf“ → 5, Geräusch → nichts, „ein“ → 1');
 if (process.argv[3]) await page.screenshot({ path: process.argv[3] });
 ok(konsole.length === 0, 'Keine Fehler in der Konsole' + (konsole.length ? ': ' + konsole.join(' | ') : ''));
+
+// Im Spiel: Sprechen an (3 s auf 🔊 – hier direkt gespeichert), dann hört die App während der 2 Minuten zu
+for (const fassung of ['sagen', 'tippen']) {
+  console.log(`Spiel mit Sprechen, Fassung „${fassung === 'sagen' ? 'nur Würfel' : 'mit Zahlen unten'}“`);
+  await page.goto(url);
+  await page.evaluate(f => localStorage.setItem('wuerfel.stand', JSON.stringify({ n: 10, sprechen: true, fassung: f })), fassung);
+  await page.goto(url);
+  await page.click('#zahlwahl button[data-n="10"]');
+  await page.waitForFunction(() => window.wuerfelSpiel.sprache.bereit, null, { timeout: 60000 });
+  await page.click('#los');
+  await page.waitForFunction(() => window.wuerfelSpiel.sprache.hoert, null, { timeout: 15000 });
+  await page.waitForTimeout(40000);                       // gut eine Runde der Aufnahme (11 Zahlen, 36 s)
+  const m = await page.evaluate(() => ({ uhr: window.wuerfelSpiel.uhr, p: window.wuerfelSpiel.sprache.protokoll }));
+  const stimmt = m.p.every(x => x.richtig === (x.gesagt === 10 - x.zahl));
+  ok(m.p.length >= 8, `${m.p.length} gesagte Zahlen erkannt (${m.p.map(x => x.gesagt).join(' ')})`);
+  ok(stimmt && m.uhr.richtig === m.p.filter(x => x.richtig).length && m.uhr.falsch === m.p.length - m.uhr.richtig,
+    `Richtig/falsch stimmt bei jeder (Würfel ${m.p.map(x => x.zahl).join(' ')} → ${m.uhr.richtig} richtig, ${m.uhr.falsch} falsch)`);
+  ok(m.uhr.versuche >= m.p.length, `Nach jeder gesagten Zahl ging es von selbst weiter: ${m.uhr.versuche} Würfe ohne Antippen`);
+  if (fassung === 'sagen') ok(m.uhr.versuche === m.p.length + 1 || m.uhr.versuche === m.p.length, '„nur Würfel“: jede Zahl würfelt sofort neu');
+  await page.click('#zurueck');
+  ok(!(await page.evaluate(() => window.wuerfelSpiel.sprache.hoert)), 'Zurück: das Mikrofon ist aus');
+}
+ok(konsole.length === 0, 'Keine Fehler in der Konsole' + (konsole.length ? ': ' + konsole.join(' | ') : ''));
 await browser.close();
 server.close();
 console.log(fehler ? `\n${fehler} Fehler` : '\nAlles grün');

@@ -48,12 +48,15 @@ echten Würfel: jede Zahl 0 … n gleich wahrscheinlich, unabhängig vom vorigen
 Hinterhand: Adresse mit `?tippen`, also https://luperttrading-lab.github.io/wuerfel/?tippen.
 Ohne Tiere steht nichts über dem Würfel.
 
-**Tiere** (Schalter 🐾 auf der Startseite: aus → Sticker → wild & bunt → aus; beim ersten Laden aus, die Wahl wird gespeichert): jede Zahl hat ihr Tier, gewählt nach dem
+**Tiere** – versteckt, für Erwachsene: Beim Laden sind sie immer aus, ohne 🐾 und 💨 in der Kopfzeile.
+**3 Sekunden** auf „Welche Zahl zerlegen wir?“ (oder auf „Würfel“ oben links) drücken schaltet sie an, noch einmal 3 s
+wieder aus. Die Versionsnummer bleibt der Update-Knopf. Sind sie an, erscheint 🐾 und wechselt zwischen Sticker und
+wild & bunt; gemerkt wird nur dieser Satz, nicht ob sie an waren. Jede Zahl hat ihr Tier, gewählt nach dem
 Anlaut des Zahlworts – 4 **V**ogel, 5 **F**rosch, 6 **S**eepferdchen, 7 **S**eestern (7 Arme, einer
 nach oben: 3 + 1 + 3), 8 Oktopus (Ausnahme: *okto* = acht, 8 Arme als 4 + 4), 9 **N**ashorn,
 10 **Z**ebra. Auf der Spielseite sitzt das Tier groß über dem Würfel (freier Platz, bis 62 % der
 Breite bzw. 280 px hoch; das Feld hat die Form des Tiers, breite Tiere werden breit statt klein), die Zahl als Plakette rechts unten daneben („wir sind beim Oktopus, bei der 8“).
-Es hüpft bei jeder richtigen Antwort, nach einer ganzen Runde zweimal. Schalter aus = ohne Tiere.
+Es hüpft bei jeder richtigen Antwort, nach einer ganzen Runde zweimal.
 
 Die Sticker kommen aus einem Bildgenerator, je Tier eine Vorlage (`tiere/quelle/4.jpg` … `10.jpg`,
 ~800–1000 px, aus Bildschirmfotos ausgeschnitten – der Chat-Upload verkleinert breite Bilder,

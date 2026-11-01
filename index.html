@@ -61,7 +61,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 }
 .stand { font-size: 14px; font-weight: 700; color: var(--leise); white-space: nowrap; }
 .ton, .zurueck, .tiere-schalter, .staub-schalter { width: 44px; height: 44px; flex: none; border-radius: 12px; background: var(--wahl); font-size: 22px; }
-.tiere-schalter[aria-pressed="false"], .staub-schalter[aria-pressed="false"] { filter: grayscale(1); opacity: .45; }
+.staub-schalter[aria-pressed="false"] { filter: grayscale(1); opacity: .45; }
 .staub-schalter[aria-pressed="true"] {   /* bunter Staub */
   background: linear-gradient(135deg, #ff6fae, #ffb347 28%, #ffe45c 46%, #5fe0a0 64%, #5ab8ff 82%, #a77bff);
   box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .55); }
@@ -269,7 +269,7 @@ body:not(.sagen) .los-feld { display: none; }
   <header class="kopf">
     <h1>Würfel <span class="version" id="version"></span></h1>
     <button class="staub-schalter" id="staub-schalter" aria-label="Bunter Staub an oder aus" aria-pressed="true">💨</button>
-    <button class="tiere-schalter" id="tiere-schalter" aria-label="Tiere an oder aus" aria-pressed="false">🐾</button>
+    <button class="tiere-schalter" id="tiere-schalter" aria-label="Tiersatz wechseln" hidden>🐾</button>
     <button class="ton" aria-label="Ton an oder aus"></button>
   </header>
   <section class="start">
@@ -310,7 +310,7 @@ body:not(.sagen) .los-feld { display: none; }
 </main>
 
 <script>
-const APP_VERSION = '0.42';          // bei JEDER Änderung hochzählen
+const APP_VERSION = '0.43';          // bei JEDER Änderung hochzählen
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
@@ -322,7 +322,9 @@ const SPEICHER = 'wuerfel.stand';
 const SAGEN = !new URLSearchParams(location.search).has('tippen');   // Standard: Antwort laut sagen; ?tippen: Zahlenleiste
 document.body.classList.toggle('sagen', SAGEN);
 if (SAGEN) document.querySelector('.erklaerung').textContent = 'Drück „Start“ und sag laut, was bis zur gewählten Zahl fehlt – dann tippe auf den Würfel.';
-const stand = { n: 10, ton: true, sterne: 0, tiere: 'aus', staub: true };   // staub: bunter Staub beim Würfeln (💨, nur mit Tieren)   // Tiere zuerst aus; 🐾 schaltet: aus → Sticker → wild
+const stand = { n: 10, ton: true, sterne: 0, tiere: 'aus', satz: 'sticker', staub: true };   // staub: bunter Staub beim Würfeln (💨, nur mit Tieren)
+// Tiere: beim Laden immer aus. An und aus nur versteckt (3 s auf die Überschrift der Startseite); 🐾 wechselt
+// dann zwischen den Sätzen. Gemerkt wird nur der Satz (satz: 'sticker' | 'wild').
 const TIERSAETZE = { aus: 'Ohne Tiere', sticker: 'Tiere: Sticker', wild: 'Tiere: wild & bunt' };
 const STAUB = 4;                    // Staubmenge (Faktor), am Gerät ausprobiert: Maximum
 const STERNE = 60;                  // Sterne bei richtiger Antwort (nach einer ganzen Runde 2,2-mal so viele)
@@ -331,8 +333,7 @@ try {
   if (ZAHLEN.includes(s.n)) stand.n = s.n;
   if (s.ton === false) stand.ton = false;
   if (s.staub === false) stand.staub = false;
-  if (Object.prototype.hasOwnProperty.call(TIERSAETZE, s.tiere)) stand.tiere = s.tiere;
-  else if (s.tiere === true) stand.tiere = 'sticker';           // gespeichert vor v0.29: an/aus
+  if ((s.satz ?? s.tiere) === 'wild') stand.satz = 'wild';     // bis v0.42 hieß der Satz „tiere“
   if (Number.isInteger(s.sterne) && s.sterne >= 0) stand.sterne = s.sterne;
 } catch (_) {}
 function speichereAlles() { try { localStorage.setItem(SPEICHER, JSON.stringify(stand)); } catch (_) {} }
@@ -800,7 +801,7 @@ const tierBild = n => (stand.tiere === 'wild' ? 'tiere/wild/' : 'tiere/') + n + 
 function zeigeTiere() {
   const knopf = $('#tiere-schalter');
   document.body.classList.toggle('mit-tieren', mitTieren());
-  knopf.setAttribute('aria-pressed', String(mitTieren()));
+  knopf.hidden = !mitTieren();                                    // 🐾 nur zu sehen, wenn die Tiere an sind
   knopf.dataset.satz = stand.tiere;
   knopf.setAttribute('aria-label', TIERSAETZE[stand.tiere] + ' – antippen zum Wechseln');
   $('#tier').hidden = !mitTieren();
@@ -1015,19 +1016,28 @@ zahlenEl.addEventListener('click', e => {                                    // 
 });
 $('#zurueck').addEventListener('click', () => { uhrEl.hidden = true; zeigeStart(); });
 losKnopf.addEventListener('click', losgehen);
-// 3 s gedrückt halten (auf „Zerlegen: 9“ oder die runde Zahl am Tier): Uhr und Versuche ein- und ausblenden
-for (const el of [$('#spielseite .titel'), $('#tier-zahl')]) {
-  let halte = null;
-  el.addEventListener('pointerdown', () => {
-    clearTimeout(halte);
-    halte = setTimeout(() => { uhrEl.hidden = !uhrEl.hidden; zeigeUhr(); showInfo(uhrEl.hidden ? 'Uhr aus' : 'Uhr an', 1.6); }, 3000);
-  });
-  for (const ende of ['pointerup', 'pointercancel', 'pointerleave']) el.addEventListener(ende, () => clearTimeout(halte));
-  el.addEventListener('contextmenu', e => e.preventDefault());
+// Versteckte Schalter für Erwachsene: 3 s gedrückt halten
+function halten(els, aktion) {
+  for (const el of els) {
+    let halte = null;
+    el.addEventListener('pointerdown', e => {
+      clearTimeout(halte);
+      if (!e.target.closest('#version')) halte = setTimeout(aktion, 3000);   // die Versionsnummer bleibt der Update-Knopf
+    });
+    for (const ende of ['pointerup', 'pointercancel', 'pointerleave']) el.addEventListener(ende, () => clearTimeout(halte));
+    el.addEventListener('contextmenu', e => e.preventDefault());
+  }
 }
-$('#tiere-schalter').addEventListener('click', e => {
-  const reihe = Object.keys(TIERSAETZE);
-  stand.tiere = reihe[(reihe.indexOf(stand.tiere) + 1) % reihe.length];
+// Spielseite, „Zerlegen: 9“ oder die runde Zahl am Tier: Uhr und Versuche ein- und ausblenden
+halten([$('#spielseite .titel'), $('#tier-zahl')], () => { uhrEl.hidden = !uhrEl.hidden; zeigeUhr(); showInfo(uhrEl.hidden ? 'Uhr aus' : 'Uhr an', 1.6); });
+// Startseite, „Würfel“ oder „Welche Zahl zerlegen wir?“: Tiere an (zuletzt gewählter Satz) und wieder aus
+halten([$('#startseite h1'), $('#startseite h2')], () => {
+  stand.tiere = mitTieren() ? 'aus' : stand.satz;
+  zeigeTiere();
+  showInfo(TIERSAETZE[stand.tiere], 1.6);
+});
+$('#tiere-schalter').addEventListener('click', e => {             // nur sichtbar, wenn Tiere an: Sticker ↔ wild & bunt
+  stand.tiere = stand.satz = stand.tiere === 'wild' ? 'sticker' : 'wild';
   speichereAlles(); zeigeTiere();
   showInfo(TIERSAETZE[stand.tiere], 1.6, e.currentTarget);
 });

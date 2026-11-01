@@ -114,6 +114,9 @@ einmal geladen; entpackt ~95 MB in IndexedDB, danach in 1–2 s bereit). Erlaubt
 Antwortzeit (~0,9 s nach Beginn des Sprechens). Im Testbrowser mit Ersatz-Mikrofon (Computerstimme, Erwachsene)
 20/20 – Kinderstimmen und das echte iPhone-Mikrofon sind noch ungeprüft. `node tests/sprechtest.mjs folge.wav`
 prüft das mit einer eigenen Aufnahme (liegt nicht im Repo). Der Service Worker lässt `sprache/` aus.
+Wichtig fürs iPhone: Das Spiel setzt `navigator.audioSession.type = 'playback'` (Ton trotz Stummschalter); das gilt
+in der Home-Bildschirm-App weiter und sperrt das Mikrofon („AudioSession category is not compatible with audio
+capture“, am Gerät gesehen in v0.51). Vor `getUserMedia` darum `'play-and-record'`.
 
 **Hintergrund**: helles Tiefblau mit Licht in der Mitte (`--grund`); der weiße Würfel hebt sich mit
 gut 4 : 1 ab (vorher Creme: 1,1 : 1). Schrift auf dem Grund ist hell, Zahlfarben auf dem Grund haben

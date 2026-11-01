@@ -196,6 +196,9 @@ async function ladeModell() {
 }
 async function mikrofonAn() {
   $('#los').disabled = true;
+  // Das Spiel stellt die Tonsitzung auf „playback“ (Ton trotz Stummschalter) – damit verweigert iOS das Mikrofon
+  // („AudioSession category is not compatible with audio capture“). Zum Aufnehmen: „play-and-record“.
+  try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch (_) {}
   try {
     strom = await navigator.mediaDevices.getUserMedia({ video: false,
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } });
@@ -239,7 +242,8 @@ async function mikrofonAn() {
 }
 function technik() {
   const app = navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
-  $('#technik').textContent = [app ? 'Home-Bildschirm-App' : 'Browser', tonCtx ? `${tonCtx.sampleRate} Hz` : null,
+  $('#technik').textContent = [app ? 'Home-Bildschirm-App' : 'Browser', navigator.audioSession ? 'Tonsitzung ' + navigator.audioSession.type : null,
+    tonCtx ? `${tonCtx.sampleRate} Hz` : null,
     zustand.ladeZeit != null ? `Modell in ${zustand.ladeZeit.toFixed(1)} s` : null].filter(Boolean).join(' · ');
 }
 

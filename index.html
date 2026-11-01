@@ -249,11 +249,19 @@ body:not(.sagen) .los-feld { display: none; }
 .update.info.an { pointer-events: none; }   /* nur Hinweis, kein Knopf: Tipps gehen durch (z. B. 🐾 mehrmals) */
 .update.unten { top: auto; bottom: max(env(safe-area-inset-bottom), 12px); }
 /* Uhr: 3 s auf „Zerlegen: 9“ (oder die runde Zahl am Tier) drücken – unten erscheinen die laufende Zeit
-   und die Zahl der Versuche (für Erwachsene; das Kind sieht keine Uhr) */
+   und die Zahl der Versuche (für Erwachsene; das Kind sieht keine Uhr). Nach den 2 Minuten steht sie von selbst da. */
 .titel, .tier-zahl { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
-.uhr {                  /* Teil der Seite (kein Overlay): eingeblendet rückt alles zusammen, der Würfel bleibt frei */
-  flex: none; align-self: center; margin: 0; padding: 5px 14px; border-radius: 999px;
-  background: rgba(10, 20, 45, .72); color: #fff; font: 700 15px/1.3 ui-monospace, Menlo, monospace; font-variant-numeric: tabular-nums; }
+.uhr {                  /* ihr Platz ist immer reserviert, sie wird nur unsichtbar: Ein- und Ausblenden verschiebt nichts */
+  flex: none; align-self: center; margin: 0; padding: 4px 16px; border-radius: 999px;
+  background: rgba(10, 20, 45, .3); color: var(--hell);
+  font-size: 17px; font-weight: 700; line-height: 1.4; font-variant-numeric: tabular-nums; }   /* Schrift der App, Ziffern gleich breit */
+.uhr.weg { visibility: hidden; }
+body:not(.sagen) .uhr { display: none; }
+/* 2-Minuten-Linie: wächst am oberen Rand von links nach rechts, in der Farbe der Statusleiste darüber (--bg) –
+   als würde deren Unterkante langsam dicker. Halb = 1 Minute. Wer weiß, wo er hinschaut, sieht sie; das Kind
+   schaut auf den Würfel. Dicke: --linie (1 pt = 3 Bildpunkte am iPhone). */
+.fortschritt { position: fixed; left: 0; right: 0; top: env(safe-area-inset-top, 0px); height: var(--linie, 2px);
+  background: var(--bg); transform: scaleX(0); transform-origin: left; pointer-events: none; z-index: 5; }
 .update .btn { padding: 8px 14px; border-radius: 10px; font-size: 15px; font-weight: 700; background: #06240e; color: #fff; }
 </style>
 </head>
@@ -304,13 +312,14 @@ body:not(.sagen) .los-feld { display: none; }
     <p class="hinweis" id="hinweis"></p>
     <div class="los-feld" id="los-feld"><p class="los-text" id="los-text" aria-live="polite"></p><button class="los" id="los">Start</button></div>
   </section>
-  <p class="uhr" id="uhr" hidden></p>
+  <p class="uhr weg" id="uhr"></p>
+  <div class="fortschritt" id="fortschritt" aria-hidden="true"></div>
   <section class="zahlen ruht" id="zahlen" aria-label="Antwort antippen"></section>
   <div class="lupe" id="lupe" hidden aria-hidden="true"></div>
 </main>
 
 <script>
-const APP_VERSION = '0.43';          // bei JEDER Änderung hochzählen
+const APP_VERSION = '0.44';          // bei JEDER Änderung hochzählen
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
@@ -847,8 +856,8 @@ function zeigeStart() {
 // (Date.now(): läuft auch weiter, wenn das iPhone kurz gesperrt ist). Der Start würfelt gleich das erste Mal.
 // Rollt der Würfel, wenn die Zeit um ist, landet er noch; danach „Die Zeit ist um!“ und „Nochmal“.
 const DAUER = 120000;                                           // ms
-const losFeld = $('#los-feld'), losText = $('#los-text'), losKnopf = $('#los'), uhrEl = $('#uhr');
-let uhr = { start: 0, versuche: 0, laeuft: false, um: false }, uhrTimer = 0, uhrTakt = 0;
+const losFeld = $('#los-feld'), losText = $('#los-text'), losKnopf = $('#los'), uhrEl = $('#uhr'), linieEl = $('#fortschritt');
+let uhr = { start: 0, versuche: 0, laeuft: false, um: false }, uhrTimer = 0, uhrTakt = 0, uhrAn = false;
 const vergangen = () => Math.min(DAUER, uhr.laeuft ? Date.now() - uhr.start : uhr.um ? DAUER : 0);
 function zeigeLos(text, knopf) {                                // knopf leer: Feld unsichtbar, Platz bleibt
   losText.textContent = text;
@@ -856,7 +865,8 @@ function zeigeLos(text, knopf) {                                // knopf leer: F
   losFeld.classList.toggle('weg', !knopf);
 }
 function zeigeUhr() {                                           // versteckte Anzeige: 1:23,4 · 17 Versuche
-  if (uhrEl.hidden) return;
+  linieEl.style.transform = `scaleX(${(vergangen() / DAUER).toFixed(4)})`;
+  uhrEl.classList.toggle('weg', !(uhrAn || uhr.um));            // nach den 2 Minuten immer: wie viele Versuche
   const z = Math.floor(vergangen() / 100), v = uhr.versuche;
   uhrEl.textContent = `${Math.floor(z / 600)}:${String(Math.floor(z / 10) % 60).padStart(2, '0')},${z % 10} · ${v} ${v === 1 ? 'Versuch' : 'Versuche'}`;
 }
@@ -1014,7 +1024,7 @@ zahlenEl.addEventListener('click', e => {                                    // 
   const b = e.target.closest('.zahl');
   if (b && e.detail === 0) antwort(+b.dataset.zahl, b);
 });
-$('#zurueck').addEventListener('click', () => { uhrEl.hidden = true; zeigeStart(); });
+$('#zurueck').addEventListener('click', () => { uhrAn = false; zeigeStart(); });
 losKnopf.addEventListener('click', losgehen);
 // Versteckte Schalter für Erwachsene: 3 s gedrückt halten
 function halten(els, aktion) {
@@ -1029,7 +1039,7 @@ function halten(els, aktion) {
   }
 }
 // Spielseite, „Zerlegen: 9“ oder die runde Zahl am Tier: Uhr und Versuche ein- und ausblenden
-halten([$('#spielseite .titel'), $('#tier-zahl')], () => { uhrEl.hidden = !uhrEl.hidden; zeigeUhr(); showInfo(uhrEl.hidden ? 'Uhr aus' : 'Uhr an', 1.6); });
+halten([$('#spielseite .titel'), $('#tier-zahl')], () => { uhrAn = !uhrAn; zeigeUhr(); showInfo(uhrAn ? 'Uhr an' : 'Uhr aus', 1.6); });
 // Startseite, „Würfel“ oder „Welche Zahl zerlegen wir?“: Tiere an (zuletzt gewählter Satz) und wieder aus
 halten([$('#startseite h1'), $('#startseite h2')], () => {
   stand.tiere = mitTieren() ? 'aus' : stand.satz;

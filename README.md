@@ -79,7 +79,14 @@ und **Nochmal** (neue 2 Minuten). Rollt der Würfel gerade, landet er noch auf s
 nicht mehr; hat ein Timer verschlafen, merkt es der nächste Tipp. Zurück zur Startseite bricht ab.
 Versteckt für Erwachsene: 3 Sekunden auf „Zerlegen: 9“ drücken (mit Tieren auch auf die runde Zahl am Tier) –
 unten erscheint die laufende Uhr mit den Versuchen, z. B. `1:23,4 · 17 Versuche`; ein Versuch ist ein Wurf
-(„Start“ zählt als erster). Noch einmal 3 s drücken blendet sie aus. Geprüft wird die Zeit zweimal: mit
+(„Start“ zählt als erster). Noch einmal 3 s drücken blendet sie aus. Ihr Platz ist immer reserviert,
+Ein- und Ausblenden verschiebt nichts; Schrift der App mit gleich breiten Ziffern. Nach den 2 Minuten steht sie
+von selbst da (`2:00,0 · 23 Versuche`) – zur Auswertung: richtig zählt der Erwachsene, die Versuche die App.
+**Linie für die Zeit:** Am oberen Rand wächst während der 2 Minuten eine 2 pt dünne Linie von links nach rechts,
+in der Farbe des Statusleisten-Streifens darüber (`--bg`, #2b5a98 – am iPhone malt iOS diesen Streifen in
+unserer Grundfarbe, die App beginnt darunter). Sie sieht aus, als würde dessen Unterkante langsam dicker;
+halb = 1 Minute, ganz = um. Ohne Ziffern, ohne Sprünge (3,25 pt pro Sekunde): wer weiß, wo er hinschaut,
+sieht sie, das Kind schaut auf den Würfel. Dicke über `--linie`. Geprüft wird die Zeit zweimal: mit
 vorgespulter Browser-Uhr auf die Millisekunde (119 999 ms läuft, 120 000 ms Schluss) und einmal echt
 2 Minuten lang, von außen gemessen (bisher 119 997 … 120 033 ms, die Spanne ist die Dauer des Klicks).
 Die Fassung `?tippen` hat keinen Start und keine Uhr. (Die Zähl-Statistik aus v0.41 ist wieder raus.)

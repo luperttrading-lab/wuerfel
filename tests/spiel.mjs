@@ -94,9 +94,7 @@ async function echtzeit() {
   }
   await page.waitForFunction(() => window.wuerfelSpiel.phase === 'aus', null, { timeout: 130000 });
   const uhr = await page.evaluate(() => window.wuerfelSpiel.uhr);
-  const r = await page.locator('#spielseite .titel').boundingBox();
-  await page.mouse.move(r.x + 20, r.y + 10); await page.mouse.down(); await page.waitForTimeout(3200); await page.mouse.up();
-  const anzeige = await page.textContent('#uhr');
+  const anzeige = await page.isVisible('#uhr') ? await page.textContent('#uhr') : '(nicht zu sehen)';
   if (bilder) { await page.waitForTimeout(1800); await page.screenshot({ path: `${bilder}/zeit-um.png` }); }
   await ctx.close();
   return { von: gemeldet - nach, bis: gemeldet - vor, uhr, anzeige, konsole };
@@ -522,8 +520,16 @@ console.log('Start und genau 2 Minuten (Uhr des Browsers vorgespult)');
   await page.clock.runFor(300);
   await halten('#spielseite .titel', 1200);
   ok(await page.isHidden('#uhr'), 'Kurz drücken (1,2 s): keine Uhr');
+  const ohneUhr = await lageWuerfel();
   await halten('#spielseite .titel', 3200);
   ok(await page.isVisible('#uhr') && (await page.textContent('#uhr')) === '0:00,0 · 0 Versuche', '3 s auf „Zerlegen: 9“ drücken: Uhr erscheint („0:00,0 · 0 Versuche“)');
+  ok(await lageWuerfel() === ohneUhr, `Uhr ein- und ausblenden verschiebt nichts (Würfel bleibt bei ${ohneUhr} px)`);
+  const schrift = await page.evaluate(() => getComputedStyle(document.querySelector('#uhr')).fontFamily);
+  ok(!/mono|Menlo/i.test(schrift) && schrift.includes('ui-rounded'), `Uhr in der Schrift der App, nicht Schreibmaschine (${schrift.split(',')[0]})`);
+  const linie = () => page.evaluate(() => { const r = document.querySelector('#fortschritt').getBoundingClientRect(), c = getComputedStyle(document.querySelector('#fortschritt'));
+    return { breite: Math.round(r.width), oben: r.top, hoch: r.height, farbe: c.backgroundColor }; });
+  const l0 = await linie();
+  ok(l0.breite === 0, 'Vor dem Start: keine Linie');
   const vorStart = await lageWuerfel();
   await page.click('#wuerfel', { force: true }); await page.clock.runFor(1000);
   ok(await phase(page) === 'warten' && (await uhr()).versuche === 0 && (await page.textContent('#uhr')) === '0:00,0 · 0 Versuche',
@@ -533,6 +539,10 @@ console.log('Start und genau 2 Minuten (Uhr des Browsers vorgespult)');
   ok((await uhr()).start === start && (await uhr()).versuche === 1 && await phase(page) === 'rollt', '„Start“: die Uhr läuft ab diesem Moment, der erste Wurf rollt schon (1 Versuch)');
   await page.clock.runFor(1000);
   ok(await page.isHidden('#los') && await lageWuerfel() === vorStart, 'Knopf weg, der Würfel bleibt, wo er war (nichts springt)');
+  await page.clock.runFor(59000);
+  const l1 = await linie();
+  ok(Math.abs(l1.breite - 195) <= 1 && l1.oben === 0 && l1.hoch === 2 && l1.farbe === 'rgb(43, 90, 152)',
+    `Nach 1 Minute: Linie oben halb über den Bildschirm (${l1.breite} von 390 px, ${l1.hoch} px dick, Farbe der Statusleiste ${l1.farbe})`);
   let wuerfe = 1;
   while ((await uhr()).vergangen + 5000 < 119000) { await page.click('#wuerfel', { force: true }); wuerfe++; await page.clock.runFor(5000); }
   await page.clock.runFor(119000 - (await uhr()).vergangen);
@@ -548,6 +558,7 @@ console.log('Start und genau 2 Minuten (Uhr des Browsers vorgespult)');
   ok((await page.textContent('#los-text')) === 'Die Zeit ist um!' && (await page.textContent('#los')) === 'Nochmal' && await page.isVisible('#los'),
     'Dann: „Die Zeit ist um!“ und „Nochmal“');
   ok((await page.textContent('#uhr')) === `2:00,0 · ${wuerfe} Versuche` && um.versuche === wuerfe, `Uhr: „2:00,0 · ${wuerfe} Versuche“ – jeder Wurf gezählt`);
+  ok((await linie()).breite === 390, 'Nach 2 Minuten: Linie über die ganze Breite');
   await page.click('#wuerfel', { force: true }); await page.clock.runFor(1000);
   ok(await phase(page) === 'aus' && (await uhr()).versuche === wuerfe, 'Danach würfelt der Würfel nicht mehr');
   // Rollt er, wenn die Zeit um ist: er landet noch, dann kommt der Schluss
@@ -728,7 +739,7 @@ console.log('Echtzeit: 2 Minuten mit der echten Uhr (lief parallel zu allem ande
   const e = await echt;
   const ms = x => Math.round(x).toLocaleString('de-DE');
   ok(e.von >= 119950 && e.bis <= 120300, `Von „Start“ bis „Die Zeit ist um!“: ${ms(e.von)} … ${ms(e.bis)} ms von außen gemessen (Soll 120.000)`);
-  ok(e.uhr.versuche === 12 && e.anzeige === '2:00,0 · 12 Versuche', `12 Würfe gezählt, Uhr zeigt „${e.anzeige}“`);
+  ok(e.uhr.versuche === 12 && e.anzeige === '2:00,0 · 12 Versuche', `12 Würfe gezählt; am Ende steht von selbst „${e.anzeige}“ (Uhr war aus)`);
   ok(e.konsole.length === 0, 'Keine Fehler in der Konsole' + (e.konsole.length ? ': ' + e.konsole.join(' | ') : ''));
 }
 

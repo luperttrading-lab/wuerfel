@@ -114,7 +114,10 @@ ein Hinweis, das Spiel läuft normal. Während der 2 Minuten schaltet 🎤 nicht
 kommt nur „Sprechen lässt sich nur vor „Start“ umschalten“. Beim „Start“ geht erst das Mikrofon an, dann rollt der
 erste Wurf (höchstens 2 s warten); die 2 Minuten zählen ab dem ersten Wurf. Grund: Beim Einschalten stellt iOS den Ton
 um, die Seite stand dabei 0,35 s still (20 gleiche Bilder im iPhone-Video) – mitten im ersten Rollen sah das wie
-Stocken aus. 🔊, „Start“/„Nochmal“ und ⓘ lösen nur bei
+Stocken aus. Seit v0.59 gibt es nur EINEN Tonkanal (AudioContext) für Würfelgeräusche und Zuhören, neu angelegt nach
+dem Mikrofon: Am iPhone verstummte ein vorher angelegter Kanal (Tonspur im Video ab 0,4 s digital still), und ihn
+wieder anzuwerfen warf in v0.58 den Zuhör-Kanal ab – Erkennung tot. Ein Wächter nimmt dem 🎤 den grünen Rand, wenn
+1,5 s kein Ton vom Mikrofon kommt, und stößt den Kanal neu an. Am Gerät noch unbestätigt. 🔊, „Start“/„Nochmal“ und ⓘ lösen nur bei
 einem kurzen Tipp aus (Druckdauer unter 1 s, gemessen von pointerdown bis pointerup); v0.56 prüfte das über
 `event.detail`, am iPhone schaltete langes Drücken auf 🔇 dabei auch den Ton ein. Am 🎤 zeigt ein grüner Ring, dass wirklich Ton vom Mikrofon ankommt; kommt
 nach 3 s keiner, nennt ein Hinweis den Zustand von Tonkanal und Mikrofon. v0.54 reagierte am iPhone nicht auf

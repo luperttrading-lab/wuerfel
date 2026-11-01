@@ -465,7 +465,7 @@ body:not(.sagen) .los-feld { position: absolute; inset: 0; justify-content: cent
 </div>
 
 <script>
-const APP_VERSION = '0.58';          // bei JEDER Änderung hochzählen
+const APP_VERSION = '0.59';          // bei JEDER Änderung hochzählen
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
@@ -991,6 +991,7 @@ function zeigeLos(text, knopf) {                                // knopf leer: F
   losFeld.classList.toggle('weg', !knopf);
 }
 function zeigeUhr() {                                           // versteckte Anzeige: 1:23,4 · 17 Versuche
+  if (uhr.laeuft) pruefeMikro();
   linieEl.style.transform = `scaleX(${(vergangen() / DAUER).toFixed(4)})`;
   uhrEl.classList.toggle('weg', !(uhrAn || uhr.um && stand.ende));   // nach den 2 Minuten: wie viele Versuche (abschaltbar)
   const z = Math.floor(vergangen() / 100), v = uhr.versuche;
@@ -1115,7 +1116,8 @@ function antwort(k, btn) {
 const SPRACHMODELL = new URL('sprache/vosk-model-small-de-0.15.tar.gz', location.href).href;   // wie im Sprechtest: einmal geladen, beide nutzen es
 const ZAHLWORT = { null: 0, eins: 1, ein: 1, zwei: 2, zwo: 2, drei: 3, vier: 4, 'fünf': 5, sechs: 6, sieben: 7, acht: 8, neun: 9, zehn: 10 };
 const GRAMMATIK = JSON.stringify([...Object.keys(ZAHLWORT), '[unk]']);   // nur diese Wörter: „eins“ wird nicht zu „hans“
-const sprache = { modell: null, laden: null, ctx: null, strom: null, quelle: null, knoten: null, erkenner: null, hoert: false, wache: 0, protokoll: [] };
+const sprache = { modell: null, laden: null, strom: null, quelle: null, knoten: null, erkenner: null, hoert: false, wache: 0,
+  letzterTon: 0, angestossen: 0, protokoll: [] };
 const zahlAus = text => { const w = text.split(/\s+/).filter(x => x in ZAHLWORT); return w.length ? ZAHLWORT[w[w.length - 1]] : null; };
 function ladeSprache() {                          // vosk.js (5,6 MB) und Modell erst, wenn Sprechen gebraucht wird
   sprache.laden ||= new Promise((ok, fehler) => {
@@ -1137,29 +1139,34 @@ async function mikrofonAn() {
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } });
     if (phase === 'start' || !stand.sprechen) { strom.getTracks().forEach(t => t.stop()); return; }   // inzwischen zurück oder aus
     sprache.strom = strom;
-    sprache.ctx ||= new (window.AudioContext || window.webkitAudioContext)();
-    if (sprache.ctx.state !== 'running') await sprache.ctx.resume();
-    if (ctx && ctx.state !== 'running') ctx.resume();   // Würfelgeräusche: iOS hält sie beim Einschalten des Mikrofons an
+    // EIN Tonkanal für Würfelgeräusche und Zuhören, neu angelegt NACH dem Mikrofon. Am iPhone stellt das Einschalten
+    // des Mikrofons die Abtastrate um: ein vorher angelegter Kanal verstummt (Tonspur im Video ab 0,4 s still), und
+    // ihn wieder anzuwerfen warf den Zuhör-Kanal ab (v0.58 erkannte nichts mehr). Mit nur einem Kanal stört nichts.
+    try { ctx?.close(); } catch (_) {}
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    rauschen = null;                              // Luftzug neu für den neuen Kanal
+    if (ctx.state !== 'running') await ctx.resume();
     await ladeSprache();
     if (sprache.strom !== strom) return;          // inzwischen ausgeschaltet
-    const erkenner = sprache.erkenner = new sprache.modell.KaldiRecognizer(sprache.ctx.sampleRate, GRAMMATIK);
+    const erkenner = sprache.erkenner = new sprache.modell.KaldiRecognizer(ctx.sampleRate, GRAMMATIK);
     erkenner.on('result', m => { const z = zahlAus(m.result.text || ''); if (z !== null) gesagt(z); });
-    sprache.quelle = sprache.ctx.createMediaStreamSource(strom);
-    sprache.knoten = sprache.ctx.createScriptProcessor(4096, 1, 1);
+    sprache.quelle = ctx.createMediaStreamSource(strom);
+    sprache.knoten = ctx.createScriptProcessor(4096, 1, 1);
     let tonDa;
     const ersterTon = new Promise(r => { tonDa = r; });
     sprache.knoten.onaudioprocess = ev => {
+      sprache.letzterTon = performance.now();
       if (!sprache.hoert) { sprache.hoert = true; zeigeMikro(); tonDa(); }   // 🎤 wird grün: Ton kommt an
       try { erkenner.acceptWaveform(ev.inputBuffer); } catch (_) {}
     };
     sprache.quelle.connect(sprache.knoten);
-    sprache.knoten.connect(sprache.ctx.destination);   // Safari ruft onaudioprocess nur auf, wenn der Knoten angeschlossen ist
+    sprache.knoten.connect(ctx.destination);      // Safari ruft onaudioprocess nur auf, wenn der Knoten angeschlossen ist
     await Promise.race([ersterTon, new Promise(r => setTimeout(r, 1000))]);
     clearTimeout(sprache.wache);
     sprache.wache = setTimeout(() => {            // nach 3 s noch kein Ton: sagen, woran es hängt
       if (sprache.strom === strom && !sprache.hoert) {
-        sprache.ctx.resume();
-        showInfo(`Sprechen: kein Ton vom Mikrofon (Tonkanal ${sprache.ctx.state}, Mikrofon ${strom.getAudioTracks()[0]?.readyState})`, 8);
+        ctx.resume();
+        showInfo(`Sprechen: kein Ton vom Mikrofon (Tonkanal ${ctx.state}, Mikrofon ${strom.getAudioTracks()[0]?.readyState})`, 8);
       }
     }, 3000);
   } catch (err) {
@@ -1168,6 +1175,13 @@ async function mikrofonAn() {
     showInfo(err?.name === 'NotAllowedError' ? 'Mikrofon nicht erlaubt – Sprechen geht nicht'
       : 'Sprechen geht nicht: ' + (err?.message || err?.name || err), 8);
   }
+}
+// Wächter (läuft mit der Uhr alle 0,1 s): kommt 1,5 s lang kein Ton vom Mikrofon, verliert das 🎤 seinen grünen Rand,
+// und der Tonkanal wird neu angestoßen (höchstens alle 1,5 s)
+function pruefeMikro() {
+  if (!sprache.erkenner || performance.now() - sprache.letzterTon < 1500) return;
+  if (sprache.hoert) { sprache.hoert = false; zeigeMikro(); }
+  if (performance.now() - sprache.angestossen > 1500) { sprache.angestossen = performance.now(); ctx?.resume(); }
 }
 function mikrofonAus() {
   clearTimeout(sprache.wache);
@@ -1422,7 +1436,8 @@ window.wuerfelSpiel = {
   get zahl() { return zahl; }, get phase() { return phase; },
   get staub() { return koerner.length; }, bewegung, ROLLZEIT, AUFPRALL, get umgesprungen() { return umgesprungen; },
   DAUER, get uhr() { return { ...uhr, vergangen: vergangen() }; },
-  get sprache() { return { bereit: !!sprache.modell, hoert: sprache.hoert, protokoll: sprache.protokoll.slice() }; }, zahlAus, gesagt,
+  get sprache() { return { bereit: !!sprache.modell, hoert: sprache.hoert, protokoll: sprache.protokoll.slice(),
+    einKanal: !!sprache.quelle && sprache.quelle.context === ctx && (!stand.ton || audio() === ctx) }; }, zahlAus, gesagt,
   get sterne() { return funken.length; },
   get seiten() { return Object.fromEntries(Object.keys(seiten).map(k => [k, seiten[k].el.textContent])); },
 };

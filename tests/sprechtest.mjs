@@ -66,6 +66,7 @@ for (const fassung of ['sagen', 'tippen']) {
   await page.click('#los');
   await page.waitForFunction(() => window.wuerfelSpiel.phase === 'rollt', null, { timeout: 15000 });
   ok(await page.evaluate(() => window.wuerfelSpiel.sprache.hoert), 'Erst das Mikrofon, dann der erste Wurf: beim ersten Rollen kommt schon Ton an');
+  ok(await page.evaluate(() => window.wuerfelSpiel.sprache.einKanal), 'Ein Tonkanal für Würfelgeräusche und Zuhören (nach dem Mikrofon angelegt)');
   await page.waitForFunction(() => window.wuerfelSpiel.sprache.hoert, null, { timeout: 15000 });
   await page.waitForTimeout(40000);                       // gut eine Runde der Aufnahme (11 Zahlen, 36 s)
   const m = await page.evaluate(() => ({ uhr: window.wuerfelSpiel.uhr, p: window.wuerfelSpiel.sprache.protokoll }));

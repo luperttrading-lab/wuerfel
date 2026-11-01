@@ -319,7 +319,7 @@ body:not(.sagen) .uhr { display: none; }
 </main>
 
 <script>
-const APP_VERSION = '0.46';          // bei JEDER Änderung hochzählen
+const APP_VERSION = '0.47';          // bei JEDER Änderung hochzählen
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
@@ -1026,7 +1026,14 @@ zahlenEl.addEventListener('click', e => {                                    // 
   if (b && e.detail === 0) antwort(+b.dataset.zahl, b);
 });
 $('#zurueck').addEventListener('click', () => { uhrAn = false; zeigeStart(); });
-losKnopf.addEventListener('click', losgehen);
+// „Start“/„Nochmal“: nur ein normaler Tipp (unter 1 s losgelassen) startet. Wer länger drückt, startet nichts –
+// ab 3 s schaltet er die Anzeige am Ende um (siehe unten), ohne dass beim Loslassen eine Runde beginnt.
+let losDruck = 0;
+losKnopf.addEventListener('pointerdown', () => { losDruck = performance.now(); });
+losKnopf.addEventListener('click', e => {
+  if (e.detail && performance.now() - losDruck > 1000) return;   // e.detail 0: Tastatur, startet immer
+  losgehen();
+});
 // Versteckte Schalter für Erwachsene: 3 s gedrückt halten
 function halten(els, aktion) {
   for (const el of els) {
@@ -1040,11 +1047,12 @@ function halten(els, aktion) {
   }
 }
 // Spielseite, „Zerlegen: 9“ oder die runde Zahl am Tier: Uhr und Versuche ein- und ausblenden
-halten([$('#spielseite .titel'), $('#tier-zahl')], () => { uhrAn = !uhrAn; zeigeUhr(); showInfo(uhrAn ? 'Uhr an' : 'Uhr aus', 1.6); });
-// „Die Zeit ist um!“: Zeit und Versuche am Ende zeigen oder nicht (gespeichert)
-halten([losText], () => {
+const SCHALTER_HINWEIS = 3.6;                                    // s: so lange stehen „Uhr an/aus“ und „Versuche am Ende: an/aus“
+halten([$('#spielseite .titel'), $('#tier-zahl')], () => { uhrAn = !uhrAn; zeigeUhr(); showInfo(uhrAn ? 'Uhr an' : 'Uhr aus', SCHALTER_HINWEIS); });
+// „Die Zeit ist um!“ oder „Nochmal“: Zeit und Versuche am Ende zeigen oder nicht (gespeichert)
+halten([losText, losKnopf], () => {
   stand.ende = !stand.ende; speichereAlles(); zeigeUhr();
-  showInfo(stand.ende ? 'Versuche am Ende: an' : 'Versuche am Ende: aus', 1.6);
+  showInfo(stand.ende ? 'Versuche am Ende: an' : 'Versuche am Ende: aus', SCHALTER_HINWEIS);
 });
 // Startseite, „Würfel“ oder „Welche Zahl zerlegen wir?“: Tiere an (zuletzt gewählter Satz) und wieder aus
 halten([$('#startseite h1'), $('#startseite h2')], () => {

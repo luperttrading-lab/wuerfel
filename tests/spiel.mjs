@@ -569,6 +569,18 @@ console.log('Start und genau 2 Minuten (Uhr des Browsers vorgespult)');
     && await page.evaluate(() => JSON.parse(localStorage.getItem('wuerfel.stand')).ende === false), '3 s auf „Die Zeit ist um!“: am Ende keine Anzeige mehr (gespeichert)');
   await halten('#los-text', 3200);
   ok(await page.isVisible('#uhr') && (await page.textContent('#update-text')) === 'Versuche am Ende: an', 'Noch einmal 3 s: wieder an');
+  const hinweisDa = () => page.evaluate(() => document.querySelector('#update').classList.contains('an'));
+  await halten('#los', 3200);
+  ok(await phase(page) === 'aus' && (await uhr()).versuche === wuerfe && await page.isHidden('#uhr') && (await page.textContent('#update-text')) === 'Versuche am Ende: aus',
+    '3 s auf „Nochmal“: schaltet genauso um und startet keine neue Runde');
+  await page.clock.runFor(3000);
+  const nochDa = await hinweisDa();
+  await page.clock.runFor(1000);
+  ok(nochDa && !(await hinweisDa()), 'Der Hinweis steht 3,6 s (nach 3,3 s noch da, nach 4,3 s weg)');
+  await halten('#los', 1500);
+  ok(await phase(page) === 'aus' && await page.isHidden('#uhr'), '1,5 s auf „Nochmal“: weder neue Runde noch Umschalten');
+  await halten('#los', 3200);
+  ok(await phase(page) === 'aus' && await page.isVisible('#uhr'), 'Noch einmal 3 s auf „Nochmal“: Anzeige wieder an, immer noch keine neue Runde');
   await halten('#spielseite .titel', 3200);                         // Uhr wieder an
   // Rollt er, wenn die Zeit um ist: er landet noch, dann kommt der Schluss
   await page.click('#los');

@@ -82,8 +82,10 @@ unten erscheint die laufende Uhr mit den Versuchen, z. B. `1:23,4 · 17 Versuche
 („Start“ zählt als erster). Noch einmal 3 s drücken blendet sie aus. Ihr Platz ist immer reserviert,
 Ein- und Ausblenden verschiebt nichts; Schrift der App mit gleich breiten Ziffern. Nach den 2 Minuten steht sie
 von selbst da (`2:00,0 · 23 Versuche`) – zur Auswertung: richtig zählt der Erwachsene, die Versuche die App.
-Abschalten: am Ende 3 s auf „Die Zeit ist um!“ drücken („Versuche am Ende: aus“, gespeichert), noch einmal 3 s
-schaltet sie wieder an. Ist die Uhr an, steht sie am Ende ohnehin da.
+Abschalten: am Ende 3 s auf „Die Zeit ist um!“ oder auf „Nochmal“ drücken („Versuche am Ende: aus“, gespeichert),
+noch einmal 3 s schaltet sie wieder an. Ist die Uhr an, steht sie am Ende ohnehin da. „Start“/„Nochmal“ startet
+nur bei einem normalen Tipp (unter 1 s losgelassen); länger gedrückt startet nichts. Die Hinweise „Uhr an/aus“
+und „Versuche am Ende: an/aus“ stehen 3,6 s (`SCHALTER_HINWEIS`).
 **Linie für die Zeit:** Am oberen Rand wächst während der 2 Minuten eine 3 pt dünne Linie von links nach rechts,
 in der Farbe des Statusleisten-Streifens darüber (`--bg`, #2b5a98 – am iPhone malt iOS diesen Streifen in
 unserer Grundfarbe, die App beginnt darunter). Sie sieht aus, als würde dessen Unterkante langsam dicker;

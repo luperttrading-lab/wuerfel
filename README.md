@@ -31,11 +31,11 @@ Lernspiel fürs Handy, damit sich die Zerlegungen der Zahlen 4 bis 10 als **Ziff
    Loslassen. Immer Bernstein mit dunkler Schrift (Kontrast ≈ 8,6 : 1), in jedem Zustand gleich;
    wer vor dem Würfeln tippt, bekommt „Erst würfeln!“.
    Richtig → grün, Fanfare, `3 + 5 = 8`, aus der eingesetzten Zahl steigt eine Fontäne goldener
-   Sterne (60, nach einer ganzen Runde 132). Falsch → rot, tiefer Ton, nochmal versuchen.
+   Sterne (60). Falsch → rot, tiefer Ton, nochmal versuchen.
    Kein Punktestand auf dem Bildschirm – Üben ohne Druck. Die App zählt richtige Antworten nur still
    mit (`stand.sterne`), als Grundlage, falls später eine Auswertung dazukommt.
 5. Danach zeigt der Würfel wieder die 8; die gelöste Gleichung bleibt zum Einprägen stehen,
-   bis zum nächsten Antippen. Vor der ersten Aufgabe steht nur „Tippe auf den Würfel!“.
+   bis zum nächsten Antippen; dann „Tippe auf den Würfel!“. Vor dem ersten Wurf steht unter dem Würfel „Start“.
    Wird 2 s lang nicht getippt, wechselt dieser Hinweis sanft die Farbe (Schwarz ↔ Lila der Würfelzahl,
    alle 1,8 s) – auch bei „Bewegung reduzieren“, denn Farbe ist keine Bewegung.
 
@@ -43,9 +43,12 @@ Lernspiel fürs Handy, damit sich die Zerlegungen der Zahlen 4 bis 10 als **Ziff
 Unter dem Würfel „Bereit?“ und **Start**: ab dann laufen genau 2 Minuten, der erste Wurf rollt gleich mit.
 Antippen würfelt, das Kind sagt laut, was bis n fehlt, Antippen würfelt weiter. Gewürfelt wird wie mit einem
 echten Würfel: jede Zahl 0 … n gleich wahrscheinlich, unabhängig vom vorigen Wurf – Doppelte kommen vor
-(bei n = 9 jeder zehnte Wurf), und eine Zerlegung kann auch länger ausbleiben. Die Fassung **Antippen**
-(Zahlenleiste, Gleichung, Lupe, richtig/falsch, Runden mit jeder Zerlegung genau einmal) liegt in der
-Hinterhand: Adresse mit `?tippen`, also https://luperttrading-lab.github.io/wuerfel/?tippen.
+(bei n = 9 jeder zehnte Wurf), und eine Zerlegung kann auch länger ausbleiben. Die zweite Fassung **Zahl
+antippen** (Zahlenleiste, Gleichung, Lupe, richtig/falsch) hat ebenfalls „Start“, 2 Minuten, Zeitlinie, Uhr und
+Versuche am Ende; „Start“ und „Nochmal“ liegen dort über Gleichung und Hinweis, nichts verschiebt sich.
+**Umschalten:** 3 s auf den Erklärtext unter den Zahlen der Startseite („Fassung: Zahl antippen“ bzw. „laut
+sagen“, gespeichert); der Erklärtext zeigt, welche Fassung an ist. Die alte Adresse `…/?tippen` schaltet auch
+noch um. Bis v0.48 zog „Antippen“ in Runden („0/10“, jede Zerlegung genau einmal) – das ist raus.
 Ohne Tiere steht nichts über dem Würfel.
 
 **Tiere** – versteckt, für Erwachsene: Beim Laden sind sie immer aus, ohne 🐾 und 💨 in der Kopfzeile.
@@ -56,7 +59,7 @@ Anlaut des Zahlworts – 4 **V**ogel, 5 **F**rosch, 6 **S**eepferdchen, 7 **S**e
 nach oben: 3 + 1 + 3), 8 Oktopus (Ausnahme: *okto* = acht, 8 Arme als 4 + 4), 9 **N**ashorn,
 10 **Z**ebra. Auf der Spielseite sitzt das Tier groß über dem Würfel (freier Platz, bis 62 % der
 Breite bzw. 280 px hoch; das Feld hat die Form des Tiers, breite Tiere werden breit statt klein), die Zahl als Plakette rechts unten daneben („wir sind beim Oktopus, bei der 8“).
-Es hüpft bei jeder richtigen Antwort, nach einer ganzen Runde zweimal.
+Es hüpft bei jeder richtigen Antwort.
 
 Die Sticker kommen aus einem Bildgenerator, je Tier eine Vorlage (`tiere/quelle/4.jpg` … `10.jpg`,
 ~800–1000 px, aus Bildschirmfotos ausgeschnitten – der Chat-Upload verkleinert breite Bilder,
@@ -94,11 +97,12 @@ sieht sie, das Kind schaut auf den Würfel. Dicke: in v0.45 am Gerät mit 1/2/3 
 (evtl. später 2 pt; `height` von `.fortschritt`). Geprüft wird die Zeit zweimal: mit
 vorgespulter Browser-Uhr auf die Millisekunde (119 999 ms läuft, 120 000 ms Schluss) und einmal echt
 2 Minuten lang: in der Seite 120 002–120 003 ms, von außen (Uhr von Node) ein Fenster um 120 000 ms, so breit wie der Klick dauert.
-Die Fassung `?tippen` hat keinen Start und keine Uhr. (Die Zähl-Statistik aus v0.41 ist wieder raus.)
+(Die Zähl-Statistik aus v0.41 ist wieder raus.) In „Zahl antippen“ ist unter dem Würfel Platz für „Start“ und
+die Uhr reserviert; auf kleinen iPhones wird das Tier dort kleiner (375 × 667: 155 px, 320 × 568: 78 px).
 
 **Hilfe (ⓘ)**: oben auf der Startseite ein dezentes ⓘ. 3 s drücken öffnet „Geheime Schalter“: zu jedem Schalter
 ein Mini-Bildschirm mit pulsierendem Ring, wo man drückt („3 s“ oder „tippen“), daneben die Erklärung und was
-gerade eingestellt ist (Tiere, Staub, Versuche am Ende). Kurz tippen öffnet nichts, zeigt nur „Für Erwachsene:
+gerade eingestellt ist (Tiere, Staub, Versuche am Ende, Fassung). Kurz tippen öffnet nichts, zeigt nur „Für Erwachsene:
 3 Sekunden drücken“. Schließen mit ✕, daneben tippen oder Esc; der Inhalt scrollt (sonst ist Wischen gesperrt).
 
 **Hintergrund**: helles Tiefblau mit Licht in der Mitte (`--grund`); der weiße Würfel hebt sich mit
@@ -111,12 +115,11 @@ in sechs kräftigen Farben, die beim Wirbeln aus dem Würfel stieben. Ohne Tiere
 einziges Korn. Die Wahl wird gespeichert.
 
 **Effekte** (am Gerät mit Reglern ausprobiert, dann fest eingestellt): Staub 4× (`STAUB`), 60 Sterne
-bei jeder richtigen Antwort, 132 nach einer ganzen Runde (`STERNE`).
+bei jeder richtigen Antwort, 132 wenn die 2 Minuten um sind (`STERNE`).
 
-**Zufall:** Gezogen wird **ohne Zurücklegen**: Jede Zerlegung 0 + n … n + 0 kommt pro Runde
-genau einmal (bei 10: 11 Würfe statt im Mittel 11 · H₁₁ ≈ 33,2 mit einem echten Würfel), danach
-„Alle Zerlegungen geschafft!“ und eine neue Runde. Die erste Zahl einer Runde ist nie die letzte
-der vorigen.
+**Zufall:** In beiden Fassungen wie mit einem echten Würfel – jede Zahl 0 … n gleich wahrscheinlich
+(`crypto.getRandomValues`, Verwerfungsmethode), unabhängig vom vorigen Wurf. Bis v0.48 zog „Antippen“ ohne
+Zurücklegen (jede Zerlegung genau einmal pro Runde).
 
 ## Dateien
 

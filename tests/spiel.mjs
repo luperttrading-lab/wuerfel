@@ -69,7 +69,7 @@ async function lange(page, sel, ms = 3200, uhr = false) {
 const tiereSchalten = (page, uhr = false) => lange(page, '#startseite h2', 3200, uhr);   // Tiere an bzw. aus
 // Würfel antippen und warten, bis er liegt (rollt 2 s); force, weil Playwright sonst auf Stillstand wartet
 async function wuerfle(page) {
-  await page.click('#wuerfel', { force: true });
+  await tippe(page);                                   // vor dem ersten Wurf „Start“
   await page.waitForFunction(() => window.wuerfelSpiel.phase === 'frage', null, { timeout: 4000 });
   return page.evaluate(() => window.wuerfelSpiel.zahl);
 }
@@ -118,33 +118,28 @@ console.log('Startseite');
   await page.click('#zahlwahl button[data-n="8"]');
   ok(await page.isVisible('#spielseite') && await page.isHidden('#startseite'), 'Nach der Wahl: Spielseite');
   ok(await page.locator('.zahl').count() === 9, 'Zerlegen der 8: Knöpfe 0–8');
-  ok(await phase(page) === 'bereit', 'Würfel wartet');
+  ok(await phase(page) === 'warten' && await page.isVisible('#los') && (await page.textContent('#los')) === 'Start', 'Würfel wartet, darunter „Start“');
   ok(await page.locator('#koerper .flaeche').count() === 6, 'Würfel hat sechs Seiten');
   RUHELAGE = await lage(page);
   ok(RUHELAGE.includes('rotateX(-10deg) rotateY(-12deg)') && /scale\(1(\.0+)?\)/.test(RUHELAGE), 'Ruhelage fast von vorn (10° / 12°), volle Größe');
   const ruhe = new Set(), lagen = new Set();
   for (let i = 0; i < 8; i++) { ruhe.add(await page.textContent('#augenzahl')); lagen.add(await lage(page)); await page.waitForTimeout(80); }
   ok(ruhe.size === 1 && ruhe.has('8') && lagen.size === 1 && lagen.has(RUHELAGE), 'In Ruhe liegt er still und schräg, vorne die 8');
-  ok(!(await sichtbar(page, '#gleichung')) && (await page.textContent('#hinweis')).includes('Tippe auf den Würfel'),
-    'Vor der ersten Aufgabe: keine Gleichung, nur „Tippe auf den Würfel!“');
+  ok(!(await sichtbar(page, '#gleichung')) && (await page.textContent('#hinweis')) === '' && await page.locator('#stand').count() === 0,
+    'Vor dem Start: keine Gleichung, kein Hinweis, kein Zähler („0/9“ gibt es nicht mehr)');
   if (bilder) await page.screenshot({ path: `${bilder}/1-bereit.png` });
   const wuerfelOben = await page.evaluate(() => document.querySelector('#wuerfel').getBoundingClientRect().top);
 
-  // Leiser Hinweis: erst nach 2 s beginnt „Tippe auf den Würfel!“ die Farbe zu wechseln
-  ok(!(await page.evaluate(() => document.querySelector('#hinweis').classList.contains('lockt'))), 'Hinweis anfangs ruhig');
-  await page.waitForTimeout(2200);
-  const farben = new Set();
-  for (let i = 0; i < 6; i++) { farben.add(await page.evaluate(() => getComputedStyle(document.querySelector('#hinweis')).color)); await page.waitForTimeout(150); }
-  ok(await page.evaluate(() => document.querySelector('#hinweis').classList.contains('lockt')) && farben.size >= 3,
-    `Nach 2 s wechselt der Hinweis sanft die Farbe (${farben.size} Farbtöne gesehen)`);
   const farbeVorher = await page.evaluate(() => getComputedStyle(document.querySelector('.zahl')).backgroundColor);
   await page.click('.zahl[data-zahl="4"]');
-  ok(await phase(page) === 'bereit', 'Zahl antippen vor dem Würfeln zählt nicht');
-  ok((await page.textContent('#hinweis')).includes('Erst würfeln'), 'Stattdessen der Hinweis „Erst würfeln!“');
+  ok(await phase(page) === 'warten' && await page.evaluate(() => document.querySelector('#los').classList.contains('stups')),
+    'Zahl antippen vor dem Start zählt nicht – „Start“ wackelt');
+  await page.click('#wuerfel', { force: true });
+  ok(await phase(page) === 'warten', 'Würfel antippen vor dem Start: würfelt nicht');
 
   const t0 = Date.now();
-  await page.click('#wuerfel', { force: true });
-  ok(await phase(page) === 'rollt', 'Antippen: Würfel rollt');
+  await page.click('#los', { force: true });          // nicht warten, bis „Start“ ausgewackelt hat
+  ok(await phase(page) === 'rollt', '„Start“: Würfel rollt');
   ok(!(await page.evaluate(() => document.querySelector('#hinweis').classList.contains('lockt'))), 'Beim Würfeln hört der Hinweis auf');
   // Im Browser Bild für Bild mitschreiben – kurze Momente wie das Stauchen (≈ 0,1 s) entgehen sonst der Abtastung
   await page.evaluate(() => {
@@ -283,6 +278,16 @@ console.log('Startseite');
   ok(Math.abs(wuerfelSpaeter - wuerfelOben) < 1, `Würfel bleibt an seinem Platz (${wuerfelOben.toFixed(1)} → ${wuerfelSpaeter.toFixed(1)} px)`);
   ok(await gleichung(page) === `${k}+${8 - k}=8` && await sichtbar(page, '#gleichung'), 'Die gelöste Gleichung bleibt stehen');
   if (bilder) await page.screenshot({ path: `${bilder}/5-wieder-bereit.png` });
+  // Leiser Hinweis: erst nach 2 s beginnt „Tippe auf den Würfel!“ die Farbe zu wechseln
+  ok((await page.textContent('#hinweis')) === 'Tippe auf den Würfel!' && !(await page.evaluate(() => document.querySelector('#hinweis').classList.contains('lockt'))),
+    'Danach „Tippe auf den Würfel!“, anfangs ruhig');
+  await page.waitForTimeout(2200);
+  const farben = new Set();
+  for (let i = 0; i < 6; i++) { farben.add(await page.evaluate(() => getComputedStyle(document.querySelector('#hinweis')).color)); await page.waitForTimeout(150); }
+  ok(await page.evaluate(() => document.querySelector('#hinweis').classList.contains('lockt')) && farben.size >= 3,
+    `Nach 2 s wechselt der Hinweis sanft die Farbe (${farben.size} Farbtöne gesehen)`);
+  await page.click('.zahl[data-zahl="4"]');
+  ok(await phase(page) === 'bereit' && (await page.textContent('#hinweis')).includes('Erst würfeln'), 'Zahl antippen vor dem nächsten Wurf zählt nicht – „Erst würfeln!“');
 
   await page.click('#zurueck');
   ok(await page.isVisible('#startseite'), 'Zurück-Knopf führt zur Startseite');
@@ -347,7 +352,8 @@ console.log('Tiere (versteckt: 3 s auf die Überschrift der Startseite)');
     ok(!zugedeckt.length, `${w} px, ${satz}: Zahlplakette verdeckt bei keinem der 7 Tiere etwas und bleibt im Bild` + (zugedeckt.length ? ' – ' + zugedeckt.join(', ') : ''));
   }
   await page.evaluate(() => { window.wuerfelSpiel.stand.tiere = 'sticker'; window.wuerfelSpiel.starteSpiel(7); });
-  for (const [w, h, min] of [[320, 568, 135], [375, 667, 205], [390, 844, 235], [430, 932, 260]]) {
+  // „Zahl antippen“ hält unter dem Würfel Platz für „Start“ und Uhr frei: auf kleinen iPhones wird das Tier kleiner
+  for (const [w, h, min] of [[320, 568, 70], [375, 667, 150], [390, 844, 235], [430, 932, 260]]) {
     await page.setViewportSize({ width: w, height: h });
     const m = await page.evaluate(() => {
       const r = s => document.querySelector(s).getBoundingClientRect();
@@ -413,12 +419,14 @@ console.log('Hilfe: 3 s auf ⓘ erklärt die geheimen Schalter');
   ok(await page.isHidden('#hilfe'), '1,2 s drücken: Hilfe bleibt zu');
   await lange(page, '#info-knopf');
   const titel = await page.evaluate(() => [...document.querySelectorAll('#hilfe h3')].map(h => h.firstChild.textContent.trim()));
-  ok(await page.isVisible('#hilfe') && ['Tiere an / aus', 'Uhr an / aus', 'Versuche am Ende an / aus', 'Zeitlinie oben', 'Diese Hilfe und Updates'].every(t => titel.includes(t)),
+  ok(await page.isVisible('#hilfe') && ['Tiere an / aus', 'Uhr an / aus', 'Versuche am Ende an / aus', 'Zeitlinie oben', 'Diese Hilfe und Updates', 'Laut sagen oder Zahl antippen'].every(t => titel.includes(t))
+    && !(await page.textContent('#hilfe')).includes('Safari'),
     `3 s drücken: Hilfe offen (${titel.length} Punkte: ${titel.join(' · ')})`);
-  ok(await page.evaluate(() => document.querySelectorAll('#hilfe .mini').length === 6 && document.querySelectorAll('#hilfe .mini .ziel').length >= 6),
+  ok(await page.evaluate(() => document.querySelectorAll('#hilfe .mini').length === 7 && document.querySelectorAll('#hilfe .mini .ziel').length >= 7),
     'Zu jedem Schalter ein Mini-Bildschirm mit Ring, wo man drückt');
-  ok((await page.textContent('#jetzt-tiere')) === 'jetzt aus' && (await page.textContent('#jetzt-ende')) === 'jetzt an' && (await page.textContent('#mini-version')) === (await page.textContent('#version')),
-    'Zeigt, was gerade eingestellt ist (Tiere aus, Versuche am Ende an) und die echte Versionsnummer');
+  ok((await page.textContent('#jetzt-tiere')) === 'jetzt aus' && (await page.textContent('#jetzt-ende')) === 'jetzt an' && (await page.textContent('#jetzt-fassung')) === 'jetzt: laut sagen'
+    && (await page.textContent('#mini-version')) === (await page.textContent('#version')),
+    'Zeigt, was gerade eingestellt ist (Tiere aus, Versuche am Ende an, laut sagen) und die echte Versionsnummer');
   ok(await page.isHidden('#tiere-schalter') && !(await page.evaluate(() => document.querySelector('#update').classList.contains('an'))),
     'Langes Drücken auf ⓘ schaltet keine Tiere und zeigt keinen Tipp-Hinweis');
   await page.click('#hilfe-zu');
@@ -447,7 +455,7 @@ console.log('Sagen (Standard): nur würfeln, die Antwort laut sagen');
   ok(await page.evaluate(() => document.body.classList.contains('sagen')), 'Ohne ?tippen: Sagen-Fassung');
   await page.click('#zahlwahl button[data-n="4"]');
   await page.waitForTimeout(300);
-  ok(await page.isHidden('#zahlen') && await page.isHidden('#gleichung') && await page.isHidden('#hinweis') && await page.isHidden('#stand'),
+  ok(await page.isHidden('#zahlen') && await page.isHidden('#gleichung') && await page.isHidden('#hinweis') && await page.locator('#stand').count() === 0,
     'Nur der Würfel: keine Zahlenleiste, keine Gleichung, kein Text darunter, kein Zähler');
   ok(await page.isHidden('#tier'), 'Ohne Tiere: nichts über dem Würfel');
   ok(await page.isVisible('#los') && (await page.textContent('#los')) === 'Start' && (await page.textContent('#los-text')) === 'Bereit?',
@@ -669,39 +677,69 @@ console.log('Start und genau 2 Minuten (Uhr des Browsers vorgespult)');
   ok(konsole.length === 0, 'Keine Fehler in der Konsole' + (konsole.length ? ': ' + konsole.join(' | ') : ''));
   await ctx.close();
 }
+console.log('Fassung umschalten: 3 s auf den Erklärtext der Startseite');
 {
-  const t = await seite(390, 844);                        // ?tippen: ohne Start und ohne Uhr, wie bisher
-  await t.page.click('#zahlwahl button[data-n="9"]');
-  ok(await t.page.isHidden('#los-feld') && await phase(t.page) === 'bereit', '?tippen: kein „Start“, der Würfel ist gleich bereit');
-  await t.ctx.close();
+  const { page, konsole, ctx } = await seite(390, 844, false, '');
+  const istSagen = () => page.evaluate(() => document.body.classList.contains('sagen'));
+  ok(await istSagen() && (await page.textContent('#erklaerung')).includes('sag laut'), 'Anfangs „laut sagen“ – der Erklärtext sagt es');
+  await lange(page, '#erklaerung', 1200);
+  ok(await istSagen(), 'Kurz drücken (1,2 s): bleibt');
+  await lange(page, '#erklaerung');
+  ok(!(await istSagen()) && (await page.textContent('#erklaerung')).includes('tippe unten die Zahl an') && (await page.textContent('#update-text')) === 'Fassung: Zahl antippen',
+    '3 s: „Fassung: Zahl antippen“, der Erklärtext wechselt mit');
+  await page.click('#zahlwahl button[data-n="5"]');
+  await page.waitForTimeout(300);
+  ok(await page.isVisible('#zahlen') && await page.isVisible('#los') && await phase(page) === 'warten', 'Spielseite mit Zahlenleiste und „Start“');
+  await page.click('#zurueck');
+  await page.reload();
+  ok(!(await istSagen()), 'Die Wahl bleibt nach dem Neuladen');
+  await lange(page, '#erklaerung');
+  ok(await istSagen() && (await page.textContent('#update-text')) === 'Fassung: laut sagen', 'Noch einmal 3 s: wieder „laut sagen“');
+  ok(konsole.length === 0, 'Keine Fehler in der Konsole' + (konsole.length ? ': ' + konsole.join(' | ') : ''));
+  await ctx.close();
 }
 
-console.log('Ganze Runden (jede Zerlegung genau einmal)');
+console.log('Zahl antippen: auch „Start“ und genau 2 Minuten (Uhr vorgespult)');
 {
-  const { page, konsole, ctx } = await seite(390, 844);
-  for (const n of [4, 10]) {
-    await page.evaluate(n => window.wuerfelSpiel.starteSpiel(n), n);
-    const gezogen = [];
-    let alleRichtig = true, verraten = 0;
-    for (let i = 0; i <= n; i++) {
-      const k = await wuerfle(page);                  // in „geloest“ startet ein Tipp sofort den nächsten Wurf
-      gezogen.push(k);
-      const sn = await page.evaluate(() => window.wuerfelSpiel.seiten);
-      if ([sn.oben, sn.rechts].some(x => x === String(k) || x === String(n - k))) verraten++;
-      await page.click(`.zahl[data-zahl="${n - k}"]`);
-      if (await phase(page) !== 'geloest') alleRichtig = false;
-    }
-    const sortiert = [...gezogen].sort((a, b) => a - b).join(',');
-    ok(alleRichtig && sortiert === Array.from({ length: n + 1 }, (_, i) => i).join(','),
-      `${n}: ${n + 1} Würfe zeigen jede Zahl 0–${n} genau einmal (${gezogen.join(' ')})`);
-    ok(verraten === 0, `${n}: in keinem Wurf zeigt eine sichtbare Nebenseite Wurf oder Lösung`);
-    ok((await page.textContent('#hinweis')).includes('Alle Zerlegungen'), `${n}: nach der Runde „Alle Zerlegungen geschafft“`);
-    await page.waitForTimeout(450);
-    const ab = await abstaende(page);
-    ok(gleichmaessig(ab), `${n}: gleiche Abstände in „${await gleichung(page)}“ (${ab.join(' / ')} px)`);
-    const naechste = await page.evaluate(() => window.wuerfelSpiel.beutel);
-    ok(naechste.length === n + 1 && naechste[naechste.length - 1] !== gezogen[n], `${n}: neue Runde beginnt nicht mit derselben Zahl`);
+  const T0 = new Date('2026-10-17T10:00:00Z').getTime();
+  const { page, konsole, ctx } = await seite(390, 844, false, '?tippen', p => p.clock.install({ time: T0 }));
+  await page.clock.pauseAt(T0 + 5000);
+  const uhr = () => page.evaluate(() => window.wuerfelSpiel.uhr);
+  const oben = () => page.evaluate(() => Math.round(document.querySelector('#wuerfel').getBoundingClientRect().top));
+  await page.click('#zahlwahl button[data-n="6"]'); await page.clock.runFor(300);
+  ok(await page.isVisible('#zahlen') && await page.isVisible('#los') && await page.locator('#stand').count() === 0, 'Zahlenleiste und „Start“, kein Zähler „0/7“');
+  const lage0 = await oben();
+  await page.click('#los'); await page.clock.runFor(700);
+  ok(await page.isHidden('#los') && await sichtbar(page, '#gleichung') && await oben() === lage0, '„Start“: erster Wurf, Gleichung steht da, der Würfel bleibt an seinem Platz');
+  let wuerfe = 1, richtig = 0, verraten = 0;
+  const gezogen = [];
+  while ((await uhr()).vergangen < 116000) {
+    const k = await page.evaluate(() => window.wuerfelSpiel.zahl);
+    gezogen.push(k);
+    const sn = await page.evaluate(() => window.wuerfelSpiel.seiten);
+    if ([sn.oben, sn.rechts].some(x => x === String(k) || x === String(6 - k))) verraten++;
+    await page.click(`.zahl[data-zahl="${6 - k}"]`);
+    if (await phase(page) === 'geloest') richtig++;
+    await page.clock.runFor(2500);                                 // Lösung steht, dann „Tippe auf den Würfel!“
+    await page.click('#wuerfel', { force: true }); wuerfe++;
+    await page.clock.runFor(700);
   }
+  ok(richtig === wuerfe - 1 && verraten === 0, `${wuerfe} Würfe in knapp 2 Minuten, jede Antwort gewertet, keine Nebenseite verrät etwas (${gezogen.join(' ')})`);
+  ok(new Set(gezogen).size >= 5 && gezogen.some((x, i) => i && x === gezogen[i - 1]) || gezogen.length < 20,
+    'Gewürfelt wie mit einem echten Würfel: keine Runden, Doppelte kommen vor');
+  await page.clock.runFor(120000 - (await uhr()).vergangen);
+  ok(await phase(page) === 'aus' && (await page.textContent('#los-text')) === 'Die Zeit ist um!' && await page.isVisible('#los') && (await page.textContent('#los')) === 'Nochmal',
+    'Bei genau 2:00,0: „Die Zeit ist um!“ und „Nochmal“');
+  ok(!(await sichtbar(page, '#gleichung')) && (await page.textContent('#hinweis')) === '' && await oben() === lage0, 'Gleichung und Hinweis sind weg, nichts verschiebt sich');
+  ok((await page.textContent('#uhr')) === `2:00,0 · ${wuerfe} Versuche` && await page.isVisible('#uhr'), `Am Ende: „2:00,0 · ${wuerfe} Versuche“`);
+  ok(await page.evaluate(() => Math.round(document.querySelector('#fortschritt').getBoundingClientRect().width)) === 390, 'Zeitlinie oben über die ganze Breite');
+  await page.click('.zahl[data-zahl="3"]');
+  ok(await phase(page) === 'aus' && !(await page.evaluate(() => document.body.classList.contains('falsch') || document.body.classList.contains('gut'))),
+    'Danach zählt die Zahlenleiste nicht mehr (kein Rot, kein Grün)');
+  const m = await page.evaluate(() => { const l = document.querySelector('#los').getBoundingClientRect(), z = document.querySelector('#zahlen').getBoundingClientRect(),
+    u = document.querySelector('#uhr').getBoundingClientRect(); return { los: l.bottom, uhr: u.top, uhrUnten: u.bottom, zahlen: z.top }; });
+  ok(m.los <= m.uhr && m.uhrUnten <= m.zahlen, '„Nochmal“, Uhr und Zahlenleiste untereinander, nichts überdeckt');
+  if (bilder) await page.screenshot({ path: `${bilder}/tippen-ende.png` });
   ok(konsole.length === 0, 'Keine Fehler in der Konsole' + (konsole.length ? ': ' + konsole.join(' | ') : ''));
   await ctx.close();
 }
@@ -710,7 +748,7 @@ console.log('Auch mit „Bewegung reduzieren“ (iPhone: Bedienungshilfen → Be
 {
   const { page, ctx } = await seite(390, 844, true);
   await page.click('#zahlwahl button[data-n="6"]');
-  await page.click('#wuerfel', { force: true });
+  await tippe(page);
   const lagen = new Set();
   while (await phase(page) === 'rollt') { lagen.add(await lage(page)); await page.waitForTimeout(40); }
   ok(lagen.size >= 4, `Der ganze Würfel dreht sich trotzdem (${lagen.size} Lagen gesehen)`);
@@ -782,15 +820,6 @@ console.log('Zufall (χ²-Test, α = 0,001)');
     }, m);
     ok(r < krit, `zufall(${m}) gleichverteilt: χ² = ${r.toFixed(1)} < ${krit} (df ${m - 1})`);
   }
-  // Erste Zahl einer Runde: gleichverteilt über 0..10 (ohne Ausschluss-Regel)
-  const r = await page.evaluate(() => {
-    const N = 50000, h = new Array(11).fill(0);
-    for (let i = 0; i < N; i++) { const b = window.wuerfelSpiel.neuerBeutel(10, null); h[b[b.length - 1]]++; }
-    const e = N / 11; let chi = 0;
-    for (const x of h) chi += (x - e) ** 2 / e;
-    return chi;
-  });
-  ok(r < 29.588, `Erste Zahl einer Runde gleichverteilt: χ² = ${r.toFixed(1)} < 29.588 (df 10)`);
   await ctx.close();
 }
 

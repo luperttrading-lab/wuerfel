@@ -82,7 +82,7 @@ async function echtzeit() {
   await page.exposeFunction('zeitUmGemeldet', () => { gemeldet ??= performance.now(); });
   await page.click('#zahlwahl button[data-n="9"]');
   await page.evaluate(() => new MutationObserver(() => {
-    if (document.querySelector('#los-text').textContent === 'Die Zeit ist um!') window.zeitUmGemeldet();
+    if (document.querySelector('#los-text').textContent === 'Die Zeit ist um!') { window.__ende ??= Date.now(); window.zeitUmGemeldet(); }
   }).observe(document.querySelector('#los-text'), { childList: true, characterData: true, subtree: true }));
   await page.waitForTimeout(500);
   const vor = performance.now();
@@ -94,10 +94,11 @@ async function echtzeit() {
   }
   await page.waitForFunction(() => window.wuerfelSpiel.phase === 'aus', null, { timeout: 130000 });
   const uhr = await page.evaluate(() => window.wuerfelSpiel.uhr);
+  const innen = await page.evaluate(() => window.__ende - window.wuerfelSpiel.uhr.start);   // Uhr der Seite: Tipp auf „Start“ bis Anzeige
   const anzeige = await page.isVisible('#uhr') ? await page.textContent('#uhr') : '(nicht zu sehen)';
   if (bilder) { await page.waitForTimeout(1800); await page.screenshot({ path: `${bilder}/zeit-um.png` }); }
   await ctx.close();
-  return { von: gemeldet - nach, bis: gemeldet - vor, uhr, anzeige, konsole };
+  return { von: gemeldet - nach, bis: gemeldet - vor, innen, uhr, anzeige, konsole };
 }
 const echt = echtzeit();
 
@@ -541,12 +542,8 @@ console.log('Start und genau 2 Minuten (Uhr des Browsers vorgespult)');
   ok(await page.isHidden('#los') && await lageWuerfel() === vorStart, 'Knopf weg, der Würfel bleibt, wo er war (nichts springt)');
   await page.clock.runFor(59000);
   const l1 = await linie();
-  ok(Math.abs(l1.breite - 195) <= 1 && l1.oben === 0 && l1.hoch === 2 && l1.farbe === 'rgb(43, 90, 152)',
+  ok(Math.abs(l1.breite - 195) <= 1 && l1.oben === 0 && l1.hoch === 3 && l1.farbe === 'rgb(43, 90, 152)',
     `Nach 1 Minute: Linie oben halb über den Bildschirm (${l1.breite} von 390 px, ${l1.hoch} px dick, Farbe der Statusleiste ${l1.farbe})`);
-  const dicken = [];
-  for (let i = 0; i < 3; i++) { await page.click('#linie-test'); dicken.push(`${await page.textContent('#linie-test')}/${(await linie()).hoch}px`); }
-  ok(dicken.join(' ') === '3 pt/3px 1 pt/1px 2 pt/2px' && await phase(page) === 'frage' && (await linie()).breite === 195,
-    `Knopf „2 pt“ (vorübergehend): Dicke 1 → 2 → 3 pt umschalten, die Runde läuft weiter (${dicken.join(', ')})`);
   let wuerfe = 1;
   while ((await uhr()).vergangen + 5000 < 119000) { await page.click('#wuerfel', { force: true }); wuerfe++; await page.clock.runFor(5000); }
   await page.clock.runFor(119000 - (await uhr()).vergangen);
@@ -565,6 +562,14 @@ console.log('Start und genau 2 Minuten (Uhr des Browsers vorgespult)');
   ok((await linie()).breite === 390, 'Nach 2 Minuten: Linie über die ganze Breite');
   await page.click('#wuerfel', { force: true }); await page.clock.runFor(1000);
   ok(await phase(page) === 'aus' && (await uhr()).versuche === wuerfe, 'Danach würfelt der Würfel nicht mehr');
+  await halten('#spielseite .titel', 3200);                         // Uhr aus
+  ok(await page.isVisible('#uhr') && (await page.textContent('#uhr')) === `2:00,0 · ${wuerfe} Versuche`, 'Uhr aus: am Ende stehen Zeit und Versuche trotzdem da');
+  await halten('#los-text', 3200);
+  ok(await page.isHidden('#uhr') && (await page.textContent('#update-text')) === 'Versuche am Ende: aus'
+    && await page.evaluate(() => JSON.parse(localStorage.getItem('wuerfel.stand')).ende === false), '3 s auf „Die Zeit ist um!“: am Ende keine Anzeige mehr (gespeichert)');
+  await halten('#los-text', 3200);
+  ok(await page.isVisible('#uhr') && (await page.textContent('#update-text')) === 'Versuche am Ende: an', 'Noch einmal 3 s: wieder an');
+  await halten('#spielseite .titel', 3200);                         // Uhr wieder an
   // Rollt er, wenn die Zeit um ist: er landet noch, dann kommt der Schluss
   await page.click('#los');
   ok((await uhr()).versuche === 1 && (await page.textContent('#uhr')).startsWith('0:00,0 · 1 Versuch'), '„Nochmal“: neue 2 Minuten, Zähler von vorn (1 Versuch)');
@@ -616,7 +621,7 @@ console.log('Start und genau 2 Minuten (Uhr des Browsers vorgespult)');
 {
   const t = await seite(390, 844);                        // ?tippen: ohne Start und ohne Uhr, wie bisher
   await t.page.click('#zahlwahl button[data-n="9"]');
-  ok(await t.page.isHidden('#los-feld') && await t.page.isHidden('#linie-test') && await phase(t.page) === 'bereit', '?tippen: kein „Start“, keine Zeitlinie, der Würfel ist gleich bereit');
+  ok(await t.page.isHidden('#los-feld') && await phase(t.page) === 'bereit', '?tippen: kein „Start“, der Würfel ist gleich bereit');
   await t.ctx.close();
 }
 
@@ -742,7 +747,9 @@ console.log('Echtzeit: 2 Minuten mit der echten Uhr (lief parallel zu allem ande
 {
   const e = await echt;
   const ms = x => Math.round(x).toLocaleString('de-DE');
-  ok(e.von >= 119950 && e.bis <= 120300, `Von „Start“ bis „Die Zeit ist um!“: ${ms(e.von)} … ${ms(e.bis)} ms von außen gemessen (Soll 120.000)`);
+  ok(e.innen >= 120000 && e.innen <= 120300, `In der Seite gemessen: ${ms(e.innen)} ms von „Start“ bis „Die Zeit ist um!“ (Soll 120.000, nie früher)`);
+  // von außen (Uhr von Node): der Klick selbst dauert einige ms, die wahre Dauer liegt im Fenster [von, bis]
+  ok(e.bis >= 120000 && e.von <= 120300, `Von außen gemessen: ${ms(e.von)} … ${ms(e.bis)} ms (die Spanne ist die Dauer des Klicks, ${ms(e.bis - e.von)} ms) – passt zu 120.000`);
   ok(e.uhr.versuche === 12 && e.anzeige === '2:00,0 · 12 Versuche', `12 Würfe gezählt; am Ende steht von selbst „${e.anzeige}“ (Uhr war aus)`);
   ok(e.konsole.length === 0, 'Keine Fehler in der Konsole' + (e.konsole.length ? ': ' + e.konsole.join(' | ') : ''));
 }

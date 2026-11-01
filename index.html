@@ -257,14 +257,10 @@ body:not(.sagen) .los-feld { display: none; }
   font-size: 17px; font-weight: 700; line-height: 1.4; font-variant-numeric: tabular-nums; }   /* Schrift der App, Ziffern gleich breit */
 .uhr.weg { visibility: hidden; }
 body:not(.sagen) .uhr { display: none; }
-/* VORÜBERGEHEND: Knopf „2 pt“ in der Kopfzeile schaltet die Dicke der Zeitlinie 1 → 2 → 3 pt – zum Ausprobieren
-   am Gerät; kommt wieder raus, sobald die Dicke feststeht */
-.linie-test { width: 40px; height: 44px; flex: none; border-radius: 12px; background: var(--wahl); color: var(--ganz); font-size: 14px; font-weight: 800; }
-body:not(.sagen) .linie-test { display: none; }
 /* 2-Minuten-Linie: wächst am oberen Rand von links nach rechts, in der Farbe der Statusleiste darüber (--bg) –
    als würde deren Unterkante langsam dicker. Halb = 1 Minute. Wer weiß, wo er hinschaut, sieht sie; das Kind
-   schaut auf den Würfel. Dicke: --linie (1 pt = 3 Bildpunkte am iPhone). */
-.fortschritt { position: fixed; left: 0; right: 0; top: env(safe-area-inset-top, 0px); height: var(--linie, 2px);
+   schaut auf den Würfel. 3 pt = 9 Bildpunkte am iPhone (am Gerät mit 1/2/3 pt ausprobiert, v0.45; evtl. später 2 pt). */
+.fortschritt { position: fixed; left: 0; right: 0; top: env(safe-area-inset-top, 0px); height: 3px;
   background: var(--bg); transform: scaleX(0); transform-origin: left; pointer-events: none; z-index: 5; }
 .update .btn { padding: 8px 14px; border-radius: 10px; font-size: 15px; font-weight: 700; background: #06240e; color: #fff; }
 </style>
@@ -295,7 +291,6 @@ body:not(.sagen) .linie-test { display: none; }
   <header class="kopf">
     <button class="zurueck" id="zurueck" aria-label="Andere Zahl wählen">‹</button>
     <h1 class="titel">Zerlegen: <span class="ganz" id="titel-n"></span> <span class="stand" id="stand"></span></h1>
-    <button class="linie-test" id="linie-test" aria-label="Dicke der Zeitlinie (nur zum Ausprobieren)"></button>
     <button class="ton" aria-label="Ton an oder aus"></button>
   </header>
   <section class="buehne">
@@ -324,7 +319,7 @@ body:not(.sagen) .linie-test { display: none; }
 </main>
 
 <script>
-const APP_VERSION = '0.45';          // bei JEDER Änderung hochzählen
+const APP_VERSION = '0.46';          // bei JEDER Änderung hochzählen
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
@@ -336,7 +331,7 @@ const SPEICHER = 'wuerfel.stand';
 const SAGEN = !new URLSearchParams(location.search).has('tippen');   // Standard: Antwort laut sagen; ?tippen: Zahlenleiste
 document.body.classList.toggle('sagen', SAGEN);
 if (SAGEN) document.querySelector('.erklaerung').textContent = 'Drück „Start“ und sag laut, was bis zur gewählten Zahl fehlt – dann tippe auf den Würfel.';
-const stand = { n: 10, ton: true, sterne: 0, tiere: 'aus', satz: 'sticker', staub: true, linie: 2 };   // linie: Dicke der Zeitlinie in pt (vorübergehend wählbar)   // staub: bunter Staub beim Würfeln (💨, nur mit Tieren)
+const stand = { n: 10, ton: true, sterne: 0, tiere: 'aus', satz: 'sticker', staub: true, ende: true };   // ende: nach den 2 Minuten Zeit und Versuche zeigen   // staub: bunter Staub beim Würfeln (💨, nur mit Tieren)
 // Tiere: beim Laden immer aus. An und aus nur versteckt (3 s auf die Überschrift der Startseite); 🐾 wechselt
 // dann zwischen den Sätzen. Gemerkt wird nur der Satz (satz: 'sticker' | 'wild').
 const TIERSAETZE = { aus: 'Ohne Tiere', sticker: 'Tiere: Sticker', wild: 'Tiere: wild & bunt' };
@@ -347,7 +342,7 @@ try {
   if (ZAHLEN.includes(s.n)) stand.n = s.n;
   if (s.ton === false) stand.ton = false;
   if (s.staub === false) stand.staub = false;
-  if ([1, 2, 3].includes(s.linie)) stand.linie = s.linie;
+  if (s.ende === false) stand.ende = false;
   if ((s.satz ?? s.tiere) === 'wild') stand.satz = 'wild';     // bis v0.42 hieß der Satz „tiere“
   if (Number.isInteger(s.sterne) && s.sterne >= 0) stand.sterne = s.sterne;
 } catch (_) {}
@@ -872,7 +867,7 @@ function zeigeLos(text, knopf) {                                // knopf leer: F
 }
 function zeigeUhr() {                                           // versteckte Anzeige: 1:23,4 · 17 Versuche
   linieEl.style.transform = `scaleX(${(vergangen() / DAUER).toFixed(4)})`;
-  uhrEl.classList.toggle('weg', !(uhrAn || uhr.um));            // nach den 2 Minuten immer: wie viele Versuche
+  uhrEl.classList.toggle('weg', !(uhrAn || uhr.um && stand.ende));   // nach den 2 Minuten: wie viele Versuche (abschaltbar)
   const z = Math.floor(vergangen() / 100), v = uhr.versuche;
   uhrEl.textContent = `${Math.floor(z / 600)}:${String(Math.floor(z / 10) % 60).padStart(2, '0')},${z % 10} · ${v} ${v === 1 ? 'Versuch' : 'Versuche'}`;
 }
@@ -1046,6 +1041,11 @@ function halten(els, aktion) {
 }
 // Spielseite, „Zerlegen: 9“ oder die runde Zahl am Tier: Uhr und Versuche ein- und ausblenden
 halten([$('#spielseite .titel'), $('#tier-zahl')], () => { uhrAn = !uhrAn; zeigeUhr(); showInfo(uhrAn ? 'Uhr an' : 'Uhr aus', 1.6); });
+// „Die Zeit ist um!“: Zeit und Versuche am Ende zeigen oder nicht (gespeichert)
+halten([losText], () => {
+  stand.ende = !stand.ende; speichereAlles(); zeigeUhr();
+  showInfo(stand.ende ? 'Versuche am Ende: an' : 'Versuche am Ende: aus', 1.6);
+});
 // Startseite, „Würfel“ oder „Welche Zahl zerlegen wir?“: Tiere an (zuletzt gewählter Satz) und wieder aus
 halten([$('#startseite h1'), $('#startseite h2')], () => {
   stand.tiere = mitTieren() ? 'aus' : stand.satz;
@@ -1058,14 +1058,6 @@ $('#tiere-schalter').addEventListener('click', e => {             // nur sichtba
   showInfo(TIERSAETZE[stand.tiere], 1.6, e.currentTarget);
 });
 function zeigeStaub() { $('#staub-schalter').setAttribute('aria-pressed', String(stand.staub)); }
-function zeigeLinie() {                                           // VORÜBERGEHEND (Knopf „2 pt“)
-  document.documentElement.style.setProperty('--linie', stand.linie + 'px');
-  $('#linie-test').textContent = stand.linie + ' pt';
-}
-$('#linie-test').addEventListener('click', e => {
-  stand.linie = stand.linie % 3 + 1; speichereAlles(); zeigeLinie();
-  showInfo('Zeitlinie ' + stand.linie + ' pt', 1.6, e.currentTarget);
-});
 $('#staub-schalter').addEventListener('click', e => {
   stand.staub = !stand.staub; speichereAlles(); zeigeStaub();
   showInfo(stand.staub ? 'Bunter Staub an' : 'Ohne Staub', 1.6, e.currentTarget);
@@ -1080,7 +1072,6 @@ stelle(RUHE.x, RUHE.y);
 zeigeTon();
 zeigeTiere();
 zeigeStaub();
-zeigeLinie();
 zeigeStart();
 
 /* ---------- Updates (Bausteine 0–4, Skill app-update-iphone) ---------- */

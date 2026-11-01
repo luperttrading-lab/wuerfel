@@ -82,15 +82,16 @@ unten erscheint die laufende Uhr mit den Versuchen, z. B. `1:23,4 · 17 Versuche
 („Start“ zählt als erster). Noch einmal 3 s drücken blendet sie aus. Ihr Platz ist immer reserviert,
 Ein- und Ausblenden verschiebt nichts; Schrift der App mit gleich breiten Ziffern. Nach den 2 Minuten steht sie
 von selbst da (`2:00,0 · 23 Versuche`) – zur Auswertung: richtig zählt der Erwachsene, die Versuche die App.
-**Linie für die Zeit:** Am oberen Rand wächst während der 2 Minuten eine 2 pt dünne Linie von links nach rechts,
+Abschalten: am Ende 3 s auf „Die Zeit ist um!“ drücken („Versuche am Ende: aus“, gespeichert), noch einmal 3 s
+schaltet sie wieder an. Ist die Uhr an, steht sie am Ende ohnehin da.
+**Linie für die Zeit:** Am oberen Rand wächst während der 2 Minuten eine 3 pt dünne Linie von links nach rechts,
 in der Farbe des Statusleisten-Streifens darüber (`--bg`, #2b5a98 – am iPhone malt iOS diesen Streifen in
 unserer Grundfarbe, die App beginnt darunter). Sie sieht aus, als würde dessen Unterkante langsam dicker;
 halb = 1 Minute, ganz = um. Ohne Ziffern, ohne Sprünge (3,25 pt pro Sekunde): wer weiß, wo er hinschaut,
-sieht sie, das Kind schaut auf den Würfel. Dicke über `--linie`. **Vorübergehend** (v0.45) schaltet der Knopf
-„2 pt“ in der Kopfzeile der Spielseite 1 → 2 → 3 pt (gespeichert) – zum Ausprobieren am Gerät; er kommt
-wieder raus, sobald die Dicke feststeht. Geprüft wird die Zeit zweimal: mit
+sieht sie, das Kind schaut auf den Würfel. Dicke: in v0.45 am Gerät mit 1/2/3 pt verglichen, festgelegt auf 3 pt
+(evtl. später 2 pt; `height` von `.fortschritt`). Geprüft wird die Zeit zweimal: mit
 vorgespulter Browser-Uhr auf die Millisekunde (119 999 ms läuft, 120 000 ms Schluss) und einmal echt
-2 Minuten lang, von außen gemessen (bisher 119 997 … 120 033 ms, die Spanne ist die Dauer des Klicks).
+2 Minuten lang: in der Seite 120 002–120 003 ms, von außen (Uhr von Node) ein Fenster um 120 000 ms, so breit wie der Klick dauert.
 Die Fassung `?tippen` hat keinen Start und keine Uhr. (Die Zähl-Statistik aus v0.41 ist wieder raus.)
 
 **Hintergrund**: helles Tiefblau mit Licht in der Mitte (`--grund`); der weiße Würfel hebt sich mit

@@ -105,6 +105,16 @@ ein Mini-Bildschirm mit pulsierendem Ring, wo man drückt („3 s“ oder „tip
 gerade eingestellt ist (Tiere, Staub, Versuche am Ende, Fassung). Kurz tippen öffnet nichts, zeigt nur „Für Erwachsene:
 3 Sekunden drücken“. Schließen mit ✕, daneben tippen oder Esc; der Inhalt scrollt (sonst ist Wischen gesperrt).
 
+**Sprechtest** (`sprechtest.html`, Versuch; in der ⓘ-Hilfe verlinkt): Versteht das iPhone die Zahl, die das Kind
+sagt? Apples eingebaute Spracherkennung ist in Home-Bildschirm-Apps gesperrt (WebKit-Bug 225298), darum erkennt
+die Seite selbst, auf dem Gerät: Vosk als WebAssembly (`sprache/vosk.js`) mit dem kleinen deutschen Modell (45 MB,
+einmal geladen; entpackt ~95 MB in IndexedDB, danach in 1–2 s bereit). Erlaubt sind nur die Wörter „null“ … „zehn“
+(plus „ein“, „zwo“) – mit dieser Liste erkannte das Modell Testwörter 11/11, ohne sie 8/11 („eins“ → „hans“,
+„zehn“ → „sein“). Ablauf: Zahl erscheint, Kind sagt sie, nach 20 Zahlen „x von 20 richtig verstanden“, Verwechslungen,
+Antwortzeit (~0,9 s nach Beginn des Sprechens). Im Testbrowser mit Ersatz-Mikrofon (Computerstimme, Erwachsene)
+20/20 – Kinderstimmen und das echte iPhone-Mikrofon sind noch ungeprüft. `node tests/sprechtest.mjs folge.wav`
+prüft das mit einer eigenen Aufnahme (liegt nicht im Repo). Der Service Worker lässt `sprache/` aus.
+
 **Hintergrund**: helles Tiefblau mit Licht in der Mitte (`--grund`); der weiße Würfel hebt sich mit
 gut 4 : 1 ab (vorher Creme: 1,1 : 1). Schrift auf dem Grund ist hell, Zahlfarben auf dem Grund haben
 helle Varianten (`--teil-hell`, `--ganz-hell`, `--rest-hell`); auf dem Würfel bleiben die kräftigen.
@@ -132,4 +142,6 @@ Zurücklegen (jede Zerlegung genau einmal pro Runde).
 | `tiere/quelle/4.jpg` … `10.jpg` | Vorlagen der Sticker, je Tier ein Bild |
 | `tiere/wild/*.webp`, `tiere/quelle/wild/*.jpg` | zweiter Satz „wild & bunt“ und seine Vorlagen (`tools/wild.py`) |
 | `tests/spiel.mjs` | Browser-Test: `node tests/spiel.mjs [bildordner]` |
+| `sprechtest.html`, `sprache/` | Versuch Spracherkennung: Testseite, `vosk.js`, deutsches Modell (`sprache/LIZENZ.md`) |
+| `tests/sprechtest.mjs` | Spracherkennung mit Ersatz-Mikrofon: `node tests/sprechtest.mjs folge.wav` |
 | `tools/kosten.py` | Kostenzeile für Claude-Sitzungen |

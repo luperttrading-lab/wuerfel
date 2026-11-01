@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sprechtest</title>
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#24508f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<style>
+/* Versuch: versteht das iPhone die Zahlen, die das Kind sagt? Erkannt wird auf dem Gerät (Vosk, WebAssembly),
+   nur die Wörter „null“ … „zehn“ – nichts geht ins Internet. Gleiche Farben wie das Spiel (index.html). */
+:root {
+  --bg: #2b5a98; --grund: radial-gradient(120% 90% at 50% 42%, #4d88d2, #24508f);
+  --ink: #2b2140; --hell: #f5f8ff; --leise: #c9d8f2; --wahl: #efe7ff; --ganz: #6c4bd8;
+  --richtig: #2fbf55; --falsch: #e05a5a;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; min-height: 100%; }
+body {
+  background: var(--bg) var(--grund) fixed; color: var(--hell);
+  font-family: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent;
+}
+button { font: inherit; border: 0; cursor: pointer; touch-action: manipulation; }
+.seite { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px;
+  padding: max(env(safe-area-inset-top), 12px) 16px max(env(safe-area-inset-bottom), 20px); }
+.kopf { display: flex; align-items: center; gap: 10px; min-height: 44px; }
+.kopf h1 { margin: 0; font-size: 22px; font-weight: 800; }
+.zurueck { width: 44px; height: 44px; flex: none; border-radius: 12px; background: var(--wahl); color: var(--ganz);
+  font-size: 28px; font-weight: 800; display: grid; place-items: center; text-decoration: none; }
+.erkl { margin: 0; font-size: 16px; line-height: 1.45; color: var(--leise); }
+.erkl b { color: var(--hell); }
+.los { align-self: center; min-width: 220px; height: 58px; padding: 0 28px; border-radius: 16px; color: var(--ink);
+  background-color: #ffb547; background-image: linear-gradient(#ffcb6e, #ffb03b);
+  font-size: 22px; font-weight: 900; box-shadow: 0 5px 0 #d98a12, 0 8px 14px rgba(160, 90, 0, .18); }
+.los:disabled { opacity: .6; }
+.meldung { margin: 0; min-height: 1.4em; text-align: center; font-size: 16px; font-weight: 700; }
+.meldung.fehler { color: #ffd0d0; }
+.test { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.sag { margin: 0; font-size: 18px; font-weight: 800; color: var(--leise); }
+.ziel { width: 150px; height: 150px; border-radius: 26px; background: #fff; color: var(--ganz);
+  display: grid; place-items: center; font-size: 104px; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums;
+  box-shadow: 0 10px 24px rgba(6, 18, 44, .35); transition: background-color .2s ease; }
+.ziel.treffer { background: #d7f7df; }
+.ziel.daneben { background: #ffdede; }
+.pegel { width: 220px; height: 10px; border-radius: 999px; background: rgba(10, 20, 45, .35); overflow: hidden; }
+.pegel i { display: block; height: 100%; width: 0; background: #7be29a; border-radius: inherit; transition: width .08s linear; }
+.gehoert { margin: 0; min-height: 1.3em; font-size: 26px; font-weight: 900; }
+.zwischen { margin: 0; min-height: 1.3em; font-size: 15px; color: var(--leise); }
+.knoepfe { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.knoepfe button { padding: 10px 14px; border-radius: 12px; background: var(--wahl); color: var(--ganz); font-size: 15px; font-weight: 800; }
+.stand { margin: 0; font-size: 17px; font-weight: 800; }
+.liste { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; max-width: 420px; }
+.liste li { padding: 3px 8px; border-radius: 999px; font-size: 14px; font-weight: 800; background: rgba(255, 255, 255, .16); }
+.liste li.ok { background: rgba(47, 191, 85, .45); }
+.liste li.nein { background: rgba(224, 90, 90, .55); }
+.ergebnis { background: #fff; color: var(--ink); border-radius: 18px; padding: 16px 18px; font-size: 16px; line-height: 1.5; }
+.ergebnis h2 { margin: 0 0 6px; font-size: 22px; }
+.ergebnis p { margin: 4px 0; }
+.technik { margin: 8px 0 0; font-size: 12px; color: var(--leise); text-align: center; }
+</style>
+</head>
+<body>
+<main class="seite">
+  <header class="kopf">
+    <a class="zurueck" href="./" aria-label="Zurück zum Würfel">‹</a>
+    <h1>Sprechtest</h1>
+  </header>
+  <p class="erkl">Prüft, ob das iPhone die Zahlen versteht, die dein Kind <b>laut sagt</b>. Erkannt wird nur „null“ bis
+    „zehn“, direkt auf dem iPhone – <b>nichts geht ins Internet</b>. Beim ersten Mal wird das Sprachmodell geladen
+    (45 MB, einmalig), danach liegt es auf dem iPhone (rund 95 MB).</p>
+  <p class="erkl">So geht der Test: Es erscheint eine Zahl, dein Kind sagt sie. Die App zählt, wie oft sie richtig
+    verstanden hat. Nach <b>20 Zahlen</b> kommt das Ergebnis. Wenn gar nichts passiert: „Nicht erkannt – weiter“.</p>
+  <button class="los" id="los">Sprachmodell laden</button>
+  <p class="meldung" id="meldung" aria-live="polite"></p>
+
+  <section class="test" id="test" hidden>
+    <p class="sag">Sag diese Zahl:</p>
+    <div class="ziel" id="ziel"></div>
+    <div class="pegel" aria-hidden="true"><i id="pegel"></i></div>
+    <p class="gehoert" id="gehoert" aria-live="polite"></p>
+    <p class="zwischen" id="zwischen"></p>
+    <p class="stand" id="stand"></p>
+    <ol class="liste" id="liste"></ol>
+    <div class="knoepfe"><button id="weiter">Nicht erkannt – weiter</button><button id="neu">Neu beginnen</button></div>
+  </section>
+
+  <section class="ergebnis" id="ergebnis" hidden></section>
+  <p class="technik" id="technik"></p>
+</main>
+
+<script src="sprache/vosk.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const MODELL = new URL('sprache/vosk-model-small-de-0.15.tar.gz', location.href).href;   // fester Name: die Bibliothek merkt sich das Modell darunter
+const ANZAHL = 20;                                      // Zahlen pro Test
+// Nur diese Wörter sind erlaubt (Grammatik): so verwechselt das Modell „eins“ nicht mit „hans“ oder „zehn“ mit „sein“.
+// „ein“ und „zwo“ sagen Kinder oft; [unk] fängt alles andere (Husten, „ähm“) ab.
+const WORT = { null: 0, eins: 1, ein: 1, zwei: 2, zwo: 2, drei: 3, vier: 4, 'fünf': 5, sechs: 6, sieben: 7, acht: 8, neun: 9, zehn: 10 };
+const GRAMMATIK = JSON.stringify([...Object.keys(WORT), '[unk]']);
+const vorgabe = new URLSearchParams(location.search).get('ziele');   // Test: feste Reihenfolge, z. B. ?ziele=7,3,10
+const zielReihe = vorgabe ? vorgabe.split(',').map(Number) : null;
+
+const zahlAus = text => {                               // letztes Zahlwort im Text, sonst null
+  const w = text.split(/\s+/).filter(x => x in WORT);
+  return w.length ? WORT[w[w.length - 1]] : null;
+};
+function zufall(m) {
+  const u = new Uint32Array(1), grenze = Math.floor(2 ** 32 / m) * m;
+  do crypto.getRandomValues(u); while (u[0] >= grenze);
+  return u[0] % m;
+}
+
+const zustand = { phase: 'aus', modell: null, ziel: null, runde: [], pause: false, ersterTeil: null, ladeZeit: null };
+let erkenner = null, tonCtx = null, strom = null;
+const zeige = (text, fehler = false) => { $('#meldung').textContent = text; $('#meldung').classList.toggle('fehler', fehler); };
+
+function naechstesZiel() {
+  const i = zustand.runde.length;
+  if (zielReihe) zustand.ziel = zielReihe[i % zielReihe.length];
+  else { let z; do z = zufall(11); while (z === zustand.ziel); zustand.ziel = z; }
+  $('#ziel').textContent = zustand.ziel;
+  $('#ziel').classList.remove('treffer', 'daneben');
+  $('#gehoert').textContent = '';
+  $('#zwischen').textContent = '';
+  zustand.ersterTeil = null;
+}
+function zeigeStand() {
+  const ok = zustand.runde.filter(r => r.ok).length;
+  $('#stand').textContent = `${zustand.runde.length} von ${ANZAHL} · richtig verstanden: ${ok}`;
+  $('#liste').innerHTML = zustand.runde.map(r =>
+    `<li class="${r.ok ? 'ok' : 'nein'}">${r.ziel}${r.ok ? ' ✓' : ' → ' + (r.gehoert ?? '–')}</li>`).join('');
+}
+function werte(gehoert, text) {                         // ein Versuch: Zahl gehört (oder „weiter“ gedrückt)
+  if (zustand.phase !== 'test' || zustand.pause) return;
+  const ok = gehoert === zustand.ziel;
+  const dauer = zustand.ersterTeil ? (performance.now() - zustand.ersterTeil) / 1000 : null;
+  zustand.runde.push({ ziel: zustand.ziel, gehoert, ok, text, dauer });
+  $('#gehoert').textContent = gehoert === null ? 'nicht erkannt' : `Gehört: ${gehoert}${ok ? ' ✓' : ' ✗'}`;
+  $('#ziel').classList.add(ok ? 'treffer' : 'daneben');
+  zeigeStand();
+  zustand.pause = true;
+  setTimeout(() => {
+    zustand.pause = false;
+    if (zustand.runde.length >= ANZAHL) zeigeErgebnis(); else naechstesZiel();
+  }, 900);
+}
+function zeigeErgebnis() {
+  zustand.phase = 'fertig';
+  const r = zustand.runde, ok = r.filter(x => x.ok).length;
+  const verwechselt = {};
+  for (const x of r) if (!x.ok) { const k = `${x.ziel} → ${x.gehoert ?? 'nicht erkannt'}`; verwechselt[k] = (verwechselt[k] || 0) + 1; }
+  const zeiten = r.map(x => x.dauer).filter(x => x != null);
+  const mittel = zeiten.length ? zeiten.reduce((a, b) => a + b, 0) / zeiten.length : null;
+  const komma = x => x.toLocaleString('de-DE', { maximumFractionDigits: 1 });
+  $('#ergebnis').innerHTML = `<h2>${ok} von ${r.length} richtig verstanden (${Math.round(100 * ok / r.length)} %)</h2>
+    <p>${Object.keys(verwechselt).length ? 'Daneben: ' + Object.entries(verwechselt).map(([k, n]) => n > 1 ? `${k} (${n}×)` : k).join(', ') : 'Keine einzige Verwechslung.'}</p>
+    ${mittel != null ? `<p>Antwort der Erkennung: im Mittel ${komma(mittel)} s nach Beginn des Sprechens.</p>` : ''}
+    <p>Mach bitte ein Bildschirmfoto davon – das reicht mir zur Auswertung.</p>
+    <button class="los" id="nochmal">Nochmal 20</button>`;
+  $('#ergebnis').hidden = false;
+  $('#ergebnis').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  $('#nochmal').addEventListener('click', neuBeginnen);
+}
+function neuBeginnen() {
+  zustand.runde = []; zustand.phase = 'test'; zustand.ziel = null;
+  scrollTo({ top: 0, behavior: 'smooth' });
+  $('#ergebnis').hidden = true;
+  zeigeStand(); naechstesZiel();
+}
+
+async function ladeModell() {
+  $('#los').disabled = true;
+  const t0 = performance.now();
+  const uhr = setInterval(() => zeige(`Lade Sprachmodell … ${Math.round((performance.now() - t0) / 1000)} s (beim ersten Mal 45 MB)`), 500);
+  try {
+    if (navigator.storage?.persist) navigator.storage.persist().catch(() => {});   // bitte nicht wegräumen
+    zustand.modell = await Vosk.createModel(MODELL);
+    zustand.ladeZeit = (performance.now() - t0) / 1000;
+    zeige(`Sprachmodell bereit (${zustand.ladeZeit.toLocaleString('de-DE', { maximumFractionDigits: 1 })} s). Jetzt das Mikrofon einschalten.`);
+    zustand.phase = 'bereit';
+    $('#los').textContent = 'Mikrofon an';
+  } catch (e) {
+    zeige('Sprachmodell ließ sich nicht laden: ' + (e?.message || e), true);
+    $('#los').textContent = 'Nochmal laden';
+  } finally {
+    clearInterval(uhr);
+    $('#los').disabled = false;
+    technik();
+  }
+}
+async function mikrofonAn() {
+  $('#los').disabled = true;
+  try {
+    strom = await navigator.mediaDevices.getUserMedia({ video: false,
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } });
+  } catch (e) {
+    zeige(e?.name === 'NotAllowedError'
+      ? 'Mikrofon nicht erlaubt. iPhone: Einstellungen → Apps → Safari → Mikrofon → „Fragen“ oder „Erlauben“.'
+      : 'Mikrofon ging nicht an: ' + (e?.message || e), true);
+    $('#los').disabled = false;
+    return;
+  }
+  tonCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (tonCtx.state !== 'running') await tonCtx.resume();
+  erkenner = new zustand.modell.KaldiRecognizer(tonCtx.sampleRate, GRAMMATIK);
+  erkenner.on('partialresult', m => {
+    const teil = m.result.partial || '';
+    if (!teil) return;
+    if (zustand.ersterTeil === null && zahlAus(teil) !== null) zustand.ersterTeil = performance.now();
+    $('#zwischen').textContent = 'hört … ' + teil.replace(/\[unk\]/g, '?');
+  });
+  erkenner.on('result', m => {
+    const text = (m.result.text || '').trim();
+    const z = zahlAus(text);
+    if (z !== null) werte(z, text);                     // nur Zahlwörter zählen; Geräusche ([unk]) nicht
+  });
+  const quelle = tonCtx.createMediaStreamSource(strom);
+  const knoten = tonCtx.createScriptProcessor(4096, 1, 1);
+  knoten.onaudioprocess = ev => {
+    const d = ev.inputBuffer.getChannelData(0);
+    let s = 0; for (let i = 0; i < d.length; i += 4) s += d[i] * d[i];
+    $('#pegel').style.width = Math.min(100, Math.sqrt(s / (d.length / 4)) * 400) + '%';
+    try { erkenner.acceptWaveform(ev.inputBuffer); } catch (_) {}
+  };
+  quelle.connect(knoten);
+  knoten.connect(tonCtx.destination);                   // Safari ruft onaudioprocess nur auf, wenn der Knoten angeschlossen ist
+  $('#los').hidden = true;
+  zeige('');
+  document.querySelectorAll('.erkl').forEach(p => { p.hidden = true; });   // Platz für die Zahl
+  $('#test').hidden = false;
+  technik();
+  neuBeginnen();
+}
+function technik() {
+  const app = navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
+  $('#technik').textContent = [app ? 'Home-Bildschirm-App' : 'Browser', tonCtx ? `${tonCtx.sampleRate} Hz` : null,
+    zustand.ladeZeit != null ? `Modell in ${zustand.ladeZeit.toFixed(1)} s` : null].filter(Boolean).join(' · ');
+}
+
+$('#los').addEventListener('click', () => (zustand.phase === 'aus' ? ladeModell() : mikrofonAn()));
+$('#weiter').addEventListener('click', () => werte(null, ''));
+$('#neu').addEventListener('click', neuBeginnen);
+technik();
+if (typeof Vosk === 'undefined') zeige('Die Erkennung (sprache/vosk.js) ließ sich nicht laden.', true);
+window.sprechtest = { zustand, zahlAus };              // für tests/sprechtest.mjs
+</script>
+</body>
+</html>

@@ -14,7 +14,8 @@ const typen = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '
 const server = http.createServer((req, res) => {
   const p = path.join(wurzel, decodeURIComponent(new URL(req.url, 'http://x').pathname).replace(/\/$/, '/index.html'));
   if (!p.startsWith(wurzel) || !fs.existsSync(p)) { res.writeHead(404); return res.end(); }
-  res.writeHead(200, { 'content-type': typen[path.extname(p)] || 'application/octet-stream' });
+  res.writeHead(200, { 'content-type': typen[path.extname(p)] || 'application/octet-stream', 'content-length': fs.statSync(p).size });
+  if (req.method === 'HEAD') return res.end();
   fs.createReadStream(p).pipe(res);
 }).listen(0);
 const url = `http://127.0.0.1:${server.address().port}/`;
@@ -429,6 +430,7 @@ console.log('Hilfe: 3 s auf ⓘ erklärt die geheimen Schalter');
     'Zeigt, was gerade eingestellt ist (Tiere aus, Versuche am Ende an, laut sagen) und die echte Versionsnummer');
   ok(await page.isHidden('#tiere-schalter') && !(await page.evaluate(() => document.querySelector('#update').classList.contains('an'))),
     'Langes Drücken auf ⓘ schaltet keine Tiere und zeigt keinen Tipp-Hinweis');
+  ok(await page.getAttribute('#hilfe a.hilfe-link', 'href') === 'sprechtest.html', 'Hilfe verlinkt den Sprechtest');
   await page.click('#hilfe-zu');
   ok(await page.isHidden('#hilfe'), '✕ schließt');
   await lange(page, '#info-knopf');
@@ -445,6 +447,20 @@ console.log('Hilfe: 3 s auf ⓘ erklärt die geheimen Schalter');
     return { oben: k.top, unten: k.bottom, scrollt: vorher && i.scrollTop > 0, letzte: letzte.bottom <= k.bottom + 1, breit: document.scrollingElement.scrollWidth <= innerWidth }; });
   ok(m.oben >= 0 && m.unten <= 568 && m.scrollt && m.letzte && m.breit, '320×568: Fenster passt auf den Bildschirm, der Inhalt lässt sich bis zum Ende scrollen');
   if (bilder) await page.screenshot({ path: `${bilder}/hilfe-320.png` });
+  ok(konsole.length === 0, 'Keine Fehler in der Konsole' + (konsole.length ? ': ' + konsole.join(' | ') : ''));
+  await ctx.close();
+}
+
+console.log('Sprechtest-Seite (ohne Mikrofon; die Erkennung prüft tests/sprechtest.mjs)');
+{
+  const { page, konsole, ctx } = await seite(390, 844, false, 'sprechtest.html');
+  ok(await page.evaluate(() => typeof Vosk === 'object' && typeof Vosk.createModel === 'function') && (await page.textContent('#los')) === 'Sprachmodell laden',
+    'Lädt die Erkennung (sprache/vosk.js), Knopf „Sprachmodell laden“');
+  ok(await page.evaluate(() => [window.sprechtest.zahlAus('[unk] fünf'), window.sprechtest.zahlAus('zwo'), window.sprechtest.zahlAus('hallo')].join()) === '5,2,',
+    'Zahlwörter: „ähm fünf“ → 5, „zwo“ → 2, anderes → nichts');
+  const modell = await page.evaluate(async () => (await fetch('sprache/vosk-model-small-de-0.15.tar.gz', { method: 'HEAD' })).headers.get('content-length'));
+  ok(+modell > 40e6 && +modell < 50e6, `Sprachmodell liegt bereit (${(modell / 1e6).toFixed(1)} MB)`);
+  ok(await page.getAttribute('.zurueck', 'href') === './', '‹ führt zurück zum Würfel');
   ok(konsole.length === 0, 'Keine Fehler in der Konsole' + (konsole.length ? ': ' + konsole.join(' | ') : ''));
   await ctx.close();
 }

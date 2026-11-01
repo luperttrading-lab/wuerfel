@@ -469,61 +469,43 @@ console.log('Sprechtest-Seite (ohne Mikrofon; die Erkennung prüft tests/sprecht
   await ctx.close();
 }
 
-console.log('Sprechen an/aus: 3 s auf 🔊 (ohne Mikrofon; mit Ersatz-Mikrofon prüft es tests/sprechtest.mjs)');
+console.log('Sprechen an/aus: 🎤 neben 🔊 (ohne Mikrofon; mit Ersatz-Mikrofon prüft es tests/sprechtest.mjs)');
 {
   const { page, konsole, ctx } = await seite(390, 844, false, '');
-  const ton = () => page.evaluate(() => window.wuerfelSpiel.stand.ton);
-  const mikro = () => page.evaluate(() => document.querySelector('#startseite .ton').classList.contains('mikro'));
-  await page.click('#startseite .ton');
-  ok(!(await ton()) && !(await mikro()), 'Kurz tippen: nur Ton aus, Sprechen bleibt aus');
-  await lange(page, '#startseite .ton', 1500);
-  ok(!(await ton()) && !(await mikro()), '1,5 s drücken: weder Ton noch Sprechen schalten um');
-  await lange(page, '#startseite .ton');
-  ok(!(await ton()) && await mikro() && await page.evaluate(() => window.wuerfelSpiel.stand.sprechen) && (await page.textContent('#update-text')).startsWith('Sprechen an'),
-    '3 s auf 🔇 (Ton aus): „Sprechen an“, kleines 🎤 am Knopf – der Ton bleibt aus');
-  await page.click('#startseite .ton');
-  ok(await ton() && await mikro(), 'Kurz tippen: Ton wieder an, Sprechen bleibt an');
-  await page.waitForFunction(() => window.wuerfelSpiel.sprache.bereit, null, { timeout: 60000 });
-  ok((await page.textContent('#update-text')) === 'Sprechen an – ab „Start“ hört die App zu', 'Sprachmodell geladen: „ab „Start“ hört die App zu“');
-  await page.reload();
-  ok(await mikro() && await page.evaluate(() => window.wuerfelSpiel.stand.sprechen), 'Bleibt nach dem Neuladen an');
+  const z = () => page.evaluate(() => ({ ton: window.wuerfelSpiel.stand.ton, an: window.wuerfelSpiel.stand.sprechen, laeuft: window.wuerfelSpiel.uhr.laeuft,
+    knopf: document.querySelector('#mikro-knopf').getAttribute('aria-pressed'), info: document.querySelector('#update-text').textContent, hoert: window.wuerfelSpiel.sprache.hoert }));
   await page.click('#zahlwahl button[data-n="6"]');
-  ok(await page.evaluate(() => document.querySelector('#spielseite .ton').classList.contains('mikro')), 'Auch auf der Spielseite das 🎤 am 🔊');
-  await page.click('#los');                              // ohne Mikrofon im Testbrowser: Hinweis, das Spiel läuft trotzdem
-  await page.waitForFunction(() => document.querySelector('#update-text').textContent.startsWith('Sprechen geht') || document.querySelector('#update-text').textContent.startsWith('Mikrofon'), null, { timeout: 10000 });
-  ok(await page.evaluate(() => window.wuerfelSpiel.uhr.laeuft) && !(await page.evaluate(() => window.wuerfelSpiel.sprache.hoert)),
-    `Kein Mikrofon da: „${await page.textContent('#update-text')}“, die 2 Minuten laufen trotzdem`);
-  await page.click('#zurueck');
-  await lange(page, '#startseite .ton');
-  ok(!(await mikro()) && (await page.textContent('#update-text')) === 'Sprechen aus', 'Noch einmal 3 s: „Sprechen aus“');
-  ok(konsole.length === 0, 'Keine Fehler in der Konsole' + (konsole.length ? ': ' + konsole.join(' | ') : ''));
-  await ctx.close();
-}
-
-console.log('Sprechen mitten im Durchgang umschalten: von vorn mit „Start“');
-{
-  const T0 = new Date('2026-10-17T10:00:00Z').getTime();
-  const { page, konsole, ctx } = await seite(390, 844, false, '', p => p.clock.install({ time: T0 }));
-  await page.clock.pauseAt(T0 + 5000);
-  const z = () => page.evaluate(() => ({ phase: window.wuerfelSpiel.phase, uhr: window.wuerfelSpiel.uhr, ton: window.wuerfelSpiel.stand.ton,
-    sprechen: window.wuerfelSpiel.stand.sprechen, los: document.querySelector('#los').textContent, info: document.querySelector('#update-text').textContent }));
-  await page.click('#zahlwahl button[data-n="9"]'); await page.clock.runFor(300);
-  await page.click('#los'); await page.clock.runFor(3000);
-  ok((await z()).uhr.laeuft, 'Durchgang läuft (Sprechen aus)');
-  await lange(page, '#spielseite .ton', 3200, true);
+  ok(await page.isVisible('#mikro-knopf') && (await z()).knopf === 'false', '🎤 neben 🔊 auf der Spielseite, anfangs aus (grau)');
+  await lange(page, '#spielseite .ton');
   let m = await z();
-  ok(m.sprechen && m.phase === 'warten' && !m.uhr.laeuft && m.uhr.versuche === 0 && m.los === 'Start' && await page.isVisible('#los') && m.ton,
-    `3 s auf 🔊 im Durchgang: Sprechen an, Durchgang beendet, wieder „Start“ („${m.info}“)`);
-  const infos = new Set([m.info]);
-  for (let i = 0; i < 300 && !infos.has('Sprechen an – bitte neu „Start“ drücken'); i++) {   // Sprachmodell lädt im Hintergrund
-    await new Promise(r => setTimeout(r, 200)); infos.add((await z()).info);
-  }
-  ok([...infos].every(t => t.includes('Durchgang beendet') || t.includes('neu „Start“')) && infos.has('Sprechen an – bitte neu „Start“ drücken'),
-    `Hinweis sagt, dass neu gestartet werden muss (${[...infos].join(' → ')})`);
-  await page.click('#los'); await page.clock.runFor(3000);
-  await lange(page, '#spielseite .ton', 3200, true);
+  ok(m.ton && !m.an, '3 s auf 🔊: schaltet nichts mehr um (Sprechen hat seinen eigenen Knopf)');
+  await page.click('#spielseite .ton');
+  ok(!(await z()).ton && !(await z()).an, 'Kurz auf 🔊: nur der Ton aus');
+  await page.click('#mikro-knopf');
   m = await z();
-  ok(!m.sprechen && m.phase === 'warten' && !m.uhr.laeuft && m.info === 'Sprechen aus – bitte neu „Start“ drücken', 'Auch beim Ausschalten: Durchgang beendet, „Sprechen aus – bitte neu „Start“ drücken“');
+  ok(m.an && m.knopf === 'true' && !m.ton && m.info.startsWith('Sprechen an'), '🎤 antippen: Sprechen an, der Ton bleibt aus');
+  await page.click('#spielseite .ton');
+  await page.waitForFunction(() => window.wuerfelSpiel.sprache.bereit, null, { timeout: 60000 });
+  ok((await z()).info === 'Sprechen an – ab „Start“ hört die App zu', 'Sprachmodell geladen: „ab „Start“ hört die App zu“');
+  await page.reload();
+  await page.click('#zahlwahl button[data-n="6"]');
+  ok((await z()).an && (await z()).knopf === 'true', 'Bleibt nach dem Neuladen an');
+  await page.click('#los');                              // ohne Mikrofon im Testbrowser: Hinweis, das Spiel läuft trotzdem
+  await page.waitForFunction(() => window.wuerfelSpiel.uhr.laeuft, null, { timeout: 5000 });
+  m = await z();
+  ok(m.laeuft && !m.hoert && (m.info.startsWith('Sprechen geht') || m.info.startsWith('Mikrofon')), `Kein Mikrofon da: „${m.info}“, die 2 Minuten laufen trotzdem`);
+  await page.click('#mikro-knopf');
+  m = await z();
+  ok(m.an && m.laeuft && m.info === 'Sprechen lässt sich nur vor „Start“ umschalten', 'Im Durchgang: 🎤 schaltet nicht um, nur ein Hinweis – der Durchgang läuft weiter');
+  await page.click('#zurueck');
+  await page.click('#zahlwahl button[data-n="10"]');
+  await page.click('#mikro-knopf');
+  m = await z();
+  ok(!m.an && m.knopf === 'false' && m.info === 'Sprechen aus', 'Vor „Start“: 🎤 antippen schaltet Sprechen aus');
+  await page.setViewportSize({ width: 320, height: 568 });
+  const kopf = await page.evaluate(() => { const r = document.createRange(); r.selectNodeContents(document.querySelector('#spielseite .titel'));
+    return { text: r.getBoundingClientRect().right, knopf: document.querySelector('#mikro-knopf').getBoundingClientRect().left }; });
+  ok(kopf.text <= kopf.knopf, `320 pt: „Zerlegen: 10“ passt neben 🎤 und 🔊 (${Math.round(kopf.text)} ≤ ${Math.round(kopf.knopf)} px)`);
   ok(konsole.length === 0, 'Keine Fehler in der Konsole' + (konsole.length ? ': ' + konsole.join(' | ') : ''));
   await ctx.close();
 }

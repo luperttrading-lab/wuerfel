@@ -102,15 +102,19 @@ ein Mini-Bildschirm mit pulsierendem Ring, wo man drückt („3 s“ oder „tip
 gerade eingestellt ist (Tiere, Staub, Versuche am Ende, Fassung). Kurz tippen öffnet nichts, zeigt nur „Für Erwachsene:
 3 Sekunden drücken“. Schließen mit ✕, daneben tippen oder Esc; der Inhalt scrollt (sonst ist Wischen gesperrt).
 
-**Sprechen** (3 s auf 🔊, gespeichert; am 🔊 sitzt dann ein kleines 🎤): Während der 2 Minuten hört die App zu. Sagt
+**Sprechen** (🎤 neben 🔊 auf der Spielseite antippen, gespeichert; aus = grau, an = farbig, grüner Ring = Ton vom
+Mikrofon kommt an; bis v0.57 waren es 3 s auf 🔊): Während der 2 Minuten hört die App zu. Sagt
 das Kind eine Zahl, zählt sie still richtig oder falsch und würfelt von selbst weiter – auch bei einer falschen Zahl
 (so gewünscht). „Nur Würfel“: sofort der nächste Wurf. „Mit Zahlen unten“: wie angetippt (siehe unten); mit Sprechen
 an gibt es dort keine Zahlenleiste – entweder sagen oder tippen. Uhr und Ende zeigen dann z. B. „23 Versuche · 19 richtig“. Gewertet wird nur bei
 offener Aufgabe (nicht beim Rollen, nicht vor „Start“, nicht nach den 2 Minuten). Mikrofon nur während der 2 Minuten;
 vorher stellt die App die Tonsitzung auf `play-and-record`, danach zurück auf `playback`. vosk.js und Modell werden
 erst geladen, wenn Sprechen an ist. Kurz auf 🔊 tippen bleibt Ton an/aus. Ohne Mikrofon (verweigert, nicht da) kommt
-ein Hinweis, das Spiel läuft normal. Umschalten mitten im Durchgang beendet ihn (das Mikrofon geht nur beim „Start“
-an): wieder „Start“, Hinweis „Sprechen an/aus – bitte neu „Start“ drücken“. 🔊, „Start“/„Nochmal“ und ⓘ lösen nur bei
+ein Hinweis, das Spiel läuft normal. Während der 2 Minuten schaltet 🎤 nicht um (ein Kind könnte ihn antippen), es
+kommt nur „Sprechen lässt sich nur vor „Start“ umschalten“. Beim „Start“ geht erst das Mikrofon an, dann rollt der
+erste Wurf (höchstens 2 s warten); die 2 Minuten zählen ab dem ersten Wurf. Grund: Beim Einschalten stellt iOS den Ton
+um, die Seite stand dabei 0,35 s still (20 gleiche Bilder im iPhone-Video) – mitten im ersten Rollen sah das wie
+Stocken aus. 🔊, „Start“/„Nochmal“ und ⓘ lösen nur bei
 einem kurzen Tipp aus (Druckdauer unter 1 s, gemessen von pointerdown bis pointerup); v0.56 prüfte das über
 `event.detail`, am iPhone schaltete langes Drücken auf 🔇 dabei auch den Ton ein. Am 🎤 zeigt ein grüner Ring, dass wirklich Ton vom Mikrofon ankommt; kommt
 nach 3 s keiner, nennt ein Hinweis den Zustand von Tonkanal und Mikrofon. v0.54 reagierte am iPhone nicht auf

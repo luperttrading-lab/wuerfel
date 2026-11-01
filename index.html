@@ -60,11 +60,11 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
   text-decoration: underline dotted; text-underline-offset: 3px;
 }
 .ton, .zurueck, .tiere-schalter, .staub-schalter { width: 44px; height: 44px; flex: none; border-radius: 12px; background: var(--wahl); font-size: 22px; }
-.ton { position: relative; }
-.ton.mikro::after {       /* Sprechen an (3 s auf 🔊): kleines Mikrofon am Knopf */
-  content: "🎤"; position: absolute; right: -5px; bottom: -5px; width: 21px; height: 21px; border-radius: 50%;
-  display: grid; place-items: center; font-size: 12px; background: #fff; box-shadow: 0 1px 4px rgba(6, 18, 44, .35); }
-.ton.mikro.hoert::after { background: #c9f5d5; box-shadow: 0 0 0 2.5px #2fbf55, 0 1px 4px rgba(6, 18, 44, .35); }   /* grün: Ton vom Mikrofon kommt an */
+/* 🎤 neben 🔊 (Spielseite): Sprechen an/aus. Aus: grau; an: farbig; grüner Ring, sobald Ton vom Mikrofon ankommt.
+   40 statt 44 px breit, damit „Zerlegen: 10“ auch auf dem kleinsten iPhone (320 pt) daneben passt. */
+.mikro-knopf { width: 40px; height: 44px; flex: none; border-radius: 12px; background: var(--wahl); font-size: 20px; }
+.mikro-knopf[aria-pressed="false"] { filter: grayscale(1); opacity: .45; }
+.mikro-knopf.hoert { background: #c9f5d5; box-shadow: inset 0 0 0 3px #2fbf55; }
 .staub-schalter[aria-pressed="false"] { filter: grayscale(1); opacity: .45; }
 .staub-schalter[aria-pressed="true"] {   /* bunter Staub */
   background: linear-gradient(135deg, #ff6fae, #ffb347 28%, #ffe45c 46%, #5fe0a0 64%, #5ab8ff 82%, #a77bff);
@@ -338,6 +338,7 @@ body:not(.sagen) .los-feld { position: absolute; inset: 0; justify-content: cent
   <header class="kopf">
     <button class="zurueck" id="zurueck" aria-label="Andere Zahl wählen">‹</button>
     <h1 class="titel">Zerlegen: <span class="ganz" id="titel-n"></span></h1>
+    <button class="mikro-knopf" id="mikro-knopf" aria-label="Sprechen an oder aus" aria-pressed="false">🎤</button>
     <button class="ton" aria-label="Ton an oder aus"></button>
   </header>
   <section class="buehne">
@@ -444,15 +445,15 @@ body:not(.sagen) .los-feld { position: absolute; inset: 0; justify-content: cent
       </section>
       <section class="geheim">
         <div class="mini" aria-hidden="true"><span class="k" style="left:6px">‹</span><span class="t" style="left:24px">Zerlegen: 8</span>
-          <span class="k ziel" style="right:6px">🔊</span><span class="schild" style="right:4px;top:26px">3 s</span>
-          <span class="w">3</span><span class="text" style="top:92px;font-size:7px">„fünf!“ 🎤</span></div>
+          <span class="k ziel" style="right:23px">🎤</span><span class="k" style="right:6px">🔊</span><span class="schild" style="right:16px;top:26px">tippen</span>
+          <span class="w">3</span><span class="text" style="top:92px;font-size:7px">„fünf!“</span></div>
         <div><h3>Sprechen an / aus <span class="jetzt" id="jetzt-sprechen"></span></h3>
-          <p><b>3 s auf 🔊</b> drücken (Startseite oder Spielseite). Dann hört die App während der 2 Minuten zu: Sagt das Kind
+          <p><b>🎤 neben 🔊</b> auf der Spielseite antippen (vor „Start“). Dann hört die App während der 2 Minuten zu: Sagt das Kind
           eine Zahl, würfelt sie von selbst weiter – auch bei einer falschen. Sie zählt still mit, was richtig war; mit Uhr
-          oder am Ende steht z. B. „23 Versuche · 19 richtig“. Am 🔊 sitzt dann ein kleines 🎤 – grün umrandet, sobald nach
+          oder am Ende steht z. B. „23 Versuche · 19 richtig“. Das 🎤 ist dann farbig – und grün umrandet, sobald nach
           „Start“ wirklich Ton vom Mikrofon ankommt. Erkannt wird auf dem iPhone,
-          nichts geht ins Internet; beim ersten Mal lädt ein Sprachmodell (45 MB). Kurz auf 🔊 tippen bleibt Ton an/aus.
-          Das Mikrofon geht beim „Start“ an – wer mitten im Durchgang umschaltet, beendet ihn; dann neu „Start“.</p></div>
+          nichts geht ins Internet; beim ersten Mal lädt ein Sprachmodell (45 MB). Während der 2 Minuten lässt sich 🎤 nicht
+          umschalten (es kommt nur ein Hinweis) – vorher oder nach „Die Zeit ist um!“ schon.</p></div>
       </section>
       <section class="geheim">
         <div><h3>Sprechtest</h3>
@@ -464,7 +465,7 @@ body:not(.sagen) .los-feld { position: absolute; inset: 0; justify-content: cent
 </div>
 
 <script>
-const APP_VERSION = '0.57';          // bei JEDER Änderung hochzählen
+const APP_VERSION = '0.58';          // bei JEDER Änderung hochzählen
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
@@ -936,14 +937,13 @@ function zeigeTiere() {
   $('#staub-schalter').hidden = !mitTieren();                     // ohne Tiere kein Staub, also auch kein Schalter
   if (mitTieren()) $$('#zahlwahl button').forEach(b => { b.querySelector('img').src = tierBild(b.dataset.n); });
 }
-function zeigeTon() {
-  $$('.ton').forEach(b => {
-    b.textContent = stand.ton ? '🔊' : '🔇';
-    b.classList.toggle('mikro', stand.sprechen);
-    b.classList.toggle('hoert', sprache.hoert);
-    document.body.classList.toggle('sprechen', stand.sprechen);
-    b.setAttribute('aria-label', 'Ton an oder aus' + (stand.sprechen ? ' – Sprechen ist an' : ''));
-  });
+function zeigeTon() { $$('.ton').forEach(b => { b.textContent = stand.ton ? '🔊' : '🔇'; }); }
+function zeigeMikro() {
+  const k = $('#mikro-knopf');
+  k.setAttribute('aria-pressed', String(stand.sprechen));
+  k.classList.toggle('hoert', sprache.hoert);
+  k.setAttribute('aria-label', stand.sprechen ? 'Sprechen ist an – antippen zum Ausschalten' : 'Sprechen ist aus – antippen zum Einschalten');
+  document.body.classList.toggle('sprechen', stand.sprechen);
 }
 function nochmal(el, klasse) { el.classList.remove(klasse); void el.offsetWidth; el.classList.add(klasse); }
 let farbTimer = null;
@@ -1014,13 +1014,16 @@ function warte() {                                              // vor dem Start
   zeigeLos('Bereit?', 'Start');
   zeigeUhr();
 }
-function losgehen() {                                           // „Start“ und „Nochmal“
+async function losgehen() {                                     // „Start“ und „Nochmal“
   stoppeUhr();
-  uhr = { start: Date.now(), versuche: 0, laeuft: true, um: false, richtig: 0, falsch: 0 };
+  zeigeLos('', '');
+  // Sprechen an: erst das Mikrofon, dann der erste Wurf. Beim Einschalten stellt iOS den Ton um und die Seite steht
+  // ~0,35 s still (am iPhone-Video gemessen) – rollt der Würfel dabei schon, stockt er. Höchstens 2 s warten.
+  if (stand.sprechen && !sprache.strom) await Promise.race([mikrofonAn(), new Promise(r => setTimeout(r, 2000))]);
+  if (phase !== 'warten' && phase !== 'aus') return;   // inzwischen „‹ Zurück“
+  uhr = { start: Date.now(), versuche: 0, laeuft: true, um: false, richtig: 0, falsch: 0 };   // die 2 Minuten ab dem ersten Wurf
   uhrTimer = setTimeout(zeitUm, DAUER);
   uhrTakt = setInterval(zeigeUhr, 100);
-  zeigeLos('', '');
-  mikrofonAn();                                   // Sprechen an: noch im Tipp, damit iOS Ton und Mikrofon freigibt
   wuerfeln();
 }
 function zeitUm() {
@@ -1132,7 +1135,7 @@ async function mikrofonAn() {
     // Reihenfolge wie im Sprechtest (am iPhone 20 von 20): erst das Mikrofon, dann den Tonkanal zum Zuhören öffnen
     const strom = await navigator.mediaDevices.getUserMedia({ video: false,
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } });
-    if (!uhr.laeuft || !stand.sprechen) { strom.getTracks().forEach(t => t.stop()); return; }   // inzwischen vorbei
+    if (phase === 'start' || !stand.sprechen) { strom.getTracks().forEach(t => t.stop()); return; }   // inzwischen zurück oder aus
     sprache.strom = strom;
     sprache.ctx ||= new (window.AudioContext || window.webkitAudioContext)();
     if (sprache.ctx.state !== 'running') await sprache.ctx.resume();
@@ -1143,12 +1146,15 @@ async function mikrofonAn() {
     erkenner.on('result', m => { const z = zahlAus(m.result.text || ''); if (z !== null) gesagt(z); });
     sprache.quelle = sprache.ctx.createMediaStreamSource(strom);
     sprache.knoten = sprache.ctx.createScriptProcessor(4096, 1, 1);
+    let tonDa;
+    const ersterTon = new Promise(r => { tonDa = r; });
     sprache.knoten.onaudioprocess = ev => {
-      if (!sprache.hoert) { sprache.hoert = true; zeigeTon(); }   // 🎤 wird grün: Ton kommt an
+      if (!sprache.hoert) { sprache.hoert = true; zeigeMikro(); tonDa(); }   // 🎤 wird grün: Ton kommt an
       try { erkenner.acceptWaveform(ev.inputBuffer); } catch (_) {}
     };
     sprache.quelle.connect(sprache.knoten);
     sprache.knoten.connect(sprache.ctx.destination);   // Safari ruft onaudioprocess nur auf, wenn der Knoten angeschlossen ist
+    await Promise.race([ersterTon, new Promise(r => setTimeout(r, 1000))]);
     clearTimeout(sprache.wache);
     sprache.wache = setTimeout(() => {            // nach 3 s noch kein Ton: sagen, woran es hängt
       if (sprache.strom === strom && !sprache.hoert) {
@@ -1169,7 +1175,7 @@ function mikrofonAus() {
   sprache.quelle?.disconnect(); sprache.knoten?.disconnect();
   try { sprache.erkenner?.remove(); } catch (_) {}
   sprache.strom = sprache.quelle = sprache.knoten = sprache.erkenner = null;
-  if (sprache.hoert) { sprache.hoert = false; zeigeTon(); }
+  if (sprache.hoert) { sprache.hoert = false; zeigeMikro(); }
   if (!stand.sprechen) tonsitzung('playback');    // Sprechen an: Tonsitzung bleibt „play-and-record“
 }
 function gesagt(k) {                              // eine Zahl wurde erkannt
@@ -1310,32 +1316,23 @@ $$('.ton').forEach(b => kurzerTipp(b, () => {          // Ton an/aus nur mit kur
   stand.ton = !stand.ton; speichereAlles(); zeigeTon();
   if (stand.ton) ton(783.99, 0, 0.15);
 }));
-// Laufender Durchgang endet, es geht mit „Start“ neu los (gleiche Zahl) – z. B. nach dem Umschalten von Sprechen,
-// denn das Mikrofon geht nur beim Start an
-function neuAnfangen() {
-  stoppeWuerfel();
-  mikrofonAus();
-  clearTimeout(farbTimer); document.body.classList.remove('gut', 'falsch');
-  gleichungEl.classList.add('weg');
-  warte();
-}
-// 3 s auf 🔊: Sprechen an/aus. Beim ersten Mal lädt das Sprachmodell (45 MB), danach kommt es aus dem Speicher.
-halten([...$$('.ton')], () => {
-  const lief = uhr.laeuft;
-  stand.sprechen = !stand.sprechen; speichereAlles(); zeigeTon(); zeigeUhr();
-  if (lief) neuAnfangen();                        // mitten im Durchgang umschalten geht nicht: von vorn mit „Start“
-  if (!stand.sprechen) { mikrofonAus(); showInfo(lief ? 'Sprechen aus – bitte neu „Start“ drücken' : 'Sprechen aus', SCHALTER_HINWEIS); return; }
+// 🎤 antippen: Sprechen an/aus. Das Mikrofon geht beim „Start“ an – während der 2 Minuten wird nicht umgeschaltet
+// (ein Kind könnte den Knopf antippen), nur ein Hinweis. Beim ersten Mal lädt das Sprachmodell (45 MB).
+$('#mikro-knopf').addEventListener('click', e => {
+  if (uhr.laeuft) { showInfo('Sprechen lässt sich nur vor „Start“ umschalten', SCHALTER_HINWEIS, e.currentTarget); return; }
+  stand.sprechen = !stand.sprechen; speichereAlles(); zeigeMikro(); zeigeUhr();
+  if (!stand.sprechen) { mikrofonAus(); showInfo('Sprechen aus', SCHALTER_HINWEIS, e.currentTarget); return; }
   tonsitzung('play-and-record');
-  const bereitText = lief ? 'Sprechen an – bitte neu „Start“ drücken' : 'Sprechen an – ab „Start“ hört die App zu';
-  showInfo(sprache.modell ? bereitText : (lief ? 'Sprechen an – Durchgang beendet, Sprachmodell lädt …' : 'Sprechen an – Sprachmodell lädt …'),
-    sprache.modell ? SCHALTER_HINWEIS : 0);
+  const bereitText = 'Sprechen an – ab „Start“ hört die App zu';
+  showInfo(sprache.modell ? bereitText : 'Sprechen an – Sprachmodell lädt …', sprache.modell ? SCHALTER_HINWEIS : 0, e.currentTarget);
   ladeSprache().then(() => { if (stand.sprechen) showInfo(bereitText, SCHALTER_HINWEIS); })
-    .catch(() => { stand.sprechen = false; speichereAlles(); zeigeTon(); showInfo('Sprachmodell ließ sich nicht laden – Sprechen aus', SCHALTER_HINWEIS); });
+    .catch(() => { stand.sprechen = false; speichereAlles(); zeigeMikro(); showInfo('Sprachmodell ließ sich nicht laden – Sprechen aus', SCHALTER_HINWEIS); });
 });
 
 $('#version').textContent = $('#mini-version').textContent = 'v' + APP_VERSION;
 stelle(RUHE.x, RUHE.y);
 zeigeTon();
+zeigeMikro();
 zeigeTiere();
 zeigeStaub();
 zeigeFassung();

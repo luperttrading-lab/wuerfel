@@ -109,7 +109,10 @@ an gibt es dort keine Zahlenleiste – entweder sagen oder tippen. Uhr und Ende 
 offener Aufgabe (nicht beim Rollen, nicht vor „Start“, nicht nach den 2 Minuten). Mikrofon nur während der 2 Minuten;
 vorher stellt die App die Tonsitzung auf `play-and-record`, danach zurück auf `playback`. vosk.js und Modell werden
 erst geladen, wenn Sprechen an ist. Kurz auf 🔊 tippen bleibt Ton an/aus. Ohne Mikrofon (verweigert, nicht da) kommt
-ein Hinweis, das Spiel läuft normal. Am 🎤 zeigt ein grüner Ring, dass wirklich Ton vom Mikrofon ankommt; kommt
+ein Hinweis, das Spiel läuft normal. Umschalten mitten im Durchgang beendet ihn (das Mikrofon geht nur beim „Start“
+an): wieder „Start“, Hinweis „Sprechen an/aus – bitte neu „Start“ drücken“. 🔊, „Start“/„Nochmal“ und ⓘ lösen nur bei
+einem kurzen Tipp aus (Druckdauer unter 1 s, gemessen von pointerdown bis pointerup); v0.56 prüfte das über
+`event.detail`, am iPhone schaltete langes Drücken auf 🔇 dabei auch den Ton ein. Am 🎤 zeigt ein grüner Ring, dass wirklich Ton vom Mikrofon ankommt; kommt
 nach 3 s keiner, nennt ein Hinweis den Zustand von Tonkanal und Mikrofon. v0.54 reagierte am iPhone nicht auf
 Gesprochenes (im Testbrowser schon): Die Tonsitzung wurde erst beim Start umgeschaltet, während der Würfel klang, und
 der Tonkanal zum Zuhören war schon vor dem Mikrofon offen. Seit v0.55: mit Sprechen an von Anfang an

@@ -451,7 +451,8 @@ body:not(.sagen) .los-feld { position: absolute; inset: 0; justify-content: cent
           eine Zahl, würfelt sie von selbst weiter – auch bei einer falschen. Sie zählt still mit, was richtig war; mit Uhr
           oder am Ende steht z. B. „23 Versuche · 19 richtig“. Am 🔊 sitzt dann ein kleines 🎤 – grün umrandet, sobald nach
           „Start“ wirklich Ton vom Mikrofon ankommt. Erkannt wird auf dem iPhone,
-          nichts geht ins Internet; beim ersten Mal lädt ein Sprachmodell (45 MB). Kurz auf 🔊 tippen bleibt Ton an/aus.</p></div>
+          nichts geht ins Internet; beim ersten Mal lädt ein Sprachmodell (45 MB). Kurz auf 🔊 tippen bleibt Ton an/aus.
+          Das Mikrofon geht beim „Start“ an – wer mitten im Durchgang umschaltet, beendet ihn; dann neu „Start“.</p></div>
       </section>
       <section class="geheim">
         <div><h3>Sprechtest</h3>
@@ -463,7 +464,7 @@ body:not(.sagen) .los-feld { position: absolute; inset: 0; justify-content: cent
 </div>
 
 <script>
-const APP_VERSION = '0.56';          // bei JEDER Änderung hochzählen
+const APP_VERSION = '0.57';          // bei JEDER Änderung hochzählen
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
@@ -1230,14 +1231,17 @@ zahlenEl.addEventListener('click', e => {                                    // 
   if (b && e.detail === 0) antwort(+b.dataset.zahl, b);
 });
 $('#zurueck').addEventListener('click', () => { uhrAn = false; zeigeStart(); });
-// „Start“/„Nochmal“: nur ein normaler Tipp (unter 1 s losgelassen) startet. Wer länger drückt, startet nichts –
-// ab 3 s schaltet er die Anzeige am Ende um (siehe unten), ohne dass beim Loslassen eine Runde beginnt.
-let losDruck = 0;
-losKnopf.addEventListener('pointerdown', () => { losDruck = performance.now(); });
-losKnopf.addEventListener('click', e => {
-  if (e.detail && performance.now() - losDruck > 1000) return;   // e.detail 0: Tastatur, startet immer
-  losgehen();
-});
+// Knöpfe mit verstecktem 3-s-Schalter: nur ein kurzer Tipp (unter 1 s losgelassen) löst den Knopf aus. Wer länger
+// drückt, löst nichts aus – ab 3 s greift der Schalter. Gemessen wird die Druckdauer selbst (pointerdown → pointerup),
+// nicht über event.detail: das setzt das iPhone anders als der Testbrowser (v0.56: langes Drücken schaltete den Ton um).
+function kurzerTipp(el, aktion) {
+  let beginn = 0, lang = false;
+  el.addEventListener('pointerdown', () => { beginn = performance.now(); lang = false; });
+  el.addEventListener('pointerup', () => { lang = performance.now() - beginn > 1000; });
+  el.addEventListener('click', e => { if (lang) { lang = false; return; } aktion(e); });   // Tastatur: ohne pointerup, löst aus
+}
+// „Start“/„Nochmal“; 3 s darauf schaltet die Anzeige am Ende um (siehe unten), ohne dass eine Runde beginnt
+kurzerTipp(losKnopf, losgehen);
 // Versteckte Schalter für Erwachsene: 3 s gedrückt halten
 function halten(els, aktion) {
   for (const el of els) {
@@ -1287,12 +1291,7 @@ function zeigeHilfe() {
   $('.hilfe-inhalt').scrollTop = 0;
 }
 const schliesseHilfe = () => { hilfeEl.hidden = true; };
-let infoDruck = 0;
-infoKnopf.addEventListener('pointerdown', () => { infoDruck = performance.now(); });
-infoKnopf.addEventListener('click', e => {
-  if (!e.detail) return zeigeHilfe();
-  if (performance.now() - infoDruck < 1000) showInfo('Für Erwachsene: 3 Sekunden drücken', 2, e.currentTarget);
-});
+kurzerTipp(infoKnopf, e => (e.detail ? showInfo('Für Erwachsene: 3 Sekunden drücken', 2, e.currentTarget) : zeigeHilfe()));
 halten([infoKnopf], zeigeHilfe);
 $('#hilfe-zu').addEventListener('click', schliesseHilfe);
 hilfeEl.addEventListener('click', e => { if (e.target === hilfeEl) schliesseHilfe(); });   // daneben tippen schließt
@@ -1307,22 +1306,29 @@ $('#staub-schalter').addEventListener('click', e => {
   stand.staub = !stand.staub; speichereAlles(); zeigeStaub();
   showInfo(stand.staub ? 'Bunter Staub an' : 'Ohne Staub', 1.6, e.currentTarget);
 });
-let tonDruck = 0;
-$$('.ton').forEach(b => {
-  b.addEventListener('pointerdown', () => { tonDruck = performance.now(); });
-  b.addEventListener('click', e => {
-    if (e.detail && performance.now() - tonDruck > 1000) return;   // langes Drücken war der Schalter „Sprechen“
-    stand.ton = !stand.ton; speichereAlles(); zeigeTon();
-    if (stand.ton) ton(783.99, 0, 0.15);
-  });
-});
+$$('.ton').forEach(b => kurzerTipp(b, () => {          // Ton an/aus nur mit kurzem Tippen
+  stand.ton = !stand.ton; speichereAlles(); zeigeTon();
+  if (stand.ton) ton(783.99, 0, 0.15);
+}));
+// Laufender Durchgang endet, es geht mit „Start“ neu los (gleiche Zahl) – z. B. nach dem Umschalten von Sprechen,
+// denn das Mikrofon geht nur beim Start an
+function neuAnfangen() {
+  stoppeWuerfel();
+  mikrofonAus();
+  clearTimeout(farbTimer); document.body.classList.remove('gut', 'falsch');
+  gleichungEl.classList.add('weg');
+  warte();
+}
 // 3 s auf 🔊: Sprechen an/aus. Beim ersten Mal lädt das Sprachmodell (45 MB), danach kommt es aus dem Speicher.
 halten([...$$('.ton')], () => {
+  const lief = uhr.laeuft;
   stand.sprechen = !stand.sprechen; speichereAlles(); zeigeTon(); zeigeUhr();
-  if (!stand.sprechen) { mikrofonAus(); showInfo('Sprechen aus', SCHALTER_HINWEIS); return; }
+  if (lief) neuAnfangen();                        // mitten im Durchgang umschalten geht nicht: von vorn mit „Start“
+  if (!stand.sprechen) { mikrofonAus(); showInfo(lief ? 'Sprechen aus – bitte neu „Start“ drücken' : 'Sprechen aus', SCHALTER_HINWEIS); return; }
   tonsitzung('play-and-record');
-  const bereitText = 'Sprechen an – ab „Start“ hört die App zu';
-  showInfo(sprache.modell ? bereitText : 'Sprechen an – Sprachmodell lädt …', sprache.modell ? SCHALTER_HINWEIS : 0);
+  const bereitText = lief ? 'Sprechen an – bitte neu „Start“ drücken' : 'Sprechen an – ab „Start“ hört die App zu';
+  showInfo(sprache.modell ? bereitText : (lief ? 'Sprechen an – Durchgang beendet, Sprachmodell lädt …' : 'Sprechen an – Sprachmodell lädt …'),
+    sprache.modell ? SCHALTER_HINWEIS : 0);
   ladeSprache().then(() => { if (stand.sprechen) showInfo(bereitText, SCHALTER_HINWEIS); })
     .catch(() => { stand.sprechen = false; speichereAlles(); zeigeTon(); showInfo('Sprachmodell ließ sich nicht laden – Sprechen aus', SCHALTER_HINWEIS); });
 });

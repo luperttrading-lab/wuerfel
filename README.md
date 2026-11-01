@@ -86,7 +86,9 @@ von selbst da (`2:00,0 · 23 Versuche`) – zur Auswertung: richtig zählt der E
 in der Farbe des Statusleisten-Streifens darüber (`--bg`, #2b5a98 – am iPhone malt iOS diesen Streifen in
 unserer Grundfarbe, die App beginnt darunter). Sie sieht aus, als würde dessen Unterkante langsam dicker;
 halb = 1 Minute, ganz = um. Ohne Ziffern, ohne Sprünge (3,25 pt pro Sekunde): wer weiß, wo er hinschaut,
-sieht sie, das Kind schaut auf den Würfel. Dicke über `--linie`. Geprüft wird die Zeit zweimal: mit
+sieht sie, das Kind schaut auf den Würfel. Dicke über `--linie`. **Vorübergehend** (v0.45) schaltet der Knopf
+„2 pt“ in der Kopfzeile der Spielseite 1 → 2 → 3 pt (gespeichert) – zum Ausprobieren am Gerät; er kommt
+wieder raus, sobald die Dicke feststeht. Geprüft wird die Zeit zweimal: mit
 vorgespulter Browser-Uhr auf die Millisekunde (119 999 ms läuft, 120 000 ms Schluss) und einmal echt
 2 Minuten lang, von außen gemessen (bisher 119 997 … 120 033 ms, die Spanne ist die Dauer des Klicks).
 Die Fassung `?tippen` hat keinen Start und keine Uhr. (Die Zähl-Statistik aus v0.41 ist wieder raus.)

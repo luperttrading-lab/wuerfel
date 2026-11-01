@@ -543,6 +543,10 @@ console.log('Start und genau 2 Minuten (Uhr des Browsers vorgespult)');
   const l1 = await linie();
   ok(Math.abs(l1.breite - 195) <= 1 && l1.oben === 0 && l1.hoch === 2 && l1.farbe === 'rgb(43, 90, 152)',
     `Nach 1 Minute: Linie oben halb über den Bildschirm (${l1.breite} von 390 px, ${l1.hoch} px dick, Farbe der Statusleiste ${l1.farbe})`);
+  const dicken = [];
+  for (let i = 0; i < 3; i++) { await page.click('#linie-test'); dicken.push(`${await page.textContent('#linie-test')}/${(await linie()).hoch}px`); }
+  ok(dicken.join(' ') === '3 pt/3px 1 pt/1px 2 pt/2px' && await phase(page) === 'frage' && (await linie()).breite === 195,
+    `Knopf „2 pt“ (vorübergehend): Dicke 1 → 2 → 3 pt umschalten, die Runde läuft weiter (${dicken.join(', ')})`);
   let wuerfe = 1;
   while ((await uhr()).vergangen + 5000 < 119000) { await page.click('#wuerfel', { force: true }); wuerfe++; await page.clock.runFor(5000); }
   await page.clock.runFor(119000 - (await uhr()).vergangen);
@@ -612,7 +616,7 @@ console.log('Start und genau 2 Minuten (Uhr des Browsers vorgespult)');
 {
   const t = await seite(390, 844);                        // ?tippen: ohne Start und ohne Uhr, wie bisher
   await t.page.click('#zahlwahl button[data-n="9"]');
-  ok(await t.page.isHidden('#los-feld') && await phase(t.page) === 'bereit', '?tippen: kein „Start“, der Würfel ist gleich bereit');
+  ok(await t.page.isHidden('#los-feld') && await t.page.isHidden('#linie-test') && await phase(t.page) === 'bereit', '?tippen: kein „Start“, keine Zeitlinie, der Würfel ist gleich bereit');
   await t.ctx.close();
 }
 

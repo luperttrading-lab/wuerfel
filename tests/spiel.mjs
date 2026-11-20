@@ -118,7 +118,8 @@ console.log('Startseite');
   console.log('Spiel');
   await page.click('#zahlwahl button[data-n="8"]');
   ok(await page.isVisible('#spielseite') && await page.isHidden('#startseite'), 'Nach der Wahl: Spielseite');
-  ok(await page.locator('.zahl').count() === 9, 'Zerlegen der 8: Knöpfe 0–8');
+  ok(await page.locator('.zahl').count() === 11 && (await page.textContent('#zahlen')).replace(/\s/g, '') === '012345678910',
+    'Zahlenleiste immer 0–10, auch beim Zerlegen der 8 (ihre Länge verrät nichts)');
   ok(await phase(page) === 'warten' && await page.isVisible('#los') && (await page.textContent('#los')) === 'Start', 'Würfel wartet, darunter „Start“');
   ok(await page.locator('#koerper .flaeche').count() === 6, 'Würfel hat sechs Seiten');
   RUHELAGE = await lage(page);
@@ -424,14 +425,14 @@ console.log('Hilfe: 3 s auf ⓘ erklärt die geheimen Schalter');
   ok(await page.isHidden('#hilfe'), '1,2 s drücken: Hilfe bleibt zu');
   await lange(page, '#info-knopf');
   const titel = await page.evaluate(() => [...document.querySelectorAll('#hilfe h3')].map(h => h.firstChild.textContent.trim()));
-  ok(await page.isVisible('#hilfe') && ['Tiere an / aus', 'Uhr an / aus', 'Versuche am Ende an / aus', 'Zeitlinie oben', 'Diese Hilfe und Updates', 'Nur Würfel oder mit Zahlen unten', 'Sprechen an / aus', 'Sprechtest'].every(t => titel.includes(t))
+  ok(await page.isVisible('#hilfe') && ['Tiere an / aus', 'Uhr an / aus', 'Versuche am Ende an / aus', 'Zeitlinie oben', 'Diese Hilfe und Updates', 'Schlicht oder mit Rechnung', 'Sprechen an / aus', 'Auswertung', 'Sprechtest'].every(t => titel.includes(t))
     && !(await page.textContent('#hilfe')).includes('Safari'),
     `3 s drücken: Hilfe offen (${titel.length} Punkte: ${titel.join(' · ')})`);
-  ok(await page.evaluate(() => document.querySelectorAll('#hilfe .mini').length === 8 && document.querySelectorAll('#hilfe .mini .ziel').length >= 8),
+  ok(await page.evaluate(() => document.querySelectorAll('#hilfe .mini').length === 9 && document.querySelectorAll('#hilfe .mini .ziel').length >= 9),
     'Zu jedem Schalter ein Mini-Bildschirm mit Ring, wo man drückt');
-  ok((await page.textContent('#jetzt-tiere')) === 'jetzt aus' && (await page.textContent('#jetzt-ende')) === 'jetzt an' && (await page.textContent('#jetzt-fassung')) === 'jetzt: nur Würfel' && (await page.textContent('#jetzt-sprechen')) === 'jetzt aus'
+  ok((await page.textContent('#jetzt-tiere')) === 'jetzt aus' && (await page.textContent('#jetzt-ende')) === 'jetzt an' && (await page.textContent('#jetzt-fassung')) === 'jetzt: schlicht' && (await page.textContent('#jetzt-sprechen')) === 'jetzt aus'
     && (await page.textContent('#mini-version')) === (await page.textContent('#version')),
-    'Zeigt, was gerade eingestellt ist (Tiere aus, Versuche am Ende an, nur Würfel, Sprechen aus) und die echte Versionsnummer');
+    'Zeigt, was gerade eingestellt ist (Tiere aus, Versuche am Ende an, schlicht, Sprechen aus) und die echte Versionsnummer');
   ok(await page.isHidden('#tiere-schalter') && !(await page.evaluate(() => document.querySelector('#update').classList.contains('an'))),
     'Langes Drücken auf ⓘ schaltet keine Tiere und zeigt keinen Tipp-Hinweis');
   ok(await page.getAttribute('#hilfe a.hilfe-link', 'href') === 'sprechtest.html', 'Hilfe verlinkt den Sprechtest');
@@ -484,6 +485,7 @@ console.log('Sprechen an/aus: 🎤 neben 🔊 (ohne Mikrofon; mit Ersatz-Mikrofo
   await page.click('#mikro-knopf');
   m = await z();
   ok(m.an && m.knopf === 'true' && !m.ton && m.info.startsWith('Sprechen an'), '🎤 antippen: Sprechen an, der Ton bleibt aus');
+  ok(await page.isHidden('#zahlen'), 'Mikrofon an: keine Zahlenleiste (entweder sagen oder tippen)');
   await page.click('#spielseite .ton');
   await page.waitForFunction(() => window.wuerfelSpiel.sprache.bereit, null, { timeout: 60000 });
   ok((await z()).info === 'Sprechen an – ab „Start“ hört die App zu', 'Sprachmodell geladen: „ab „Start“ hört die App zu“');
@@ -502,6 +504,7 @@ console.log('Sprechen an/aus: 🎤 neben 🔊 (ohne Mikrofon; mit Ersatz-Mikrofo
   await page.click('#mikro-knopf');
   m = await z();
   ok(!m.an && m.knopf === 'false' && m.info === 'Sprechen aus', 'Vor „Start“: 🎤 antippen schaltet Sprechen aus');
+  ok(await page.isVisible('#zahlen') && await page.locator('.zahl').count() === 11, 'Mikrofon aus: die Zahlenleiste 0–10 ist wieder da');
   await page.setViewportSize({ width: 320, height: 568 });
   const kopf = await page.evaluate(() => { const r = document.createRange(); r.selectNodeContents(document.querySelector('#spielseite .titel'));
     return { text: r.getBoundingClientRect().right, knopf: document.querySelector('#mikro-knopf').getBoundingClientRect().left }; });
@@ -516,8 +519,8 @@ console.log('Sagen (Standard): nur würfeln, die Antwort laut sagen');
   ok(await page.evaluate(() => document.body.classList.contains('sagen')), 'Ohne ?tippen: Sagen-Fassung');
   await page.click('#zahlwahl button[data-n="4"]');
   await page.waitForTimeout(300);
-  ok(await page.isHidden('#zahlen') && await page.isHidden('#gleichung') && await page.isHidden('#hinweis') && await page.locator('#stand').count() === 0,
-    'Nur der Würfel: keine Zahlenleiste, keine Gleichung, kein Text darunter, kein Zähler');
+  ok(await page.isVisible('#zahlen') && await page.isHidden('#gleichung') && await page.isHidden('#hinweis') && await page.locator('#stand').count() === 0,
+    'Schlicht: Würfel und Zahlenleiste (Mikrofon aus), keine Rechnung, kein Text darunter, kein Zähler');
   ok(await page.isHidden('#tier'), 'Ohne Tiere: nichts über dem Würfel');
   ok(await page.isVisible('#los') && (await page.textContent('#los')) === 'Start' && (await page.textContent('#los-text')) === 'Bereit?',
     'Unter dem Würfel: „Bereit?“ und der Knopf „Start“');
@@ -738,16 +741,75 @@ console.log('Start und genau 2 Minuten (Uhr des Browsers vorgespult)');
   ok(konsole.length === 0, 'Keine Fehler in der Konsole' + (konsole.length ? ': ' + konsole.join(' | ') : ''));
   await ctx.close();
 }
+console.log('Schlicht mit Zahlenleiste, Antwortzeiten und Auswertung (Uhr vorgespult)');
+{
+  const T0 = new Date('2026-11-20T10:00:00Z').getTime();
+  const { page, konsole, ctx } = await seite(390, 844, false, '', p => p.clock.install({ time: T0 }));
+  await page.clock.pauseAt(T0 + 5000);
+  const z = () => page.evaluate(() => ({ phase: window.wuerfelSpiel.phase, zahl: window.wuerfelSpiel.zahl, uhr: window.wuerfelSpiel.uhr,
+    farbe: document.body.classList.contains('gut') || document.body.classList.contains('falsch'), sterne: window.wuerfelSpiel.sterne }));
+  await page.click('#zahlwahl button[data-n="4"]'); await page.clock.runFor(300);
+  ok(await page.isVisible('#zahlen') && (await page.textContent('#zahlen')).replace(/\s/g, '') === '012345678910',
+    'Schlicht, Mikrofon aus: Zahlenleiste 0–10, auch bei „Zerlegen: 4“');
+  await page.click('#los'); await page.clock.runFor(700);
+  let a = await z();
+  await page.clock.runFor(1300);
+  await page.click(`.zahl[data-zahl="${4 - a.zahl}"]`);
+  let b = await z();
+  ok(b.phase === 'rollt' && b.uhr.richtig === 1 && !b.farbe && b.sterne === 0, 'Richtig angetippt: sofort der nächste Wurf – ohne Grün, ohne Sterne');
+  ok(Math.abs(b.uhr.liste[0].ms - 1484) <= 20 && b.uhr.liste[0].art === 'getippt', `Antwortzeit gemessen: ${b.uhr.liste[0].ms} ms (Soll ≈ 1484: 1,3 s Warten + Rest des Wurfs)`);
+  await page.clock.runFor(700);
+  a = await z();
+  const falsch = (4 - a.zahl + 1) % 11;
+  await page.click(`.zahl[data-zahl="${falsch}"]`);
+  b = await z();
+  ok(b.phase === 'rollt' && b.uhr.falsch === 1 && !b.farbe, 'Falsch angetippt: zählt „falsch“, gleich weiter, kein Rot');
+  await page.clock.runFor(700);
+  await page.click('#wuerfel', { force: true });
+  b = await z();
+  ok(b.phase === 'rollt' && b.uhr.liste.length === 3 && b.uhr.liste[2].k === null && b.uhr.richtig + b.uhr.falsch === 2,
+    'Würfel antippen: weiter ohne Antwort (zählt weder richtig noch falsch)');
+  await page.clock.runFor(120000);
+  ok((await page.textContent('#uhr')) === '2:00,0 · 4 Versuche · 1 richtig' && await page.isVisible('#uhr'), `Am Ende: „${await page.textContent('#uhr')}“`);
+  await page.click('#uhr');
+  const aw = await page.evaluate(() => ({ offen: !document.querySelector('#auswertung').hidden,
+    kacheln: [...document.querySelectorAll('#auswertung .kennzahlen div')].map(d => (d.querySelector('b').textContent + ' ' + d.querySelector('span').textContent).replace(/\s+/g, ' ').trim()),
+    zeilen: document.querySelectorAll('#auswertung .tafel tr').length - 1, fehler: [...document.querySelectorAll('#auswertung .tafel tr.fehler td:first-child')].map(t => t.textContent),
+    chips: [...document.querySelectorAll('#auswertung .verlauf span')].map(c => c.textContent) }));
+  ok(aw.offen && aw.kacheln[0] === '4 Würfe' && aw.kacheln[1].startsWith('1 (50 %)') && aw.kacheln[2] === '1 falsch' && aw.kacheln[4] === '1 Würfel ohne Antwort',
+    `Uhr-Zeile antippen: Auswertung (${aw.kacheln.join(' · ')})`);
+  ok(aw.zeilen === 5 && aw.fehler.length === 1, `Je Aufgabe 0 + 4 … 4 + 0, die falsch beantwortete rot markiert (${aw.fehler.join(', ')})`);
+  ok(aw.chips.length === 3 && aw.chips[0].includes('✓') && aw.chips[0].includes('1,5 s') && aw.chips[1].includes('✗') && aw.chips[2].includes('Würfel'),
+    `Der Reihe nach, mit Zeit: ${aw.chips.join(' | ')}`);
+  if (bilder) await page.screenshot({ path: `${bilder}/auswertung.png` });
+  await page.click('#auswertung-zu');
+  ok(await page.isHidden('#auswertung'), '✕ schließt die Auswertung');
+  ok(konsole.length === 0, 'Keine Fehler in der Konsole' + (konsole.length ? ': ' + konsole.join(' | ') : ''));
+  await ctx.close();
+}
+{
+  const { page, konsole, ctx } = await seite(390, 844, false, '');
+  await page.evaluate(() => localStorage.setItem('wuerfel.auswertung', JSON.stringify({ n: 6, fassung: 'tippen', sprechen: true, wann: Date.now(), dauer: 120000, versuche: 3,
+    liste: [{ zahl: 2, k: 4, richtig: true, art: 'gesagt', ms: 1800 }, { zahl: 5, k: 2, richtig: false, art: 'gesagt', ms: 2600 }] })));
+  await page.reload();
+  await lange(page, '#info-knopf');
+  await page.click('#letzte-auswertung');
+  ok(await page.isHidden('#hilfe') && await page.isVisible('#auswertung') && (await page.textContent('#auswertung .hilfe-regel')).includes('Zerlegen: 6')
+    && (await page.textContent('#auswertung .hilfe-regel')).includes('gesagt'), 'Hilfe → „Letzte Auswertung ansehen“: die gespeicherte kommt (auch nach dem Neuladen)');
+  ok(konsole.length === 0, 'Keine Fehler in der Konsole' + (konsole.length ? ': ' + konsole.join(' | ') : ''));
+  await ctx.close();
+}
+
 console.log('Fassung umschalten: 3 s auf den Erklärtext der Startseite');
 {
   const { page, konsole, ctx } = await seite(390, 844, false, '');
   const istSagen = () => page.evaluate(() => document.body.classList.contains('sagen'));
-  ok(await istSagen() && (await page.textContent('#erklaerung')).includes('sag laut'), 'Anfangs „nur Würfel“ – der Erklärtext sagt, was zu tun ist');
+  ok(await istSagen() && (await page.textContent('#erklaerung')).includes('tippe unten an'), 'Anfangs „schlicht“ – der Erklärtext sagt, was zu tun ist');
   await lange(page, '#erklaerung', 1200);
   ok(await istSagen(), 'Kurz drücken (1,2 s): bleibt');
   await lange(page, '#erklaerung');
-  ok(!(await istSagen()) && (await page.textContent('#erklaerung')).includes('tippe unten die Zahl an') && (await page.textContent('#update-text')) === 'Fassung: mit Zahlen unten',
-    '3 s: „Fassung: mit Zahlen unten“, der Erklärtext wechselt mit');
+  ok(!(await istSagen()) && (await page.textContent('#erklaerung')).includes('Rechnung') && (await page.textContent('#update-text')) === 'Fassung: mit Rechnung',
+    '3 s: „Fassung: mit Rechnung“, der Erklärtext wechselt mit');
   await page.click('#zahlwahl button[data-n="5"]');
   await page.waitForTimeout(300);
   ok(await page.isVisible('#zahlen') && await page.isVisible('#los') && await phase(page) === 'warten', 'Spielseite mit Zahlenleiste und „Start“');
@@ -755,7 +817,7 @@ console.log('Fassung umschalten: 3 s auf den Erklärtext der Startseite');
   await page.reload();
   ok(!(await istSagen()), 'Die Wahl bleibt nach dem Neuladen');
   await lange(page, '#erklaerung');
-  ok(await istSagen() && (await page.textContent('#update-text')) === 'Fassung: nur Würfel', 'Noch einmal 3 s: wieder „nur Würfel“');
+  ok(await istSagen() && (await page.textContent('#update-text')) === 'Fassung: schlicht', 'Noch einmal 3 s: wieder „schlicht“');
   ok(konsole.length === 0, 'Keine Fehler in der Konsole' + (konsole.length ? ': ' + konsole.join(' | ') : ''));
   await ctx.close();
 }
@@ -813,7 +875,7 @@ for (const adresse of ['', '?tippen']) {
   const s = () => page.evaluate(() => ({ phase: window.wuerfelSpiel.phase, zahl: window.wuerfelSpiel.zahl, uhr: window.wuerfelSpiel.uhr,
     gut: document.body.classList.contains('gut'), falsch: document.body.classList.contains('falsch') }));
   const sag = k => page.evaluate(k => window.wuerfelSpiel.gesagt(k), k);
-  const name = adresse ? '„mit Zahlen unten“' : '„nur Würfel“';
+  const name = adresse ? '„mit Rechnung“' : '„schlicht“';
   await page.click('#zahlwahl button[data-n="8"]'); await page.clock.runFor(300);
   await sag(3);
   ok((await s()).phase === 'warten', `${name}: vor „Start“ zählt nichts`);

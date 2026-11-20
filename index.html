@@ -98,7 +98,7 @@ button { font: inherit; color: inherit; border: 0; background: none; cursor: poi
 }
 /* „Sagen“ (Standard): nur würfeln und die fehlende Zahl laut sagen – ohne Zahlenleiste und Gleichung.
    Die Fassung zum Antippen bleibt in der Hinterhand: Adresse mit ?tippen */
-.sagen .zahlen, .sagen .lupe, .sagen .gleichung, .sagen .hinweis { display: none; }   /* nur der Würfel */
+.sagen .gleichung, .sagen .hinweis { display: none; }   /* „schlicht“: keine Rechnung, kein Text */
 .sagen .sockel { --s: clamp(140px, 44vw, 240px); }
 .sprechen .zahlen, .sprechen .lupe { display: none; }   /* Sprechen an: entweder sagen oder tippen – keine Zahlenleiste */
 /* Unter dem Würfel: „Start“ – dann laufen genau 2 Minuten; danach „Die Zeit ist um!“ und „Nochmal“.
@@ -259,6 +259,25 @@ body:not(.sagen) .los-feld { position: absolute; inset: 0; justify-content: cent
   background: rgba(10, 20, 45, .3); color: var(--hell);
   font-size: 17px; font-weight: 700; line-height: 1.4; font-variant-numeric: tabular-nums; }   /* Schrift der App, Ziffern gleich breit */
 .uhr.weg { visibility: hidden; }
+.uhr:not(.weg) { cursor: pointer; }   /* antippen: Auswertung */
+/* Auswertung (Uhr-Zeile antippen): Kennzahlen, je Aufgabe, der Reihe nach */
+.kennzahlen { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0 4px; }
+.kennzahlen div { background: #f3effa; border-radius: 12px; padding: 8px 4px; text-align: center; }
+.kennzahlen b { display: block; font-size: 22px; font-weight: 900; color: var(--ink); font-variant-numeric: tabular-nums; }
+.kennzahlen span { font-size: 12px; font-weight: 700; color: #6a5f80; }
+.auswertung-teil { margin: 16px 0 4px; font-size: 16px; font-weight: 900; }
+.tafel { width: 100%; border-collapse: collapse; font-size: 15px; font-variant-numeric: tabular-nums; }
+.tafel th { text-align: left; padding: 4px 6px; border-bottom: 1px solid #e8e2f3; font-size: 12px; font-weight: 800; color: #6a5f80; }
+.tafel td { padding: 5px 6px; border-bottom: 1px solid #f1edf8; }
+.tafel th.z, .tafel td.z { text-align: right; }
+.tafel tr.fehler td { background: #ffeded; }
+.tafel tr.langsam td { background: #fff4d6; }
+.tafel tr.nie td { color: #a59cb8; }
+.verlauf { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
+.verlauf span { padding: 3px 8px; border-radius: 999px; background: #ece6f8; color: var(--ink); font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.verlauf .ok { background: #d7f5df; }
+.verlauf .nein { background: #ffdede; }
+.klein { margin: 6px 0 0; font-size: 13px; line-height: 1.4; color: #6a5f80; }
 /* 2-Minuten-Linie: wächst am oberen Rand von links nach rechts, in der Farbe der Statusleiste darüber (--bg) –
    als würde deren Unterkante langsam dicker. Halb = 1 Minute. Wer weiß, wo er hinschaut, sieht sie; das Kind
    schaut auf den Würfel. 3 pt = 9 Bildpunkte am iPhone (am Gerät mit 1/2/3 pt ausprobiert, v0.45; evtl. später 2 pt). */
@@ -289,7 +308,7 @@ body:not(.sagen) .los-feld { position: absolute; inset: 0; justify-content: cent
 .geheim p { margin: 0; font-size: 15px; line-height: 1.4; color: #4a4060; }
 .geheim p b { color: var(--ink); }
 .hilfe-link { display: inline-block; margin-top: 8px; padding: 9px 14px; border-radius: 12px; background: #ffb547;
-  color: var(--ink); font-weight: 900; text-decoration: none; box-shadow: 0 3px 0 #d98a12; }
+  color: var(--ink); font-size: 15px; font-weight: 900; text-decoration: none; box-shadow: 0 3px 0 #d98a12; }
 .jetzt { font-size: 12px; font-weight: 800; padding: 2px 8px; border-radius: 999px; background: #ece6f8; color: var(--ganz); }
 /* Mini-Bildschirm: wo man drückt (pulsierender Ring, Schild „3 s“ oder „tippen“) */
 .mini { position: relative; flex: none; width: 84px; height: 150px; border-radius: 14px; overflow: hidden; border: 3px solid #1f2a44;
@@ -435,13 +454,14 @@ body:not(.sagen) .los-feld { position: absolute; inset: 0; justify-content: cent
         <div class="mini" aria-hidden="true"><span class="t">Würfel</span><span class="k" style="right:6px">🔊</span>
           <span class="text" style="top:40px">Welche Zahl<br>zerlegen wir?</span>
           <span class="reihe" style="top:64px"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
-          <span class="text ziel" style="top:84px;left:9px;right:9px;font-size:5.5px;font-weight:600;color:#c9d8f2">Drück „Start“ und<br>sag laut, was fehlt …</span>
+          <span class="text ziel" style="top:84px;left:9px;right:9px;font-size:5.5px;font-weight:600;color:#c9d8f2">Drück „Start“ …<br>unten antippen …</span>
           <span class="schild" style="left:30px;top:106px">3 s</span></div>
-        <div><h3>Nur Würfel oder mit Zahlen unten <span class="jetzt" id="jetzt-fassung"></span></h3>
-          <p><b>Startseite:</b> 3 s auf den kleinen Text unter den Zahlen drücken. <b>Nur Würfel:</b> das Kind sagt die
-          fehlende Zahl laut, du hörst zu (oder die App, siehe „Sprechen“). <b>Mit Zahlen unten:</b> eine Zahlenleiste
-          zum Antippen, die Gleichung steht da, die App zeigt richtig oder falsch. Beide mit „Start“, 2 Minuten und
-          Zeitlinie. Die Wahl bleibt gespeichert; der Erklärtext zeigt, welche gerade an ist.</p></div>
+        <div><h3>Schlicht oder mit Rechnung <span class="jetzt" id="jetzt-fassung"></span></h3>
+          <p><b>Startseite:</b> 3 s auf den kleinen Text unter den Zahlen drücken. <b>Schlicht:</b> nur der Würfel – eine
+          Antwort würfelt sofort weiter, ohne Farben und Sterne. <b>Mit Rechnung:</b> darunter steht „3 + ? = 8“, richtig
+          gibt Grün und Sterne, falsch kurz Rot. <b>In beiden:</b> Mikrofon aus → unten die Zahlenleiste 0 bis 10 zum
+          Antippen; Mikrofon an → keine Leiste, das Kind sagt die Zahl. Würfel antippen würfelt ohne Antwort weiter (in
+          „schlicht“ oder mit Mikrofon) – z. B. wenn das Kind dir die Zahl sagt. Die Wahl bleibt gespeichert.</p></div>
       </section>
       <section class="geheim">
         <div class="mini" aria-hidden="true"><span class="k" style="left:6px">‹</span><span class="t" style="left:24px">Zerlegen: 8</span>
@@ -456,6 +476,18 @@ body:not(.sagen) .los-feld { position: absolute; inset: 0; justify-content: cent
           umschalten (es kommt nur ein Hinweis) – vorher oder nach „Die Zeit ist um!“ schon.</p></div>
       </section>
       <section class="geheim">
+        <div class="mini" aria-hidden="true"><span class="k" style="left:6px">‹</span><span class="t" style="left:24px">Zerlegen: 8</span>
+          <span class="w">5</span><span class="text" style="top:86px;font-size:6.5px">Die Zeit ist um!</span>
+          <span class="m-los" style="top:98px">Nochmal</span><span class="u ziel">2:00 · 24 · 20 ✓</span>
+          <span class="schild" style="left:28px;top:118px">tippen</span></div>
+        <div><h3>Auswertung</h3>
+          <p><b>Am Ende</b> (oder mit eingeschalteter Uhr) auf die Zeile unten tippen, z. B. „2:00,0 · 24 Versuche · 20
+          richtig“. Dann kommt die Einzelauswertung: Würfe, richtig, falsch, wie lange jede Antwort gedauert hat, und je
+          Aufgabe (0 + 8 … 8 + 0), welche noch hakt – rot: mindestens einmal falsch, gelb: deutlich langsamer als sonst.
+          Die letzte Auswertung bleibt gespeichert.</p>
+          <button class="hilfe-link" id="letzte-auswertung" type="button">Letzte Auswertung ansehen</button></div>
+      </section>
+      <section class="geheim">
         <div><h3>Sprechtest</h3>
           <p>Prüft mit 20 Zahlen, wie gut das iPhone dein Kind versteht – ohne Spiel, mit Ergebnis „x von 20“.</p>
           <a class="hilfe-link" href="sprechtest.html">Sprechtest öffnen</a></div>
@@ -464,8 +496,15 @@ body:not(.sagen) .los-feld { position: absolute; inset: 0; justify-content: cent
   </div>
 </div>
 
+<div class="hilfe" id="auswertung" hidden role="dialog" aria-modal="true" aria-labelledby="auswertung-titel">
+  <div class="hilfe-karte">
+    <div class="hilfe-kopf"><h2 id="auswertung-titel">Auswertung</h2><button class="hilfe-zu" id="auswertung-zu" aria-label="Schließen">✕</button></div>
+    <div class="hilfe-inhalt" id="auswertung-inhalt"></div>
+  </div>
+</div>
+
 <script>
-const APP_VERSION = '0.59';          // bei JEDER Änderung hochzählen
+const APP_VERSION = '0.60';          // bei JEDER Änderung hochzählen
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
@@ -474,11 +513,13 @@ const $$ = s => document.querySelectorAll(s);
 const ZAHLEN = [4, 5, 6, 7, 8, 9, 10];
 const TIERE = { 4: 'Vogel', 5: 'Frosch', 6: 'Seepferdchen', 7: 'Seestern', 8: 'Oktopus', 9: 'Nashorn', 10: 'Zebra' };
 const SPEICHER = 'wuerfel.stand';
-// Zwei Fassungen, umschalten: 3 s auf den Erklärtext der Startseite (gespeichert). Beide mit „Start“ und 2 Minuten.
-// „nur Würfel“ (sagen): das Kind sagt die fehlende Zahl. „mit Zahlen unten“ (tippen): Zahlenleiste, Gleichung, richtig/falsch.
+// Zwei Fassungen, umschalten: 3 s auf den Erklärtext der Startseite (gespeichert). Beide mit „Start“ und 2 Minuten,
+// Antwort unten antippen (Zahlenleiste 0–10) oder mit 🎤 sagen (dann keine Leiste).
+// „schlicht“ (sagen): nur Würfel und Leiste, jede Antwort würfelt sofort weiter – ohne Farben, Sterne, Rechnung.
+// „mit Rechnung“ (tippen): darunter „3 + ? = 8“, richtig → Grün und Sterne, falsch → kurz Rot.
 const FASSUNGEN = {
-  sagen: { name: 'Fassung: nur Würfel', text: 'Drück „Start“ und sag laut, was bis zur gewählten Zahl fehlt – dann tippe auf den Würfel.' },
-  tippen: { name: 'Fassung: mit Zahlen unten', text: 'Drück „Start“. Der Würfel zeigt eine Zahl – tippe unten die Zahl an, die bis zur gewählten Zahl fehlt.' },
+  sagen: { name: 'Fassung: schlicht', text: 'Drück „Start“. Der Würfel zeigt eine Zahl – tippe unten an, was bis zur gewählten Zahl fehlt (oder sag es, mit 🎤).' },
+  tippen: { name: 'Fassung: mit Rechnung', text: 'Drück „Start“. Unter dem Würfel steht die Rechnung – tippe unten die fehlende Zahl an (oder sag sie, mit 🎤).' },
 };
 const sagen = () => stand.fassung === 'sagen';
 const stand = { n: 10, ton: true, sterne: 0, tiere: 'aus', satz: 'sticker', staub: true, ende: true, fassung: 'sagen', sprechen: false };   // sprechen: Zahl laut sagen, die App hört zu (3 s auf 🔊)   // ende: nach den 2 Minuten Zeit und Versuche zeigen   // staub: bunter Staub beim Würfeln (💨, nur mit Tieren)
@@ -508,6 +549,7 @@ const LOB = ['Richtig!', 'Super!', 'Toll!', 'Prima!', 'Klasse!'];
 
 let phase = 'start';                // 'start' | 'warten' | 'rollt' | 'frage' | 'geloest' (beantwortet) | 'aus'
 let zahl = null;                    // gewürfelte Zahl
+let frageSeit = 0;                  // seit wann die Aufgabe dasteht (performance.now) – Antwortzeit für die Auswertung
 let weiterTimer = null;
 let umgesprungen = 0;               // Würfe, bei denen die Zahl nicht verdeckt aufgemalt wurde (Test: muss 0 bleiben)
 
@@ -898,6 +940,7 @@ function landen() {
   zahl = lauf.ziel;
   if ($('#augenzahl').textContent !== String(zahl)) umgesprungen++;   // wurde die Zahl nicht verdeckt aufgemalt? (Test)
   zeigeZiffer(zahl);
+  frageSeit = performance.now();
   clearTimeout(farbTimer); document.body.classList.remove('gut', 'falsch');   // neue Aufgabe: nicht mehr grün oder rot
   stelle(RUHE.x, RUHE.y);
   sockelEl.style.setProperty('--sprung', 0);
@@ -955,10 +998,13 @@ function faerbe(klasse, ms) {
   farbTimer = setTimeout(() => document.body.classList.remove(klasse), ms);
 }
 
+// Zahlenleiste: immer 0 bis 10, egal welche Zahl zerlegt wird – ihre Länge verrät nichts, und sie sieht immer gleich aus.
+// (Bis 10, nicht 9: bei „Zerlegen: 10“ und einer 0 auf dem Würfel ist die Antwort 10.)
+const LEISTE = 10;
 function baueZahlen() {
   zahlenEl.textContent = '';
-  zahlenEl.style.setProperty('--anzahl', stand.n + 1);
-  for (let k = 0; k <= stand.n; k++) {
+  zahlenEl.style.setProperty('--anzahl', LEISTE + 1);
+  for (let k = 0; k <= LEISTE; k++) {
     const b = document.createElement('button');
     b.className = 'zahl';
     b.dataset.zahl = k;
@@ -983,7 +1029,7 @@ function zeigeStart() {
 // Rollt der Würfel, wenn die Zeit um ist, landet er noch; danach „Die Zeit ist um!“ und „Nochmal“.
 const DAUER = 120000;                                           // ms
 const losFeld = $('#los-feld'), losText = $('#los-text'), losKnopf = $('#los'), uhrEl = $('#uhr'), linieEl = $('#fortschritt');
-let uhr = { start: 0, versuche: 0, laeuft: false, um: false, richtig: 0, falsch: 0 }, uhrTimer = 0, uhrTakt = 0, uhrAn = false;
+let uhr = { start: 0, versuche: 0, laeuft: false, um: false, richtig: 0, falsch: 0, liste: [] }, uhrTimer = 0, uhrTakt = 0, uhrAn = false;
 const vergangen = () => Math.min(DAUER, uhr.laeuft ? Date.now() - uhr.start : uhr.um ? DAUER : 0);
 function zeigeLos(text, knopf) {                                // knopf leer: Feld unsichtbar, Platz bleibt
   losText.textContent = text;
@@ -996,7 +1042,7 @@ function zeigeUhr() {                                           // versteckte An
   uhrEl.classList.toggle('weg', !(uhrAn || uhr.um && stand.ende));   // nach den 2 Minuten: wie viele Versuche (abschaltbar)
   const z = Math.floor(vergangen() / 100), v = uhr.versuche;
   uhrEl.textContent = `${Math.floor(z / 600)}:${String(Math.floor(z / 10) % 60).padStart(2, '0')},${z % 10} · ${v} ${v === 1 ? 'Versuch' : 'Versuche'}`
-    + (stand.sprechen || !sagen() ? ` · ${uhr.richtig} richtig` : '');   // getippt oder gesagt: die App wertet mit
+    + (uhr.richtig + uhr.falsch ? ` · ${uhr.richtig} richtig` : '');   // sobald getippt oder gesagt wurde: die App wertet mit
 }
 function stoppeUhr() { clearTimeout(uhrTimer); clearInterval(uhrTakt); uhr.laeuft = false; }
 function warte() {                                              // vor dem Start: der Würfel zeigt die ganze Zahl
@@ -1011,7 +1057,7 @@ function warte() {                                              // vor dem Start
   wuerfelEl.setAttribute('aria-label', 'Würfeln');
   zahlenEl.classList.add('ruht');
   hinweisEl.textContent = '';
-  uhr = { start: 0, versuche: 0, laeuft: false, um: false, richtig: 0, falsch: 0 };
+  uhr = { start: 0, versuche: 0, laeuft: false, um: false, richtig: 0, falsch: 0, liste: [] };
   zeigeLos('Bereit?', 'Start');
   zeigeUhr();
 }
@@ -1022,7 +1068,7 @@ async function losgehen() {                                     // „Start“ u
   // ~0,35 s still (am iPhone-Video gemessen) – rollt der Würfel dabei schon, stockt er. Höchstens 2 s warten.
   if (stand.sprechen && !sprache.strom) await Promise.race([mikrofonAn(), new Promise(r => setTimeout(r, 2000))]);
   if (phase !== 'warten' && phase !== 'aus') return;   // inzwischen „‹ Zurück“
-  uhr = { start: Date.now(), versuche: 0, laeuft: true, um: false, richtig: 0, falsch: 0 };   // die 2 Minuten ab dem ersten Wurf
+  uhr = { start: Date.now(), versuche: 0, laeuft: true, um: false, richtig: 0, falsch: 0, liste: [] };   // die 2 Minuten ab dem ersten Wurf
   uhrTimer = setTimeout(zeitUm, DAUER);
   uhrTakt = setInterval(zeigeUhr, 100);
   wuerfeln();
@@ -1044,6 +1090,7 @@ function schluss() {
   gleichungEl.classList.add('weg'); hinweisEl.textContent = ''; zahlenEl.classList.add('ruht');   // „Zahl antippen“
   wuerfelEl.setAttribute('aria-label', 'Die Zeit ist um');
   zeigeLos('Die Zeit ist um!', 'Nochmal');
+  merkeAuswertung();
   klang.runde();
   sterneAus(losText, Math.round(STERNE * 2.2));
 }
@@ -1073,23 +1120,22 @@ function tippeWuerfel() {
   if (phase === 'warten' || phase === 'aus') { nochmal(wuerfelEl, 'stups'); nochmal(losKnopf, 'stups'); return; }   // erst „Start“
   if (uhr.laeuft && Date.now() - uhr.start >= DAUER) { zeitUm(); return; }   // Zeit um, auch wenn der Timer noch nicht dran war
   if (phase === 'geloest') wuerfeln();                        // beantwortet: nicht auf den Zeitgeber warten
-  else if (phase === 'frage' && (sagen() || stand.sprechen)) wuerfeln();   // laut gesagt (oder überspringen): weiter würfeln
+  else if (phase === 'frage' && (sagen() || stand.sprechen)) { merke(null, 'Würfel'); wuerfeln(); }   // weiter ohne Antwort (vorgesagt oder übersprungen)
   else if (phase === 'frage') { nochmal(wuerfelEl, 'stups'); hinweisEl.textContent = 'Tippe unten die Zahl an!'; }
 }
 
 // Antwort, angetippt oder gesagt: richtig → grün, Sterne, Lob; falsch → kurz rot. Beides zählt still mit
 // (uhr.richtig/falsch), dann würfelt er von selbst weiter – bei richtig schon, während die Sterne noch fliegen.
-function antwort(k, btn) {
+function antwort(k, btn, art = 'getippt') {
   if (phase !== 'frage') {
     if (phase === 'warten' || phase === 'aus') nochmal(losKnopf, 'stups');   // erst „Start“ bzw. „Nochmal“
     return;
   }
   if (uhr.laeuft && Date.now() - uhr.start >= DAUER) { zeitUm(); return; }
-  const richtig = k === stand.n - zahl;
-  phase = 'geloest';                              // beantwortet: weitere Tipps zählen nicht
-  if (richtig) uhr.richtig++; else uhr.falsch++;
-  zeigeUhr();
+  const richtig = merke(k, art);
   zahlenEl.classList.add('ruht');
+  if (sagen()) { wuerfeln(); return; }            // „schlicht“: ohne Farben, Sterne und Klang gleich weiter
+  phase = 'geloest';                              // beantwortet: weitere Tipps zählen nicht
   if (richtig) {
     stand.sterne++;                               // zählt still mit, wird nicht angezeigt: Üben ohne Punktestand und Druck
     speichereAlles();
@@ -1106,6 +1152,15 @@ function antwort(k, btn) {
     if (btn) nochmal(btn, 'wackelt');
   }
   weiterTimer = setTimeout(() => { if (phase === 'geloest' && uhr.laeuft) wuerfeln(); }, richtig ? 350 : 800);
+}
+
+// Jede Antwort für die Auswertung: Aufgabe, Antwort (null: Würfel angetippt), richtig?, wie, Zeit seit die Aufgabe dastand
+function merke(k, art) {
+  const richtig = k === stand.n - zahl;
+  if (k !== null) { if (richtig) uhr.richtig++; else uhr.falsch++; }
+  uhr.liste.push({ zahl, k, richtig: k !== null && richtig, art, ms: Math.round(performance.now() - frageSeit) });
+  zeigeUhr();
+  return richtig;
 }
 
 /* ---------- Sprechen: Zahl laut sagen, die App hört zu (3 s auf 🔊) ---------- */
@@ -1196,10 +1251,7 @@ function gesagt(k) {                              // eine Zahl wurde erkannt
   if (!uhr.laeuft || phase !== 'frage') return;   // nur bei offener Aufgabe (nicht beim Rollen, nicht nach der Zeit)
   if (Date.now() - uhr.start >= DAUER) { zeitUm(); return; }
   sprache.protokoll.push({ zahl, gesagt: k, richtig: k === stand.n - zahl });
-  if (!sagen()) { antwort(k, zahlenEl.querySelector(`[data-zahl="${k}"]`)); return; }   // „mit Zahlen unten“: wie angetippt
-  if (k === stand.n - zahl) uhr.richtig++; else uhr.falsch++;
-  zeigeUhr();
-  wuerfeln();                                     // „nur Würfel“: gleich weiter
+  antwort(k, zahlenEl.querySelector(`[data-zahl="${k}"]`), 'gesagt');   // wie angetippt
 }
 
 /* ---------- Verdrahtung ---------- */
@@ -1305,7 +1357,7 @@ function zeigeHilfe() {
   $('#jetzt-tiere').textContent = AN_AUS(mitTieren());
   $('#jetzt-staub').textContent = 'Staub ' + AN_AUS(stand.staub);
   $('#jetzt-ende').textContent = AN_AUS(stand.ende);
-  $('#jetzt-fassung').textContent = sagen() ? 'jetzt: nur Würfel' : 'jetzt: mit Zahlen unten';
+  $('#jetzt-fassung').textContent = sagen() ? 'jetzt: schlicht' : 'jetzt: mit Rechnung';
   $('#jetzt-sprechen').textContent = AN_AUS(stand.sprechen);
   hilfeEl.hidden = false;
   $('.hilfe-inhalt').scrollTop = 0;
@@ -1315,7 +1367,60 @@ kurzerTipp(infoKnopf, e => (e.detail ? showInfo('Für Erwachsene: 3 Sekunden dr�
 halten([infoKnopf], zeigeHilfe);
 $('#hilfe-zu').addEventListener('click', schliesseHilfe);
 hilfeEl.addEventListener('click', e => { if (e.target === hilfeEl) schliesseHilfe(); });   // daneben tippen schließt
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && !hilfeEl.hidden) schliesseHilfe(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { schliesseHilfe(); auswertungEl.hidden = true; } });
+
+/* ---------- Auswertung: am Ende (oder mit Uhr) die Uhr-Zeile antippen ---------- */
+// Einzeldiagnose für Erwachsene: je Antwort Aufgabe, Antwort, richtig?, wie (getippt/gesagt/Würfel) und Zeit vom
+// Landen des Würfels bis zur Antwort. Die letzte wird gespeichert (Hilfe → „Letzte Auswertung ansehen“).
+const AUSWERTUNG = 'wuerfel.auswertung';
+const auswertungEl = $('#auswertung');
+const auswertungJetzt = () => ({ n: stand.n, fassung: stand.fassung, sprechen: stand.sprechen, wann: uhr.start, dauer: vergangen(),
+  versuche: uhr.versuche, liste: uhr.liste.slice() });
+function merkeAuswertung() { try { localStorage.setItem(AUSWERTUNG, JSON.stringify(auswertungJetzt())); } catch (_) {} }
+function letzteAuswertung() { try { return JSON.parse(localStorage.getItem(AUSWERTUNG)); } catch (_) { return null; } }
+const sek = ms => (ms / 1000).toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' s';
+const mittel = a => a.length ? a.reduce((x, y) => x + y.ms, 0) / a.length : null;
+function zeigeAuswertung(d) {
+  const inhalt = $('#auswertung-inhalt');
+  auswertungEl.hidden = false;
+  inhalt.scrollTop = 0;
+  if (!d?.liste?.length) {
+    inhalt.innerHTML = '<p class="hilfe-regel">Noch keine Antworten – die Auswertung gibt es nach einem Durchgang mit „Start“.</p>';
+    return;
+  }
+  const n = d.n, liste = d.liste, antw = liste.filter(x => x.k !== null), ok = antw.filter(x => x.richtig);
+  const ohne = liste.length - antw.length, zeiten = liste.map(x => x.ms).sort((a, b) => a - b);
+  const median = zeiten[Math.floor(zeiten.length / 2)];
+  const wann = d.wann ? new Date(d.wann).toLocaleString('de-DE', { weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+  const wie = antw.some(x => x.art === 'gesagt') ? (antw.some(x => x.art === 'getippt') ? 'gesagt und getippt' : 'gesagt') : antw.length ? 'getippt' : 'ohne Antworten';
+  const kachel = (zahlText, was) => `<div><b>${zahlText}</b><span>${was}</span></div>`;
+  let zeilen = '';
+  for (let a = 0; a <= n; a++) {
+    const hier = liste.filter(x => x.zahl === a), hierAntw = hier.filter(x => x.k !== null), m = mittel(hier);
+    const fehler = hierAntw.some(x => !x.richtig), langsam = m !== null && liste.length >= 4 && m > 1.5 * median;
+    zeilen += `<tr class="${!hier.length ? 'nie' : fehler ? 'fehler' : langsam ? 'langsam' : ''}"><td>${a} + <b>${n - a}</b> = ${n}</td>`
+      + `<td class="z">${hier.length || '–'}</td><td class="z">${hierAntw.length ? hierAntw.filter(x => x.richtig).length + ' / ' + hierAntw.length : '–'}</td>`
+      + `<td class="z">${m === null ? '–' : sek(m)}</td></tr>`;
+  }
+  const chips = liste.map(x => x.k === null ? `<span>${x.zahl} + ? · Würfel · ${sek(x.ms)}</span>`
+    : x.richtig ? `<span class="ok">${x.zahl} + ${x.k} ✓ ${sek(x.ms)}</span>`
+    : `<span class="nein">${x.zahl} + ? → ${x.k} ✗ ${sek(x.ms)}</span>`).join('');
+  inhalt.innerHTML = `<p class="hilfe-regel"><b>Zerlegen: ${n}</b> · ${d.fassung === 'sagen' ? 'schlicht' : 'mit Rechnung'} · ${wie}${wann ? ' · ' + wann : ''}</p>
+    <div class="kennzahlen">${kachel(d.versuche, 'Würfe')}${kachel(ok.length + (antw.length ? ` <small>(${Math.round(100 * ok.length / antw.length)} %)</small>` : ''), 'richtig')}
+      ${kachel(antw.length - ok.length, 'falsch')}${kachel(mittel(antw.length ? antw : liste) === null ? '–' : sek(mittel(antw.length ? antw : liste)), '⌀ bis zur Antwort')}
+      ${kachel(ohne, 'Würfel ohne Antwort')}${kachel(Math.floor(d.dauer / 60000) + ':' + String(Math.round(d.dauer / 1000) % 60).padStart(2, '0'), 'Minuten')}</div>
+    <p class="auswertung-teil">Je Aufgabe</p>
+    <table class="tafel"><tr><th>Aufgabe</th><th class="z">Mal</th><th class="z">richtig</th><th class="z">⌀ Zeit</th></tr>${zeilen}</table>
+    <p class="klein">Rot: mindestens einmal falsch · Gelb: deutlich langsamer als sonst (über das 1,5-Fache des Medians, ${sek(median)}) · Grau: kam nicht dran.</p>
+    <p class="auswertung-teil">Der Reihe nach</p>
+    <div class="verlauf">${chips}</div>
+    <p class="klein">Zeit: vom Landen des Würfels bis zur Antwort. Gesagte Antworten enthalten rund 0,8 s für die Erkennung.
+      „Würfel“: weiter ohne Antwort (Würfel angetippt).</p>`;
+}
+uhrEl.addEventListener('click', () => { if (!uhrEl.classList.contains('weg')) zeigeAuswertung(auswertungJetzt()); });
+$('#auswertung-zu').addEventListener('click', () => { auswertungEl.hidden = true; });
+auswertungEl.addEventListener('click', e => { if (e.target === auswertungEl) auswertungEl.hidden = true; });
+$('#letzte-auswertung').addEventListener('click', () => { schliesseHilfe(); zeigeAuswertung(letzteAuswertung()); });
 $('#tiere-schalter').addEventListener('click', e => {             // nur sichtbar, wenn Tiere an: Sticker ↔ wild & bunt
   stand.tiere = stand.satz = stand.tiere === 'wild' ? 'sticker' : 'wild';
   speichereAlles(); zeigeTiere();
@@ -1435,7 +1540,7 @@ window.wuerfelSpiel = {
   zufall, wurfZiel, stand, starteSpiel,
   get zahl() { return zahl; }, get phase() { return phase; },
   get staub() { return koerner.length; }, bewegung, ROLLZEIT, AUFPRALL, get umgesprungen() { return umgesprungen; },
-  DAUER, get uhr() { return { ...uhr, vergangen: vergangen() }; },
+  DAUER, get uhr() { return { ...uhr, vergangen: vergangen() }; }, LEISTE,
   get sprache() { return { bereit: !!sprache.modell, hoert: sprache.hoert, protokoll: sprache.protokoll.slice(),
     einKanal: !!sprache.quelle && sprache.quelle.context === ctx && (!stand.ton || audio() === ctx) }; }, zahlAus, gesagt,
   get sterne() { return funken.length; },

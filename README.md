@@ -126,7 +126,20 @@ der Tonkanal zum Zuhören war schon vor dem Mikrofon offen. Seit v0.55: mit Spre
 `play-and-record`, Reihenfolge wie im Sprechtest (erst Mikrofon, dann Tonkanal). Am iPhone mit Erwachsenenstimme geprüft (Sprechtest 20/20), Kinderstimme offen;
 offen auch, wie laut die Würfelgeräusche bei eingeschaltetem Mikrofon sind.
 
-**Antwort antippen** („mit Zahlen unten“, seit v0.54): Nach jeder Antwort würfelt er von selbst weiter, statt wieder
+**Seit v0.60: Fassungen „schlicht“ und „mit Rechnung“** (vorher „nur Würfel“ / „mit Zahlen unten“). In beiden gilt:
+Mikrofon aus → unten die **Zahlenleiste, immer 0 bis 10** (`LEISTE`; ihre Länge verrät nichts, und bei „Zerlegen: 10“
+mit einer 0 auf dem Würfel ist die Antwort 10); Mikrofon an → keine Leiste, das Kind sagt die Zahl. „Schlicht“: nur
+Würfel und Leiste, jede Antwort würfelt sofort weiter – ohne Farben, Sterne, Klang, Rechnung. Würfel antippen würfelt
+ohne Antwort weiter (in „schlicht“ oder mit Mikrofon), z. B. wenn das Kind dir die Zahl sagt. „Mit Rechnung“: wie unten.
+
+**Auswertung** (Einzeldiagnose, seit v0.60): Am Ende (oder mit eingeschalteter Uhr) die Uhr-Zeile antippen. Kacheln:
+Würfe, richtig (mit %), falsch, ⌀ Zeit bis zur Antwort, Würfel ohne Antwort, Minuten. „Je Aufgabe“ 0 + n … n + 0: wie
+oft, wie oft richtig, ⌀ Zeit – rot mindestens einmal falsch, gelb über das 1,5-Fache des Medians, grau kam nicht dran.
+„Der Reihe nach“: jede Antwort mit Zeit. Zeit = vom Landen des Würfels (`frageSeit`) bis zur Antwort; gesagte Antworten
+enthalten ~0,8 s Erkennung. Die letzte Auswertung liegt in `localStorage` (`wuerfel.auswertung`), in der Hilfe:
+„Letzte Auswertung ansehen“.
+
+**Antwort antippen** („mit Rechnung“, seit v0.54): Nach jeder Antwort würfelt er von selbst weiter, statt wieder
 die ganze Zahl zu zeigen und auf einen Tipp zu warten. Richtig → grün, Sterne, Lob, nach 0,35 s rollt er schon wieder,
 während die Sterne fliegen; die Lösung (und das Grün) bleibt stehen, bis die neue Aufgabe landet – die steht dann
 wieder auf Blau (v0.55 ließ sie noch grün, am iPhone-Video gesehen). Falsch → kurz rot, nach 0,8 s weiter

@@ -135,7 +135,9 @@ ohne Antwort weiter (in „schlicht“ oder mit Mikrofon), z. B. wenn das Kind d
 **Auswertung** (Einzeldiagnose, seit v0.60): Am Ende (oder mit eingeschalteter Uhr) die Uhr-Zeile antippen. Kacheln:
 Würfe, richtig (mit %), falsch, ⌀ Zeit bis zur Antwort, Würfel ohne Antwort, Minuten. „Je Aufgabe“ 0 + n … n + 0: wie
 oft, wie oft richtig, ⌀ Zeit – rot mindestens einmal falsch, gelb über das 1,5-Fache des Medians, grau kam nicht dran.
-„Der Reihe nach“: jede Antwort mit Zeit. Zeit = vom Landen des Würfels (`frageSeit`) bis zur Antwort; gesagte Antworten
+„Der Reihe nach“: jede Antwort mit Zeit. **Ohne zu warten** (seit v0.61): 5 s irgendwo auf die Spielseite drücken –
+ein laufender Durchgang endet sofort („Beendet“, ohne Fanfare), die Auswertung zeigt die tatsächlich gespielte Zeit;
+ohne laufenden Durchgang kommt die letzte gespeicherte. Zeit = vom Landen des Würfels (`frageSeit`) bis zur Antwort; gesagte Antworten
 enthalten ~0,8 s Erkennung. Die letzte Auswertung liegt in `localStorage` (`wuerfel.auswertung`), in der Hilfe:
 „Letzte Auswertung ansehen“.
 

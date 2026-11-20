@@ -482,7 +482,8 @@ body:not(.sagen) .los-feld { position: absolute; inset: 0; justify-content: cent
           <span class="schild" style="left:28px;top:118px">tippen</span></div>
         <div><h3>Auswertung</h3>
           <p><b>Am Ende</b> (oder mit eingeschalteter Uhr) auf die Zeile unten tippen, z. B. „2:00,0 · 24 Versuche · 20
-          richtig“. Dann kommt die Einzelauswertung: Würfe, richtig, falsch, wie lange jede Antwort gedauert hat, und je
+          richtig“. <b>Ohne zu warten:</b> 5 s irgendwo auf die Spielseite drücken (am besten auf freies Blau) – der
+          Durchgang endet sofort („Beendet“), die Auswertung zeigt die tatsächlich gespielte Zeit. Dann kommt die Einzelauswertung: Würfe, richtig, falsch, wie lange jede Antwort gedauert hat, und je
           Aufgabe (0 + 8 … 8 + 0), welche noch hakt – rot: mindestens einmal falsch, gelb: deutlich langsamer als sonst.
           Die letzte Auswertung bleibt gespeichert.</p>
           <button class="hilfe-link" id="letzte-auswertung" type="button">Letzte Auswertung ansehen</button></div>
@@ -504,7 +505,7 @@ body:not(.sagen) .los-feld { position: absolute; inset: 0; justify-content: cent
 </div>
 
 <script>
-const APP_VERSION = '0.60';          // bei JEDER Änderung hochzählen
+const APP_VERSION = '0.61';          // bei JEDER Änderung hochzählen
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
@@ -1030,7 +1031,7 @@ function zeigeStart() {
 const DAUER = 120000;                                           // ms
 const losFeld = $('#los-feld'), losText = $('#los-text'), losKnopf = $('#los'), uhrEl = $('#uhr'), linieEl = $('#fortschritt');
 let uhr = { start: 0, versuche: 0, laeuft: false, um: false, richtig: 0, falsch: 0, liste: [] }, uhrTimer = 0, uhrTakt = 0, uhrAn = false;
-const vergangen = () => Math.min(DAUER, uhr.laeuft ? Date.now() - uhr.start : uhr.um ? DAUER : 0);
+const vergangen = () => Math.min(DAUER, uhr.laeuft ? Date.now() - uhr.start : uhr.um ? (uhr.ende ?? uhr.start + DAUER) - uhr.start : 0);   // ende: vorzeitig beendet
 function zeigeLos(text, knopf) {                                // knopf leer: Feld unsichtbar, Platz bleibt
   losText.textContent = text;
   losKnopf.textContent = knopf;
@@ -1083,16 +1084,30 @@ function zeitUm() {
   zeigeUhr();
   if (phase !== 'rollt') schluss();                             // rollt er noch, kommt der Schluss nach dem Landen
 }
-function schluss() {
+function schluss(vorzeitig = false) {
   phase = 'aus';
   mikrofonAus();                                  // Mikrofon nur während der 2 Minuten
   clearTimeout(weiterTimer);
   gleichungEl.classList.add('weg'); hinweisEl.textContent = ''; zahlenEl.classList.add('ruht');   // „Zahl antippen“
-  wuerfelEl.setAttribute('aria-label', 'Die Zeit ist um');
-  zeigeLos('Die Zeit ist um!', 'Nochmal');
+  wuerfelEl.setAttribute('aria-label', vorzeitig ? 'Beendet' : 'Die Zeit ist um');
+  zeigeLos(vorzeitig ? 'Beendet' : 'Die Zeit ist um!', 'Nochmal');
   merkeAuswertung();
+  if (vorzeitig) return;                          // vorzeitig beendet: ohne Fanfare und Sterne
   klang.runde();
   sterneAus(losText, Math.round(STERNE * 2.2));
+}
+// 5 s irgendwo auf die Spielseite drücken: Auswertung sofort. Läuft ein Durchgang, endet er jetzt („Beendet“, mit der
+// tatsächlich gespielten Zeit); sonst kommt die letzte gespeicherte Auswertung.
+function auswertungSofort() {
+  if (uhr.laeuft) {
+    stoppeWuerfel();
+    stoppeUhr();
+    uhr.um = true;
+    uhr.ende = Date.now();
+    zeigeUhr();
+    schluss(true);
+  }
+  zeigeAuswertung(uhr.um ? auswertungJetzt() : letzteAuswertung());
 }
 function starteSpiel(n) {
   stand.n = n;
@@ -1315,12 +1330,12 @@ function kurzerTipp(el, aktion) {
 // „Start“/„Nochmal“; 3 s darauf schaltet die Anzeige am Ende um (siehe unten), ohne dass eine Runde beginnt
 kurzerTipp(losKnopf, losgehen);
 // Versteckte Schalter für Erwachsene: 3 s gedrückt halten
-function halten(els, aktion) {
+function halten(els, aktion, ms = 3000) {
   for (const el of els) {
     let halte = null;
     el.addEventListener('pointerdown', e => {
       clearTimeout(halte);
-      if (!e.target.closest('#version')) halte = setTimeout(aktion, 3000);   // die Versionsnummer bleibt der Update-Knopf
+      if (!e.target.closest('#version')) halte = setTimeout(aktion, ms);   // die Versionsnummer bleibt der Update-Knopf
     });
     for (const ende of ['pointerup', 'pointercancel', 'pointerleave']) el.addEventListener(ende, () => clearTimeout(halte));
     el.addEventListener('contextmenu', e => e.preventDefault());
@@ -1418,6 +1433,7 @@ function zeigeAuswertung(d) {
       „Würfel“: weiter ohne Antwort (Würfel angetippt).</p>`;
 }
 uhrEl.addEventListener('click', () => { if (!uhrEl.classList.contains('weg')) zeigeAuswertung(auswertungJetzt()); });
+halten([spielEl], auswertungSofort, 5000);        // 5 s irgendwo auf der Spielseite: Auswertung sofort (s. auswertungSofort)
 $('#auswertung-zu').addEventListener('click', () => { auswertungEl.hidden = true; });
 auswertungEl.addEventListener('click', e => { if (e.target === auswertungEl) auswertungEl.hidden = true; });
 $('#letzte-auswertung').addEventListener('click', () => { schliesseHilfe(); zeigeAuswertung(letzteAuswertung()); });

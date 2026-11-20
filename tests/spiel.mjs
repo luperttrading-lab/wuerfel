@@ -250,7 +250,8 @@ console.log('Startseite');
   await page.mouse.move(x0, y0);                                               // … und zurück auf die 0
   await page.mouse.up();
   const nachLupe = await page.evaluate(() => [window.wuerfelSpiel.phase, document.body.className, document.querySelector('#lupe').hidden]);
-  ok(nachLupe[2] && nachLupe[0] === 'geloest' && nachLupe[1].includes(8 - k === 0 ? 'gut' : 'falsch'),
+  const lupeRichtig = 8 - k === 0;                     // die 0 ist nur richtig, wenn der Würfel 8 zeigt
+  ok(nachLupe[2] && nachLupe[0] === 'geloest' && nachLupe[1].includes(lupeRichtig ? 'gut' : 'falsch'),
     'Beim Loslassen zählt die Taste unter dem Finger (die 0), die Lupe verschwindet');
   // Nach jeder Antwort – richtig oder falsch – würfelt er von selbst weiter
   const versuche = () => page.evaluate(() => window.wuerfelSpiel.uhr.versuche);
@@ -292,7 +293,7 @@ console.log('Startseite');
   ok(await gleichung(page) === `${k2}+?=8`, `Neue Aufgabe „${k2} + ? = 8“`);
   ok(!(await page.evaluate(() => document.body.classList.contains('gut') || document.body.classList.contains('falsch'))),
     'Die neue Aufgabe steht auf blauem Grund – das Grün endet, wenn der Würfel landet');
-  ok(await page.textContent('#uhr').then(t => / · 1 richtig$/.test(t)), `Uhr zählt mit: „${await page.textContent('#uhr')}“`);
+  ok((await page.textContent('#uhr')).endsWith(` · ${lupeRichtig ? 2 : 1} richtig`), `Uhr zählt mit: „${await page.textContent('#uhr')}“`);
   if (bilder) await page.screenshot({ path: `${bilder}/5-naechste.png` });
 
   await page.click('#zurueck');
@@ -784,6 +785,31 @@ console.log('Schlicht mit Zahlenleiste, Antwortzeiten und Auswertung (Uhr vorges
   if (bilder) await page.screenshot({ path: `${bilder}/auswertung.png` });
   await page.click('#auswertung-zu');
   ok(await page.isHidden('#auswertung'), '✕ schließt die Auswertung');
+  ok(konsole.length === 0, 'Keine Fehler in der Konsole' + (konsole.length ? ': ' + konsole.join(' | ') : ''));
+  await ctx.close();
+}
+{
+  // 5 s irgendwo auf die Spielseite: Durchgang endet sofort, Auswertung kommt
+  const T0 = new Date('2026-11-20T11:00:00Z').getTime();
+  const { page, konsole, ctx } = await seite(390, 844, false, '', p => p.clock.install({ time: T0 }));
+  await page.clock.pauseAt(T0 + 5000);
+  const halteFrei = async ms => { await page.mouse.move(40, 600); await page.mouse.down(); await page.clock.runFor(ms); await page.mouse.up(); await page.clock.runFor(100); };
+  await page.click('#zahlwahl button[data-n="7"]'); await page.clock.runFor(300);
+  await page.click('#los'); await page.clock.runFor(700);
+  let z = await page.evaluate(() => window.wuerfelSpiel.zahl);
+  await page.click(`.zahl[data-zahl="${7 - z}"]`); await page.clock.runFor(2000);
+  await halteFrei(3200);
+  ok(await page.isHidden('#auswertung') && await page.evaluate(() => window.wuerfelSpiel.uhr.laeuft), '3 s auf freies Blau: nichts (erst ab 5 s)');
+  await halteFrei(5200);
+  const m = await page.evaluate(() => ({ phase: window.wuerfelSpiel.phase, uhr: window.wuerfelSpiel.uhr, text: document.querySelector('#los-text').textContent,
+    kachel: [...document.querySelectorAll('#auswertung .kennzahlen div')].map(d => d.querySelector('b').textContent) }));
+  ok(await page.isVisible('#auswertung') && m.phase === 'aus' && !m.uhr.laeuft && m.text === 'Beendet' && m.uhr.vergangen > 10000 && m.uhr.vergangen < 12000,
+    `5 s auf freies Blau: Durchgang endet sofort („Beendet“ nach ${(m.uhr.vergangen / 1000).toFixed(1)} s), Auswertung offen`);
+  ok(m.kachel[0] === String(m.uhr.versuche) && m.kachel[1].startsWith('1') && m.kachel[5] === '0:11', `Auswertung mit der tatsächlich gespielten Zeit (${m.kachel[5]} Minuten, ${m.kachel[0]} Würfe)`);
+  await page.click('#auswertung-zu');
+  await page.click('#zurueck'); await page.click('#zahlwahl button[data-n="7"]'); await page.clock.runFor(300);
+  await halteFrei(5200);
+  ok(await page.isVisible('#auswertung') && (await page.textContent('#auswertung .kennzahlen')).includes('0:11'), 'Vor dem Start: 5 s zeigt die letzte gespeicherte Auswertung');
   ok(konsole.length === 0, 'Keine Fehler in der Konsole' + (konsole.length ? ': ' + konsole.join(' | ') : ''));
   await ctx.close();
 }
